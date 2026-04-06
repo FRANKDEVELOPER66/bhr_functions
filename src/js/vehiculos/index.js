@@ -34,34 +34,94 @@ const fotoActual = document.getElementById('fotoActual');
 
 // Estado global
 let todosLosVehiculos = [];
+// Al inicio del archivo, junto a las otras variables globales
+let modoEdicion = false;
 
 // ── FILE UPLOAD PREVIEW ───────────────────────────────────────────────────────
-inputFoto.addEventListener('change', () => {
+inputFoto.addEventListener('change', async () => {
     const file = inputFoto.files[0];
-    if (file) {
-        areaFoto.classList.add('has-file');
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            fotoPreview.src = e.target.result;
-            fotoPreview.classList.add('visible');
-        };
-        reader.readAsDataURL(file);
-    } else {
-        areaFoto.classList.remove('has-file');
-        fotoPreview.classList.remove('visible');
+    if (!file) return;
+
+    // Solo preguntar si estamos en modo edición Y ya había foto
+    const hayFotoActual = modoEdicion &&
+        fotoPreview.classList.contains('visible');
+
+    if (hayFotoActual) {
+        const confirm = await Swal.fire({
+            icon: 'question',
+            title: '¿Reemplazar foto?',
+            html: `Se reemplazará la foto actual por <strong>${file.name}</strong>.<br>
+                   <small style="color:var(--text-muted)">El cambio se aplicará al guardar.</small>`,
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-arrow-repeat"></i> Sí, reemplazar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#3a7bd5',
+            cancelButtonColor: '#e05252',
+            background: '#1a1d27',
+            color: '#e8eaf0'
+        });
+
+        if (!confirm.isConfirmed) {
+            inputFoto.value = '';
+            return;
+        }
     }
+
+    // Mostrar preview
+    areaFoto.classList.add('has-file');
+    areaFoto.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
+    areaFoto.querySelector('.upload-label').innerHTML = `
+        <span style="color:var(--success)">${file.name}</span><br>
+        <small>Nueva foto seleccionada</small>`;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        fotoPreview.src = e.target.result;
+        fotoPreview.classList.add('visible');
+    };
+    reader.readAsDataURL(file);
 });
 
-inputPdf.addEventListener('change', () => {
+inputPdf.addEventListener('change', async () => {
     const file = inputPdf.files[0];
-    if (file) {
-        areaPdf.classList.add('has-file');
-        pdfNombre.style.display = 'block';
-        pdfNombre.querySelector('span').textContent = file.name;
-    } else {
-        areaPdf.classList.remove('has-file');
-        pdfNombre.style.display = 'none';
+    if (!file) return;
+
+    const pdfPreview = document.getElementById('pdfPreviewIframe');
+    const hayPdfActual = modoEdicion &&
+        pdfPreview &&
+        pdfPreview.style.display !== 'none';
+
+    if (hayPdfActual) {
+        const confirm = await Swal.fire({
+            icon: 'question',
+            title: '¿Reemplazar PDF?',
+            html: `Se reemplazará la tarjeta actual por <strong>${file.name}</strong>.<br>
+                   <small style="color:var(--text-muted)">El cambio se aplicará al guardar.</small>`,
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-arrow-repeat"></i> Sí, reemplazar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#3a7bd5',
+            cancelButtonColor: '#e05252',
+            background: '#1a1d27',
+            color: '#e8eaf0'
+        });
+
+        if (!confirm.isConfirmed) {
+            inputPdf.value = '';
+            return;
+        }
+
+        pdfPreview.style.display = 'none';
+        pdfPreview.src = '';
     }
+
+    areaPdf.classList.add('has-file');
+    areaPdf.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
+    areaPdf.querySelector('.upload-label').innerHTML = `
+        <span style="color:var(--success)">${file.name}</span><br>
+        <small>Nuevo PDF seleccionado</small>`;
+    pdfNombre.style.display = 'block';
+    pdfNombre.querySelector('span').textContent = file.name;
 });
 
 // ── HELPERS UI ───────────────────────────────────────────────────────────────
@@ -93,6 +153,7 @@ const resetArchivos = () => {
 };
 
 const mostrarFormulario = () => {
+    modoEdicion = false;
     contenedorFormulario.style.display = '';
     contenedorFormulario.classList.add('slide-down');
     contenedorTabla.style.display = 'none';
@@ -261,87 +322,6 @@ const buscar = async () => {
     }
 };
 
-inputFoto.addEventListener('change', async () => {
-    const file = inputFoto.files[0];
-    if (!file) return;
-
-    // Si ya había foto cargada (modo edición), pedir confirmación
-    if (areaFoto.classList.contains('has-file') && fotoPreview.src && !fotoPreview.src.endsWith('#')) {
-        const confirm = await Swal.fire({
-            icon: 'question',
-            title: '¿Reemplazar foto?',
-            html: `Se reemplazará la foto actual por <strong>${file.name}</strong>.<br>
-                   <small style="color:var(--text-muted)">El cambio se aplicará al guardar.</small>`,
-            showCancelButton: true,
-            confirmButtonText: '<i class="bi bi-arrow-repeat"></i> Sí, reemplazar',
-            cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#3a7bd5',
-            cancelButtonColor: '#e05252',
-            background: '#1a1d27',
-            color: '#e8eaf0'
-        });
-
-        if (!confirm.isConfirmed) {
-            inputFoto.value = ''; // limpiar selección
-            return;
-        }
-    }
-
-    // Mostrar preview de la nueva foto
-    areaFoto.classList.add('has-file');
-    areaFoto.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
-    areaFoto.querySelector('.upload-label').innerHTML = `
-        <span style="color:var(--success)">${file.name}</span><br>
-        <small>Nueva foto seleccionada</small>`;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        fotoPreview.src = e.target.result;
-        fotoPreview.classList.add('visible');
-    };
-    reader.readAsDataURL(file);
-});
-
-inputPdf.addEventListener('change', async () => {
-    const file = inputPdf.files[0];
-    if (!file) return;
-
-    // Si ya había PDF cargado (modo edición), pedir confirmación
-    const pdfPreview = document.getElementById('pdfPreviewIframe');
-    if (areaPdf.classList.contains('has-file') && pdfPreview && pdfPreview.src) {
-        const confirm = await Swal.fire({
-            icon: 'question',
-            title: '¿Reemplazar PDF?',
-            html: `Se reemplazará la tarjeta actual por <strong>${file.name}</strong>.<br>
-                   <small style="color:var(--text-muted)">El cambio se aplicará al guardar.</small>`,
-            showCancelButton: true,
-            confirmButtonText: '<i class="bi bi-arrow-repeat"></i> Sí, reemplazar',
-            cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#3a7bd5',
-            cancelButtonColor: '#e05252',
-            background: '#1a1d27',
-            color: '#e8eaf0'
-        });
-
-        if (!confirm.isConfirmed) {
-            inputPdf.value = ''; // limpiar selección
-            return;
-        }
-
-        // Ocultar preview del PDF anterior
-        pdfPreview.style.display = 'none';
-        pdfPreview.src = '';
-    }
-
-    // Mostrar nombre del nuevo PDF
-    areaPdf.classList.add('has-file');
-    areaPdf.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
-    areaPdf.querySelector('.upload-label').innerHTML = `
-        <span style="color:var(--success)">${file.name}</span><br>
-        <small>Nuevo PDF seleccionado</small>`;
-    pdfNombre.style.display = 'block';
-    pdfNombre.querySelector('span').textContent = file.name;
-});
 
 // ── GUARDAR ──────────────────────────────────────────────────────────────────
 const guardar = async (e) => {
@@ -377,6 +357,7 @@ const guardar = async (e) => {
 
 // ── TRAER DATOS ───────────────────────────────────────────────────────────────
 const traerDatos = (e) => {
+    modoEdicion = true;
     const d = e.currentTarget.dataset;
 
     inputPlaca.value = d.placa;
