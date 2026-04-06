@@ -4,8 +4,8 @@ namespace Model;
 
 class Vehiculos extends ActiveRecord
 {
-    protected static $tabla    = 'vehiculos';
-    protected static $idTabla  = 'placa';          // PK es la placa (VARCHAR)
+    protected static $tabla = 'vehiculos';
+    protected static $idTabla = 'placa';
     protected static $columnasDB = [
         'placa',
         'numero_serie',
@@ -17,7 +17,7 @@ class Vehiculos extends ActiveRecord
         'km_actuales',
         'estado',
         'fecha_ingreso',
-        'observaciones',
+        'observaciones'
     ];
 
     public $placa;
@@ -34,75 +34,88 @@ class Vehiculos extends ActiveRecord
 
     public function __construct($args = [])
     {
-        $this->placa          = strtoupper(trim($args['placa']         ?? ''));
-        $this->numero_serie   = strtoupper(trim($args['numero_serie']  ?? ''));
-        $this->marca          = $args['marca']         ?? '';
-        $this->modelo         = $args['modelo']        ?? '';
-        $this->anio           = $args['anio']          ?? date('Y');
-        $this->color          = $args['color']         ?? '';
-        $this->tipo           = $args['tipo']          ?? '';
-        $this->km_actuales    = (int)($args['km_actuales'] ?? 0);
-        $this->estado         = $args['estado']        ?? 'Alta';
-        $this->fecha_ingreso  = $args['fecha_ingreso'] ?? date('Y-m-d');
-        $this->observaciones  = $args['observaciones'] ?? null;
+        $this->placa          = $args['placa']          ?? '';
+        $this->numero_serie   = $args['numero_serie']   ?? '';
+        $this->marca          = $args['marca']          ?? '';
+        $this->modelo         = $args['modelo']         ?? '';
+        $this->anio           = $args['anio']           ?? date('Y');
+        $this->color          = $args['color']          ?? '';
+        $this->tipo           = $args['tipo']           ?? '';
+        $this->km_actuales    = $args['km_actuales']    ?? 0;
+        $this->estado         = $args['estado']         ?? 'Alta';
+        $this->fecha_ingreso  = $args['fecha_ingreso']  ?? date('Y-m-d');
+        $this->observaciones  = $args['observaciones']  ?? '';
     }
 
-    // ---------------------------------------------------------------
-    // Lecturas
-    // ---------------------------------------------------------------
-
-    /** Todos los vehículos, ordenados por placa */
-    public static function obtenerTodos(): array
+    /**
+     * Trae todos los vehículos con conteo de servicios y reparaciones
+     */
+    public static function traerVehiculos()
     {
-        $sql = "SELECT * FROM " . self::$tabla . "
-                ORDER BY placa";
+        $sql = "SELECT 
+                    v.*,
+                    COUNT(DISTINCT s.id_servicio)    AS total_servicios,
+                    COUNT(DISTINCT r.id_reparacion)  AS total_reparaciones,
+                    MAX(s.fecha_realizado)            AS ultimo_servicio
+                FROM vehiculos v
+                LEFT JOIN servicios    s ON v.placa = s.placa
+                LEFT JOIN reparaciones r ON v.placa = r.placa
+                GROUP BY v.placa
+                ORDER BY v.marca, v.modelo";
+
         return self::fetchArray($sql);
     }
 
-    /** Buscar por placa (parcial) o marca/modelo */
-    public static function buscar(string $termino): array
+    /**
+     * Trae un vehículo con todo su detalle
+     */
+    public static function traerConDetalle(string $placa)
     {
-        $t   = '%' . $termino . '%';
-        $sql = "SELECT * FROM " . self::$tabla . "
-                WHERE placa       LIKE ?
-                   OR numero_serie LIKE ?
-                   OR marca        LIKE ?
-                   OR modelo       LIKE ?
-                ORDER BY placa
-                LIMIT 20";
-        return self::fetchArray($sql, [$t, $t, $t, $t]);
+        $sql = "SELECT 
+                v.*,
+                (SELECT COUNT(*) FROM servicios    WHERE placa = v.placa) AS total_servicios,
+                (SELECT COUNT(*) FROM reparaciones WHERE placa = v.placa) AS total_reparaciones
+            FROM vehiculos v
+            WHERE v.placa = ?
+            LIMIT 1";
+
+        $resultado = self::fetchArray($sql, [$placa]);
+        return $resultado[0] ?? null;
     }
 
-    /** Obtener un vehículo por su placa exacta */
-    public static function obtenerPorPlaca(string $placa): ?array
+    /**
+     * Verifica si la placa ya existe
+     */
+    public static function existePlaca(string $placa): bool
     {
-        $sql = "SELECT * FROM " . self::$tabla . "
-                WHERE placa = ?
-                LIMIT 1";
-        $rows = self::fetchArray($sql, [strtoupper(trim($placa))]);
-        return $rows[0] ?? null;
+        $sql = "SELECT placa FROM vehiculos WHERE placa = ? LIMIT 1";
+        $resultado = self::fetchArray($sql, [$placa]);
+        return !empty($resultado);
     }
 
-    /** Vehículos filtrados por estado (Alta / Baja / Taller) */
-    public static function obtenerPorEstado(string $estado): array
+    /**
+     * Verifica si el número de serie ya existe (excluyendo una placa en edición)
+     */
+    public static function existeNumeroSerie(string $serie, string $placaExcluir = ''): bool
     {
-        $sql = "SELECT * FROM " . self::$tabla . "
-                WHERE estado = ?
-                ORDER BY placa";
-        return self::fetchArray($sql, [$estado]);
+        if ($placaExcluir) {
+            $sql = "SELECT placa FROM vehiculos WHERE numero_serie = ? AND placa <> ? LIMIT 1";
+            $resultado = self::fetchArray($sql, [$serie, $placaExcluir]);
+        } else {
+            $sql = "SELECT placa FROM vehiculos WHERE numero_serie = ? LIMIT 1";
+            $resultado = self::fetchArray($sql, [$serie]);
+        }
+        return !empty($resultado);
     }
 
-    /** Vehículos que tengan servicios próximos (km_actuales ≥ km_proximo_servicio) */
-    public static function obtenerConServicioProximo(): array
+    /**
+     * Actualiza únicamente el kilometraje
+     */
+    public static function actualizarKm(string $placa, int $km): bool
     {
-        $sql = "SELECT v.*, s.km_proximo_servicio, s.fecha_proximo,
-                       ts.nombre AS nombre_servicio
-                FROM   vehiculos v
-                JOIN   servicios s  ON s.placa = v.placa
-                JOIN   tipos_servicio ts ON ts.id_tipo_servicio = s.id_tipo_servicio
-                WHERE  s.km_proximo_servicio IS NOT NULL
-                  AND  v.km_actuales >= s.km_proximo_servicio
-                ORDER BY v.placa";
-        return self::fetchArray($sql);
+        $sql = "UPDATE vehiculos SET km_actuales = ? WHERE placa = ?";
+        $stmt = self::$db->prepare($sql);
+        $stmt->execute([$km, $placa]);
+        return true;
     }
 }
