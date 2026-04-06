@@ -39,7 +39,7 @@ class Unidades extends ActiveRecord
         CONCAT(u.nombre, ' / ' ' Destacada en la ', d.nombre, ', ', d.municipio, ' ', d.departamento) AS unidad_destacamento
     FROM unidades u
     LEFT JOIN destacamentos d ON u.id_destacamento = d.id_destacamento
-    ORDER BY u.id_unidad DESC";
+    ORDER BY u.nombre ASC";
 
         return self::fetchArray($sql);
     }
