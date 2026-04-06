@@ -15,19 +15,15 @@
         --radius: 12px;
     }
 
-    * {
-        box-sizing: border-box;
-    }
-
     body {
         background: var(--dark);
         color: var(--text-main);
         font-family: 'Inter', sans-serif;
     }
 
-    /* ── PAGE HEADER ─────────────────────────────── */
+    /* ── HEADER ───────────────────────────────── */
     .veh-header {
-        background: linear-gradient(135deg, var(--dark-2) 0%, var(--dark-3) 100%);
+        background: linear-gradient(135deg, var(--dark-2), var(--dark-3));
         border: 1px solid var(--border);
         border-left: 4px solid var(--accent);
         padding: 1.75rem 2rem;
@@ -55,7 +51,6 @@
         font-family: 'Rajdhani', sans-serif;
         font-size: 2rem;
         font-weight: 700;
-        color: var(--text-main);
         margin: 0;
         letter-spacing: 1px;
     }
@@ -66,7 +61,7 @@
         font-size: .875rem;
     }
 
-    /* ── FLOATING BTN ─────────────────────────────── */
+    /* ── FLOATING BTN ─────────────────────────── */
     .floating-btn {
         position: fixed;
         bottom: 32px;
@@ -102,7 +97,7 @@
         box-shadow: 0 14px 40px rgba(224, 82, 82, .5);
     }
 
-    /* ── FORM CONTAINER ───────────────────────────── */
+    /* ── FORM CONTAINER ───────────────────────── */
     .form-container {
         background: var(--dark-2);
         border: 1px solid var(--border);
@@ -112,7 +107,7 @@
     }
 
     .form-header {
-        background: linear-gradient(90deg, var(--dark-3) 0%, #1f2335 100%);
+        background: linear-gradient(90deg, var(--dark-3), #1f2335);
         border-bottom: 1px solid var(--border);
         padding: 1.25rem 2rem;
         display: flex;
@@ -145,7 +140,7 @@
         padding: 2rem;
     }
 
-    /* ── INPUTS ───────────────────────────────────── */
+    /* ── INPUTS ───────────────────────────────── */
     .form-label {
         font-size: .8rem;
         font-weight: 600;
@@ -189,13 +184,73 @@
         color: var(--text-main);
     }
 
-    /* Estado de error */
-    .form-control.error,
-    .form-select.error {
-        border-color: var(--danger) !important;
+    /* File input */
+    .file-upload-area {
+        border: 2px dashed var(--border);
+        border-radius: 10px;
+        padding: 1.25rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all .25s ease;
+        position: relative;
+        overflow: hidden;
     }
 
-    /* ── SECTION DIVIDER ──────────────────────────── */
+    .file-upload-area:hover {
+        border-color: var(--accent);
+        background: rgba(232, 184, 75, .05);
+    }
+
+    .file-upload-area input[type="file"] {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+        width: 100%;
+        height: 100%;
+    }
+
+    .file-upload-area .upload-icon {
+        font-size: 1.8rem;
+        color: var(--text-muted);
+        margin-bottom: .4rem;
+    }
+
+    .file-upload-area .upload-label {
+        font-size: .82rem;
+        color: var(--text-muted);
+    }
+
+    .file-upload-area .upload-label span {
+        color: var(--accent);
+        font-weight: 600;
+    }
+
+    .file-upload-area.has-file {
+        border-color: var(--success);
+        background: rgba(76, 175, 125, .05);
+    }
+
+    .file-upload-area.has-file .upload-icon {
+        color: var(--success);
+    }
+
+    /* Preview foto */
+    .foto-preview {
+        width: 100%;
+        height: 140px;
+        object-fit: cover;
+        border-radius: 8px;
+        display: none;
+        margin-top: .75rem;
+        border: 2px solid var(--border);
+    }
+
+    .foto-preview.visible {
+        display: block;
+    }
+
+    /* Section divider */
     .section-divider {
         display: flex;
         align-items: center;
@@ -220,33 +275,7 @@
         color: var(--accent);
     }
 
-    /* ── BADGE ESTADO ─────────────────────────────── */
-    .badge-alta {
-        background: rgba(76, 175, 125, .15);
-        color: #4caf7d;
-        border: 1px solid rgba(76, 175, 125, .3);
-    }
-
-    .badge-baja {
-        background: rgba(224, 82, 82, .15);
-        color: var(--danger);
-        border: 1px solid rgba(224, 82, 82, .3);
-    }
-
-    .badge-taller {
-        background: rgba(232, 184, 75, .15);
-        color: var(--accent);
-        border: 1px solid rgba(232, 184, 75, .3);
-    }
-
-    .badge-estado {
-        padding: .3rem .75rem;
-        border-radius: 20px;
-        font-size: .78rem;
-        font-weight: 600;
-    }
-
-    /* ── BUTTONS ──────────────────────────────────── */
+    /* ── BUTTONS ──────────────────────────────── */
     .btn-guardar {
         background: linear-gradient(135deg, var(--accent), var(--accent-2));
         border: none;
@@ -259,6 +288,7 @@
         letter-spacing: .5px;
         transition: all .3s ease;
         cursor: pointer;
+        width: 100%;
     }
 
     .btn-guardar:hover {
@@ -284,6 +314,7 @@
         letter-spacing: .5px;
         transition: all .3s ease;
         cursor: pointer;
+        width: 100%;
     }
 
     .btn-modificar-main:hover {
@@ -303,6 +334,7 @@
         letter-spacing: .5px;
         transition: all .3s ease;
         cursor: pointer;
+        width: 100%;
     }
 
     .btn-cancelar-main:hover {
@@ -311,181 +343,331 @@
         box-shadow: 0 8px 25px rgba(224, 82, 82, .3);
     }
 
-    /* ── TABLE CONTAINER ──────────────────────────── */
-    .table-container {
+    /* ── FILTROS ──────────────────────────────── */
+    .filtros-container {
         background: var(--dark-2);
         border: 1px solid var(--border);
-        border-radius: 18px;
-        padding: 2rem;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, .2);
-    }
-
-    .table-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding-bottom: 1.25rem;
-        border-bottom: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.25rem 1.5rem;
         margin-bottom: 1.5rem;
-    }
-
-    .table-header h2 {
-        font-family: 'Rajdhani', sans-serif;
-        font-size: 1.4rem;
-        font-weight: 700;
-        color: var(--text-main);
-        margin: 0;
         display: flex;
         align-items: center;
-        gap: .6rem;
+        gap: 1rem;
+        flex-wrap: wrap;
     }
 
-    .table-header h2 i {
+    .filtros-container label {
+        color: var(--text-muted);
+        font-size: .8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        white-space: nowrap;
+    }
+
+    .filtro-select {
+        background: var(--dark-3);
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        color: var(--text-main);
+        padding: .5rem 1rem;
+        font-size: .875rem;
+        cursor: pointer;
+        transition: all .2s ease;
+        min-width: 150px;
+    }
+
+    .filtro-select:focus {
+        border-color: var(--accent);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(232, 184, 75, .15);
+    }
+
+    .filtro-select option {
+        background: var(--dark-3);
+    }
+
+    .filtro-search {
+        background: var(--dark-3);
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        color: var(--text-main);
+        padding: .5rem 1rem;
+        font-size: .875rem;
+        transition: all .2s ease;
+        flex: 1;
+        min-width: 180px;
+    }
+
+    .filtro-search:focus {
+        border-color: var(--accent);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(232, 184, 75, .15);
+    }
+
+    .filtro-search::placeholder {
+        color: var(--text-muted);
+    }
+
+    .btn-limpiar-filtros {
+        background: transparent;
+        border: 1.5px solid var(--border);
+        color: var(--text-muted);
+        border-radius: 8px;
+        padding: .5rem 1rem;
+        font-size: .8rem;
+        cursor: pointer;
+        transition: all .2s ease;
+        white-space: nowrap;
+    }
+
+    .btn-limpiar-filtros:hover {
+        border-color: var(--accent);
         color: var(--accent);
     }
 
-    /* DataTable dark overrides */
-    #tablaVehiculos {
-        border-collapse: separate !important;
-        border-spacing: 0 !important;
+    .contador-resultados {
+        margin-left: auto;
+        color: var(--text-muted);
+        font-size: .82rem;
+        white-space: nowrap;
     }
 
-    #tablaVehiculos thead th {
-        background: var(--dark-3) !important;
-        color: var(--text-muted) !important;
-        font-size: .75rem;
-        text-transform: uppercase;
-        letter-spacing: .7px;
-        font-weight: 600;
-        border: none !important;
-        padding: .9rem 1rem !important;
+    .contador-resultados span {
+        color: var(--accent);
+        font-weight: 700;
     }
 
-    #tablaVehiculos thead th:first-child {
-        border-radius: 10px 0 0 10px !important;
+    /* ── CARDS GRID ───────────────────────────── */
+    .cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 1.25rem;
     }
 
-    #tablaVehiculos thead th:last-child {
-        border-radius: 0 10px 10px 0 !important;
+    /* ── VEHICLE CARD ─────────────────────────── */
+    .vehicle-card {
+        background: var(--dark-2);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        overflow: hidden;
+        transition: all .3s ease;
+        cursor: default;
+        display: flex;
+        flex-direction: column;
+        animation: fadeInCard .4s ease both;
     }
 
-    #tablaVehiculos tbody tr {
-        transition: all .2s ease;
-        border-bottom: 1px solid var(--border) !important;
+    .vehicle-card:hover {
+        border-color: rgba(232, 184, 75, .4);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, .4);
+        transform: translateY(-4px);
     }
 
-    #tablaVehiculos tbody tr:hover td {
-        background: var(--dark-3) !important;
+    @keyframes fadeInCard {
+        from {
+            opacity: 0;
+            transform: translateY(16px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
-    #tablaVehiculos tbody td {
-        padding: .9rem 1rem !important;
-        color: var(--text-main) !important;
-        vertical-align: middle !important;
-        border: none !important;
-        background: transparent !important;
+    /* Foto */
+    .card-foto {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        background: var(--dark-3);
+        position: relative;
+        overflow: hidden;
     }
 
-    .dataTables_wrapper .dataTables_length label,
-    .dataTables_wrapper .dataTables_filter label,
-    .dataTables_wrapper .dataTables_info {
-        color: var(--text-muted) !important;
-        font-size: .85rem !important;
+    .card-foto img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform .4s ease;
     }
 
-    .dataTables_wrapper .dataTables_length select,
-    .dataTables_wrapper .dataTables_filter input {
-        background: var(--dark-3) !important;
-        border: 1.5px solid var(--border) !important;
-        border-radius: 8px !important;
-        color: var(--text-main) !important;
-        padding: .4rem .75rem !important;
+    .vehicle-card:hover .card-foto img {
+        transform: scale(1.05);
     }
 
-    .dataTables_wrapper .dataTables_filter input:focus {
-        border-color: var(--accent) !important;
-        outline: none !important;
-        box-shadow: 0 0 0 3px rgba(232, 184, 75, .15) !important;
-    }
-
-    .dataTables_paginate .paginate_button {
-        border-radius: 8px !important;
-        color: var(--text-muted) !important;
-        border: 1.5px solid var(--border) !important;
-        padding: .4rem .9rem !important;
-        margin: 0 2px !important;
-        background: var(--dark-3) !important;
-        transition: all .2s ease !important;
-    }
-
-    .dataTables_paginate .paginate_button:hover {
-        background: var(--accent) !important;
-        border-color: var(--accent) !important;
-        color: var(--dark) !important;
-    }
-
-    .dataTables_paginate .paginate_button.current {
-        background: linear-gradient(135deg, var(--accent), var(--accent-2)) !important;
-        border-color: var(--accent) !important;
-        color: var(--dark) !important;
-        font-weight: 700 !important;
-    }
-
-    .dataTables_paginate .paginate_button.disabled,
-    .dataTables_paginate .paginate_button.disabled:hover {
-        opacity: .3 !important;
-        background: var(--dark-3) !important;
-        color: var(--text-muted) !important;
-    }
-
-    /* ── BOTONES DE ACCIÓN EN TABLA ───────────────── */
-    .btn-tbl {
-        display: inline-flex;
+    .card-foto .no-foto {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        width: 34px;
-        height: 34px;
+        gap: .5rem;
+        color: var(--text-muted);
+    }
+
+    .card-foto .no-foto i {
+        font-size: 3rem;
+        opacity: .3;
+    }
+
+    .card-foto .no-foto span {
+        font-size: .75rem;
+        opacity: .5;
+    }
+
+    /* Badge estado sobre la foto */
+    .card-estado {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        padding: .25rem .7rem;
+        border-radius: 20px;
+        font-size: .72rem;
+        font-weight: 700;
+        letter-spacing: .4px;
+        backdrop-filter: blur(8px);
+    }
+
+    .estado-Alta {
+        background: rgba(76, 175, 125, .25);
+        color: #4caf7d;
+        border: 1px solid rgba(76, 175, 125, .4);
+    }
+
+    .estado-Baja {
+        background: rgba(224, 82, 82, .25);
+        color: var(--danger);
+        border: 1px solid rgba(224, 82, 82, .4);
+    }
+
+    .estado-Taller {
+        background: rgba(232, 184, 75, .25);
+        color: var(--accent);
+        border: 1px solid rgba(232, 184, 75, .4);
+    }
+
+    /* Badge PDF */
+    .card-pdf-badge {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: rgba(224, 82, 82, .8);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .85rem;
+        text-decoration: none;
+        backdrop-filter: blur(8px);
+        transition: all .2s ease;
+    }
+
+    .card-pdf-badge:hover {
+        background: rgba(224, 82, 82, 1);
+        transform: scale(1.1);
+        color: #fff;
+    }
+
+    /* Info */
+    .card-info {
+        padding: 1rem;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: .35rem;
+    }
+
+    .card-placa {
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--accent);
+        letter-spacing: 2px;
+        line-height: 1;
+    }
+
+    .card-vehiculo {
+        font-size: .9rem;
+        font-weight: 600;
+        color: var(--text-main);
+        line-height: 1.3;
+    }
+
+    .card-tipo {
+        font-size: .75rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: .3rem;
+    }
+
+    /* Acciones */
+    .card-acciones {
+        padding: .75rem 1rem;
+        border-top: 1px solid var(--border);
+        display: flex;
+        gap: .5rem;
+    }
+
+    .btn-card-action {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: .4rem;
+        padding: .5rem;
         border-radius: 8px;
         border: none;
         cursor: pointer;
-        transition: all .2s ease;
-        font-size: .9rem;
-    }
-
-    .btn-tbl-edit {
-        background: rgba(58, 123, 213, .15);
-        color: #5b9bd5;
-        border: 1px solid rgba(58, 123, 213, .25);
-    }
-
-    .btn-tbl-edit:hover {
-        background: rgba(58, 123, 213, .3);
-        transform: translateY(-2px);
-    }
-
-    .btn-tbl-del {
-        background: rgba(224, 82, 82, .15);
-        color: var(--danger);
-        border: 1px solid rgba(224, 82, 82, .25);
-    }
-
-    .btn-tbl-del:hover {
-        background: rgba(224, 82, 82, .3);
-        transform: translateY(-2px);
-    }
-
-    /* ── KM chip ──────────────────────────────────── */
-    .chip-km {
-        display: inline-flex;
-        align-items: center;
-        gap: .3rem;
-        background: rgba(232, 184, 75, .1);
-        color: var(--accent);
-        border: 1px solid rgba(232, 184, 75, .2);
-        border-radius: 20px;
-        padding: .2rem .7rem;
         font-size: .78rem;
         font-weight: 600;
+        transition: all .2s ease;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .btn-card-edit {
+        background: rgba(58, 123, 213, .15);
+        color: #5b9bd5;
+        border: 1px solid rgba(58, 123, 213, .2);
+    }
+
+    .btn-card-edit:hover {
+        background: rgba(58, 123, 213, .3);
+    }
+
+    .btn-card-del {
+        background: rgba(224, 82, 82, .15);
+        color: var(--danger);
+        border: 1px solid rgba(224, 82, 82, .2);
+    }
+
+    .btn-card-del:hover {
+        background: rgba(224, 82, 82, .3);
+    }
+
+    /* Empty state */
+    .empty-state {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--text-muted);
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        opacity: .2;
+        display: block;
+        margin-bottom: 1rem;
+    }
+
+    .empty-state p {
+        font-size: .95rem;
+        margin: 0;
     }
 
     /* Animaciones */
@@ -520,15 +702,24 @@
             transform: translateY(-24px);
         }
     }
+
+    @media (max-width: 576px) {
+        .cards-grid {
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: .75rem;
+        }
+
+        .filtros-container {
+            gap: .6rem;
+        }
+    }
 </style>
 
 <div class="container-fluid mt-4">
 
     <!-- Header -->
     <div class="veh-header">
-        <div class="icon-wrap">
-            <i class="bi bi-truck-front-fill"></i>
-        </div>
+        <div class="icon-wrap"><i class="bi bi-truck-front-fill"></i></div>
         <div>
             <h1>Control de Vehículos</h1>
             <p>Registro, historial de servicios y estado de flota</p>
@@ -540,88 +731,59 @@
         <i class="bi bi-plus"></i>
     </button>
 
-    <!-- ── FORMULARIO (inicia oculto) ─────────────── -->
+    <!-- ── FORMULARIO (inicia oculto) ─────────── -->
     <div class="row justify-content-center mb-4" id="contenedorFormulario" style="display:none;">
         <div class="col-lg-11">
             <div class="form-container">
-
                 <div class="form-header">
                     <div class="fh-icon"><i class="bi bi-truck"></i></div>
                     <h3 id="tituloFormulario">Nuevo Vehículo</h3>
                 </div>
 
-                <form id="formularioVehiculo" class="form-body">
+                <form id="formularioVehiculo" class="form-body" enctype="multipart/form-data">
                     <input type="hidden" name="placa_original" id="placa_original">
 
-                    <!-- ── IDENTIFICACIÓN ──────────────────── -->
-                    <div class="section-divider">
-                        <i class="bi bi-card-text"></i> Identificación
-                    </div>
-
+                    <!-- Identificación -->
+                    <div class="section-divider"><i class="bi bi-card-text"></i> Identificación</div>
                     <div class="row mb-3">
                         <div class="col-md-3">
-                            <label class="form-label">
-                                <i class="bi bi-hash"></i> Placa *
-                            </label>
+                            <label class="form-label"><i class="bi bi-hash"></i> Placa *</label>
                             <input type="text" name="placa" id="placa" class="form-control"
                                 placeholder="Ej: ABC-123" required
-                                style="text-transform:uppercase; font-weight:600; letter-spacing:1px;">
+                                style="text-transform:uppercase;font-weight:600;letter-spacing:1px">
                         </div>
                         <div class="col-md-5">
-                            <label class="form-label">
-                                <i class="bi bi-upc-scan"></i> Número de Serie *
-                            </label>
+                            <label class="form-label"><i class="bi bi-upc-scan"></i> Número de Serie *</label>
                             <input type="text" name="numero_serie" id="numero_serie" class="form-control"
-                                placeholder="VIN / Número de chasis" required
-                                style="text-transform:uppercase;">
+                                placeholder="VIN / Número de chasis" required style="text-transform:uppercase">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">
-                                <i class="bi bi-calendar-event"></i> Fecha de Ingreso *
-                            </label>
-                            <input type="date" name="fecha_ingreso" id="fecha_ingreso"
-                                class="form-control" required>
+                            <label class="form-label"><i class="bi bi-calendar-event"></i> Fecha de Ingreso *</label>
+                            <input type="date" name="fecha_ingreso" id="fecha_ingreso" class="form-control" required>
                         </div>
                     </div>
 
-                    <!-- ── DATOS DEL VEHÍCULO ──────────────── -->
-                    <div class="section-divider">
-                        <i class="bi bi-car-front"></i> Datos del Vehículo
-                    </div>
-
+                    <!-- Datos del vehículo -->
+                    <div class="section-divider"><i class="bi bi-car-front"></i> Datos del Vehículo</div>
                     <div class="row mb-3">
                         <div class="col-md-3">
-                            <label class="form-label">
-                                <i class="bi bi-building"></i> Marca *
-                            </label>
-                            <input type="text" name="marca" id="marca" class="form-control"
-                                placeholder="Toyota, Ford, Chevrolet..." required>
+                            <label class="form-label"><i class="bi bi-building"></i> Marca *</label>
+                            <input type="text" name="marca" id="marca" class="form-control" placeholder="Toyota, Ford..." required>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">
-                                <i class="bi bi-tag"></i> Modelo *
-                            </label>
-                            <input type="text" name="modelo" id="modelo" class="form-control"
-                                placeholder="Hilux, Ranger, Colorado..." required>
+                            <label class="form-label"><i class="bi bi-tag"></i> Modelo *</label>
+                            <input type="text" name="modelo" id="modelo" class="form-control" placeholder="Hilux, Ranger..." required>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">
-                                <i class="bi bi-calendar3"></i> Año *
-                            </label>
-                            <input type="number" name="anio" id="anio" class="form-control"
-                                placeholder="2024" min="1990" max="2030" required>
+                            <label class="form-label"><i class="bi bi-calendar3"></i> Año *</label>
+                            <input type="number" name="anio" id="anio" class="form-control" placeholder="2024" min="1990" max="2035" required>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">
-                                <i class="bi bi-palette"></i> Color *
-                            </label>
-                            <input type="text" name="color" id="color" class="form-control"
-                                placeholder="Blanco, Negro..." required>
+                            <label class="form-label"><i class="bi bi-palette"></i> Color *</label>
+                            <input type="text" name="color" id="color" class="form-control" placeholder="Blanco..." required>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">
-                                <i class="bi bi-truck"></i> Tipo *
-                            </label>
+                            <label class="form-label"><i class="bi bi-truck"></i> Tipo *</label>
                             <select name="tipo" id="tipo" class="form-select" required>
                                 <option value="">Seleccione...</option>
                                 <option value="Automóvil">Automóvil</option>
@@ -635,16 +797,11 @@
                         </div>
                     </div>
 
-                    <!-- ── ESTADO Y KM ─────────────────────── -->
-                    <div class="section-divider">
-                        <i class="bi bi-speedometer2"></i> Estado Operacional
-                    </div>
-
+                    <!-- Estado y KM -->
+                    <div class="section-divider"><i class="bi bi-speedometer2"></i> Estado Operacional</div>
                     <div class="row mb-3">
                         <div class="col-md-3">
-                            <label class="form-label">
-                                <i class="bi bi-activity"></i> Estado *
-                            </label>
+                            <label class="form-label"><i class="bi bi-activity"></i> Estado *</label>
                             <select name="estado" id="estado" class="form-select" required>
                                 <option value="Alta">Alta (Operativo)</option>
                                 <option value="Baja">Baja (Fuera de servicio)</option>
@@ -652,56 +809,118 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">
-                                <i class="bi bi-speedometer"></i> Kilometraje Actual
-                            </label>
-                            <input type="number" name="km_actuales" id="km_actuales" class="form-control"
-                                placeholder="0" min="0" value="0">
+                            <label class="form-label"><i class="bi bi-speedometer"></i> Kilometraje Actual</label>
+                            <input type="number" name="km_actuales" id="km_actuales" class="form-control" placeholder="0" min="0" value="0">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">
-                                <i class="bi bi-file-text"></i> Observaciones
-                            </label>
-                            <textarea name="observaciones" id="observaciones" class="form-control"
-                                rows="2" placeholder="Información adicional del vehículo..."></textarea>
+                            <label class="form-label"><i class="bi bi-file-text"></i> Observaciones</label>
+                            <textarea name="observaciones" id="observaciones" class="form-control" rows="2" placeholder="Información adicional..."></textarea>
                         </div>
                     </div>
 
-                    <!-- ── BOTONES ──────────────────────────── -->
-                    <div class="row mt-4">
+                    <!-- Archivos -->
+                    <div class="section-divider"><i class="bi bi-paperclip"></i> Archivos</div>
+                    <div class="row mb-4">
+                        <div class="col-md-5">
+                            <label class="form-label"><i class="bi bi-camera"></i> Foto de Frente</label>
+                            <div class="file-upload-area" id="areaFoto">
+                                <input type="file" name="foto_frente" id="foto_frente" accept="image/jpeg,image/png,image/webp">
+                                <div class="upload-icon"><i class="bi bi-image"></i></div>
+                                <div class="upload-label">
+                                    <span>Haz clic</span> o arrastra la foto aquí<br>
+                                    <small>JPG, PNG, WEBP — máx. 5 MB</small>
+                                </div>
+                            </div>
+                            <img id="fotoPreview" class="foto-preview" src="" alt="Preview">
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label"><i class="bi bi-file-earmark-pdf"></i> Tarjeta de Circulación (PDF)</label>
+                            <div class="file-upload-area" id="areaPdf">
+                                <input type="file" name="tarjeta_pdf" id="tarjeta_pdf" accept="application/pdf">
+                                <div class="upload-icon"><i class="bi bi-file-pdf"></i></div>
+                                <div class="upload-label">
+                                    <span>Haz clic</span> o arrastra el PDF aquí<br>
+                                    <small>Solo PDF — máx. 10 MB</small>
+                                </div>
+                            </div>
+                            <div id="pdfNombre" style="margin-top:.5rem;font-size:.8rem;color:var(--success);display:none;">
+                                <i class="bi bi-check-circle-fill"></i> <span></span>
+                            </div>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <div id="fotoActualContainer" style="display:none;width:100%">
+                                <label class="form-label"><i class="bi bi-image-fill"></i> Foto actual</label>
+                                <img id="fotoActual" src="" alt="Foto actual"
+                                    style="width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;border:2px solid var(--border)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botones -->
+                    <div class="row">
                         <div class="col" id="contenedorBtnGuardar">
-                            <button type="submit" form="formularioVehiculo" id="btnGuardar"
-                                class="btn-guardar w-100">
+                            <button type="submit" form="formularioVehiculo" id="btnGuardar" class="btn-guardar">
                                 <i class="bi bi-save-fill me-2"></i> Registrar Vehículo
                             </button>
                         </div>
                         <div class="col" id="contenedorBtnModificar" style="display:none;">
-                            <button type="button" id="btnModificar" class="btn-modificar-main w-100">
+                            <button type="button" id="btnModificar" class="btn-modificar-main">
                                 <i class="bi bi-pencil-square me-2"></i> Guardar Cambios
                             </button>
                         </div>
                         <div class="col" id="contenedorBtnCancelar">
-                            <button type="button" id="btnCancelar" class="btn-cancelar-main w-100">
+                            <button type="button" id="btnCancelar" class="btn-cancelar-main">
                                 <i class="bi bi-x-circle me-2"></i> Cancelar
                             </button>
                         </div>
                     </div>
-
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- ── TABLA DE VEHÍCULOS ──────────────────────── -->
-    <div class="row justify-content-center" id="contenedorTabla">
-        <div class="col-12">
-            <div class="table-container">
-                <div class="table-header">
-                    <h2><i class="bi bi-list-check"></i> Flota Registrada</h2>
-                </div>
-                <div class="table-responsive">
-                    <table id="tablaVehiculos" class="table"></table>
-                </div>
+    <!-- ── VISTA DE CARTAS ─────────────────────── -->
+    <div id="contenedorTabla">
+
+        <!-- Filtros -->
+        <div class="filtros-container">
+            <label><i class="bi bi-funnel"></i> Filtrar:</label>
+
+            <select id="filtroTipo" class="filtro-select">
+                <option value="">Todos los tipos</option>
+                <option value="Automóvil">Automóvil</option>
+                <option value="Pickup">Pickup</option>
+                <option value="Camión">Camión</option>
+                <option value="Motocicleta">Motocicleta</option>
+                <option value="Furgoneta">Furgoneta</option>
+                <option value="Blindado">Blindado</option>
+                <option value="Otro">Otro</option>
+            </select>
+
+            <select id="filtroEstado" class="filtro-select">
+                <option value="">Todos los estados</option>
+                <option value="Alta">Alta</option>
+                <option value="Baja">Baja</option>
+                <option value="Taller">Taller</option>
+            </select>
+
+            <input type="text" id="filtroBusqueda" class="filtro-search"
+                placeholder="&#xF52A; Buscar por placa, marca, modelo...">
+
+            <button id="btnLimpiarFiltros" class="btn-limpiar-filtros">
+                <i class="bi bi-x-circle"></i> Limpiar
+            </button>
+
+            <div class="contador-resultados">
+                Mostrando <span id="contadorVisible">0</span> vehículo(s)
+            </div>
+        </div>
+
+        <!-- Grid de cartas -->
+        <div class="cards-grid" id="cardsGrid">
+            <div class="empty-state">
+                <i class="bi bi-truck"></i>
+                <p>Cargando vehículos...</p>
             </div>
         </div>
     </div>

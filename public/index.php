@@ -17,5 +17,7 @@ $router->post('/API/vehiculos/guardar', [VehiculosController::class, 'guardarAPI
 $router->post('/API/vehiculos/modificar', [VehiculosController::class, 'modificarAPI']);
 $router->post('/API/vehiculos/eliminar', [VehiculosController::class, 'eliminarAPI']);
 
+$router->get('/API/vehiculos/foto', [VehiculosController::class, 'servirFoto']);
+
 // Comprueba y valida las rutas, que existan y les asigna las funciones del Controlador
 $router->comprobarRutas();
