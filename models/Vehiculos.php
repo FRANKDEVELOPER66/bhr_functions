@@ -22,7 +22,8 @@ class Vehiculos extends ActiveRecord
         'fecha_ingreso',
         'observaciones',
         'foto_frente',
-        'tarjeta_pdf'
+        'tarjeta_pdf',
+        'id_unidad'      // ← agrega esto
     ];
 
     public $placa;
@@ -38,6 +39,7 @@ class Vehiculos extends ActiveRecord
     public $observaciones;
     public $foto_frente;
     public $tarjeta_pdf;
+    public $id_unidad;
 
     public function __construct($args = [])
     {
@@ -54,6 +56,7 @@ class Vehiculos extends ActiveRecord
         $this->observaciones = $args['observaciones'] ?? '';
         $this->foto_frente   = $args['foto_frente']   ?? null;
         $this->tarjeta_pdf   = $args['tarjeta_pdf']   ?? null;
+        $this->id_unidad = !empty($args['id_unidad']) ? (int)$args['id_unidad'] : null;
     }
 
     // ── QUERIES ──────────────────────────────────────────────────────────────
@@ -61,15 +64,20 @@ class Vehiculos extends ActiveRecord
     public static function traerVehiculos()
     {
         $sql = "SELECT 
-                    v.*,
-                    COUNT(DISTINCT s.id_servicio)   AS total_servicios,
-                    COUNT(DISTINCT r.id_reparacion) AS total_reparaciones,
-                    MAX(s.fecha_realizado)           AS ultimo_servicio
-                FROM vehiculos v
-                LEFT JOIN servicios    s ON v.placa = s.placa
-                LEFT JOIN reparaciones r ON v.placa = r.placa
-                GROUP BY v.placa
-                ORDER BY v.marca, v.modelo";
+                v.*,
+                u.nombre           AS unidad_nombre,
+                d.nombre           AS destacamento_nombre,
+                d.departamento     AS destacamento_depto,
+                COUNT(DISTINCT s.id_servicio)   AS total_servicios,
+                COUNT(DISTINCT r.id_reparacion) AS total_reparaciones,
+                MAX(s.fecha_realizado)           AS ultimo_servicio
+            FROM vehiculos v
+            LEFT JOIN unidades     u ON v.id_unidad         = u.id_unidad
+            LEFT JOIN destacamentos d ON u.id_destacamento  = d.id_destacamento
+            LEFT JOIN servicios    s ON v.placa = s.placa
+            LEFT JOIN reparaciones r ON v.placa = r.placa
+            GROUP BY v.placa
+            ORDER BY v.marca, v.modelo";
 
         return self::fetchArray($sql);
     }

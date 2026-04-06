@@ -5,6 +5,7 @@ require_once __DIR__ . '/../includes/app.php';
 use MVC\Router;
 use Controllers\AppController;
 use Controllers\FichaController;
+use Controllers\UnidadesController;
 use Controllers\VehiculosController;
 
 $router = new Router();
@@ -31,6 +32,10 @@ $router->post('/API/vehiculos/reparacion/eliminar',   [FichaController::class, '
 
 
 $router->post('/API/vehiculos/reparacion/modificar', [FichaController::class, 'modificarReparacionAPI']);
+
+
+$router->get('/API/unidades/destacamentos', [UnidadesController::class, 'destacamentosAPI']);
+$router->get('/API/unidades/lista',         [UnidadesController::class, 'unidadesAPI']);
 
 // Comprueba y valida las rutas, que existan y les asigna las funciones del Controlador
 $router->comprobarRutas();

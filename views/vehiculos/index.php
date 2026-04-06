@@ -860,6 +860,7 @@
                             </select>
                         </div>
                     </div>
+                    
 
                     <!-- Estado y KM -->
                     <div class="section-divider"><i class="bi bi-speedometer2"></i> Estado Operacional</div>
