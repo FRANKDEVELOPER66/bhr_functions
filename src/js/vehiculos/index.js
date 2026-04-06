@@ -199,6 +199,11 @@ const renderCartas = (vehiculos) => {
                         data-placa="${v.placa}">
                         <i class="bi bi-trash3"></i>
                     </button>
+                    <button class="btn-card-action" 
+    style="background:rgba(232,184,75,.15);color:var(--accent);border:1px solid rgba(232,184,75,.2);"
+    onclick="abrirFicha('${v.placa}')" title="Ver ficha">
+    <i class="bi bi-card-checklist"></i> Ficha
+</button>
                 </div>
             </div>`;
     }).join('');
@@ -517,6 +522,581 @@ const eliminar = async (e) => {
     }
 };
 
+// ── FICHA MODAL ───────────────────────────────────────────────────────────────
+const BASE_FICHA = '/bhr_functions';
+let fichaPlacaActual = '';
+let tiposServicio = [];
+
+// Cargar tipos de servicio una sola vez
+const cargarTiposServicio = async () => {
+    const sel = document.getElementById('svcTipo');
+
+    // Si el select ya tiene opciones reales (más de 1 = el placeholder), no recargar
+    if (sel.options.length > 1) return;
+
+    // Si ya tenemos los datos en memoria, solo rellenar el select
+    if (tiposServicio.length) {
+        sel.innerHTML = '<option value="">Seleccione tipo...</option>' +
+            tiposServicio.map(t =>
+                `<option value="${t.id_tipo_servicio}"
+                    data-km="${t.intervalo_km || ''}"
+                    data-dias="${t.intervalo_dias || ''}">
+                    ${t.nombre}
+                </option>`
+            ).join('');
+        return;
+    }
+
+    // Primera vez: fetch a la API
+    const r = await fetch(`${BASE_FICHA}/API/vehiculos/tipos-servicio`);
+    const d = await r.json();
+    if (d.codigo === 1) {
+        tiposServicio = d.datos;
+        sel.innerHTML = '<option value="">Seleccione tipo...</option>' +
+            tiposServicio.map(t =>
+                `<option value="${t.id_tipo_servicio}"
+                    data-km="${t.intervalo_km || ''}"
+                    data-dias="${t.intervalo_dias || ''}">
+                    ${t.nombre}
+                </option>`
+            ).join('');
+    }
+};
+
+const toggleFormServicio = () => {
+    const form = document.getElementById('formNuevoServicio');
+    const btn = document.getElementById('btnToggleFormServicio');
+    const visible = form.style.display !== 'none';
+    form.style.display = visible ? 'none' : 'block';
+    btn.innerHTML = visible
+        ? '<i class="bi bi-plus-circle"></i> Registrar Nuevo Servicio'
+        : '<i class="bi bi-x-circle"></i> Cancelar';
+};
+
+// Asegurarse que el form esté cerrado al abrir la ficha
+const resetFormServicio = () => {
+    const form = document.getElementById('formNuevoServicio');
+    const btn = document.getElementById('btnToggleFormServicio');
+    if (form) form.style.display = 'none';
+    if (btn) btn.innerHTML = '<i class="bi bi-plus-circle"></i> Registrar Nuevo Servicio';
+};
+
+window.toggleFormServicio = toggleFormServicio;
+
+const abrirFicha = async (placa) => {
+    fichaPlacaActual = placa;
+    const modal = document.getElementById('modalFicha');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    resetFormServicio();
+    resetFormReparacion();
+
+    // Reset tabs
+    switchTab(document.querySelector('.ficha-tab[data-tab="info"]'), 'info');
+
+    // Loading state
+    document.getElementById('fichaPlaca').textContent = placa;
+    document.getElementById('fichaVehiculo').textContent = 'Cargando...';
+
+    await cargarTiposServicio();
+    await cargarTiposReparacion();
+
+    // Precargar km del vehículo en el input
+    document.getElementById('svcFecha').value = new Date().toISOString().split('T')[0];
+
+    try {
+        const r = await fetch(`${BASE_FICHA}/API/vehiculos/ficha?placa=${placa}`);
+        const d = await r.json();
+        if (d.codigo !== 1) return;
+
+        const v = d.vehiculo;
+
+        // Header
+        document.getElementById('fichaPlaca').textContent = v.placa;
+        document.getElementById('fichaVehiculo').textContent = `${v.marca} ${v.modelo} · ${v.anio}`;
+
+        // Foto
+        const img = document.getElementById('fichaFoto');
+        const noFoto = document.getElementById('fichaNoFoto');
+        if (v.foto_url) {
+            img.src = v.foto_url;
+            img.style.display = 'block';
+            noFoto.style.display = 'none';
+        } else {
+            img.style.display = 'none';
+            noFoto.style.display = 'flex';
+        }
+
+        // PDF
+        const pdfBtn = document.getElementById('fichaPdfBtn');
+        if (v.pdf_url) {
+            pdfBtn.href = v.pdf_url;
+            pdfBtn.style.display = 'block';
+        } else {
+            pdfBtn.style.display = 'none';
+        }
+
+        // Datos generales
+        document.getElementById('fd-placa').textContent = v.placa;
+        document.getElementById('fd-serie').textContent = v.numero_serie;
+        document.getElementById('fd-marca').textContent = v.marca;
+        document.getElementById('fd-modelo').textContent = v.modelo;
+        document.getElementById('fd-anio').textContent = v.anio;
+        document.getElementById('fd-color').textContent = v.color;
+        document.getElementById('fd-tipo').textContent = v.tipo;
+        document.getElementById('fd-km').textContent = Number(v.km_actuales).toLocaleString() + ' km';
+        document.getElementById('fd-ingreso').textContent = v.fecha_ingreso;
+        document.getElementById('fd-obs').textContent = v.observaciones || '—';
+
+        // Estado con color
+        const estadoEl = document.getElementById('fd-estado');
+        const colores = { Alta: '#4caf7d', Baja: '#e05252', Taller: '#e8b84b' };
+        estadoEl.textContent = v.estado;
+        estadoEl.style.color = colores[v.estado] || 'inherit';
+
+        // Alerta km / próximo servicio
+        document.getElementById('fichaAlerta').style.display = 'none';
+        document.getElementById('fichaProximo').style.display = 'none';
+
+        if (d.proximo_servicio) {
+            const ps = d.proximo_servicio;
+            if (d.alerta_km) {
+                document.getElementById('fichaAlerta').style.display = 'flex';
+                document.getElementById('fichaAlertaTexto').textContent =
+                    `${ps.tipo_nombre} — venció a los ${Number(ps.km_proximo_servicio).toLocaleString()} km. KM actual: ${Number(v.km_actuales).toLocaleString()} km`;
+            } else {
+                document.getElementById('fichaProximo').style.display = 'flex';
+                let texto = `${ps.tipo_nombre} a los ${Number(ps.km_proximo_servicio).toLocaleString()} km`;
+                if (ps.fecha_proximo) texto += ` · Fecha límite: ${ps.fecha_proximo}`;
+                document.getElementById('fichaProximoTexto').textContent = texto;
+            }
+        }
+
+        // KM en el form de nuevo servicio
+        document.getElementById('svcKm').value = v.km_actuales;
+
+        // Badges
+        document.getElementById('badgeServicios').textContent = d.servicios.length;
+        document.getElementById('badgeReparaciones').textContent = d.reparaciones.length;
+
+        // Renderizar tablas
+        renderTablaServicios(d.servicios);
+        renderTablaReparaciones(d.reparaciones);
+
+    } catch (err) {
+        console.error(err);
+        Toast.fire({ icon: 'error', title: 'Error al cargar la ficha' });
+    }
+};
+
+const cerrarFicha = () => {
+    document.getElementById('modalFicha').style.display = 'none';
+    document.body.style.overflow = '';
+    fichaPlacaActual = '';
+};
+
+// Cerrar al click fuera del modal
+document.getElementById('modalFicha').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('modalFicha')) cerrarFicha();
+});
+
+const switchTab = (btn, tab) => {
+    document.querySelectorAll('.ficha-tab').forEach(b => b.classList.remove('activo'));
+    document.querySelectorAll('.ficha-tab-content').forEach(c => c.style.display = 'none');
+    btn.classList.add('activo');
+    document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).style.display = 'block';
+};
+
+// ── RENDER TABLA SERVICIOS ────────────────────────────────────────────────────
+const renderTablaServicios = (servicios) => {
+    const wrap = document.getElementById('tablaServiciosWrap');
+    if (!servicios.length) {
+        wrap.innerHTML = `
+            <div style="text-align:center;padding:2rem;color:var(--text-muted);">
+                <i class="bi bi-tools" style="font-size:2.5rem;opacity:.2;display:block;margin-bottom:.75rem;"></i>
+                <p>No hay servicios registrados aún</p>
+            </div>`;
+        return;
+    }
+
+    wrap.innerHTML = servicios.map(s => `
+        <div class="svc-row">
+            <div>
+                <div class="svc-label">Tipo</div>
+                <div class="svc-val">${s.tipo_nombre}</div>
+            </div>
+            <div>
+                <div class="svc-label">Fecha</div>
+                <div class="svc-val">${s.fecha_realizado}</div>
+            </div>
+            <div>
+                <div class="svc-label">KM Realizado</div>
+                <div class="svc-val">${Number(s.km_al_servicio).toLocaleString()} km</div>
+            </div>
+            <div>
+                <div class="svc-label">Próximo KM</div>
+                <div class="svc-val" style="color:${s.km_proximo_servicio ? 'var(--accent)' : 'var(--text-muted)'}">
+                    ${s.km_proximo_servicio ? Number(s.km_proximo_servicio).toLocaleString() + ' km' : '—'}
+                </div>
+            </div>
+            <div style="display:flex;gap:.4rem;align-items:center;">
+                <button onclick="eliminarServicio(${s.id_servicio})" style="
+                    background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
+                    color:var(--danger);border-radius:6px;padding:.35rem .6rem;
+                    cursor:pointer;font-size:.8rem;" title="Eliminar">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </div>
+        </div>
+        ${s.responsable ? `<div style="font-size:.75rem;color:var(--text-muted);margin-top:-.4rem;margin-bottom:.4rem;padding-left:.25rem;">
+            <i class="bi bi-person"></i> ${s.responsable}
+            ${s.observaciones ? ' · ' + s.observaciones : ''}
+        </div>` : ''}
+    `).join('');
+};
+
+
+
+
+// ── TIPOS REPARACIÓN ──────────────────────────────────────────────────────────
+let tiposReparacion = [];
+
+const cargarTiposReparacion = async () => {
+    const sel = document.getElementById('repTipo');
+    if (sel.options.length > 1) return;
+
+    if (tiposReparacion.length) {
+        sel.innerHTML = '<option value="">Seleccione tipo...</option>' +
+            tiposReparacion.map(t =>
+                `<option value="${t.id_tipo_reparacion}">${t.nombre}</option>`
+            ).join('');
+        return;
+    }
+
+    const r = await fetch(`${BASE_FICHA}/API/vehiculos/tipos-reparacion`);
+    const d = await r.json();
+    if (d.codigo === 1) {
+        tiposReparacion = d.datos;
+        sel.innerHTML = '<option value="">Seleccione tipo...</option>' +
+            tiposReparacion.map(t =>
+                `<option value="${t.id_tipo_reparacion}">${t.nombre}</option>`
+            ).join('');
+    }
+};
+
+// ── TOGGLE FORM REPARACIÓN ────────────────────────────────────────────────────
+const toggleFormReparacion = () => {
+    const form = document.getElementById('formNuevaReparacion');
+    const btn = document.getElementById('btnToggleFormReparacion');
+    const visible = form.style.display !== 'none';
+    form.style.display = visible ? 'none' : 'block';
+    btn.innerHTML = visible
+        ? '<i class="bi bi-plus-circle"></i> Registrar Nueva Reparación'
+        : '<i class="bi bi-x-circle"></i> Cancelar';
+};
+
+const resetFormReparacion = () => {
+    const form = document.getElementById('formNuevaReparacion');
+    const btn = document.getElementById('btnToggleFormReparacion');
+    if (form) form.style.display = 'none';
+    if (btn) btn.innerHTML = '<i class="bi bi-plus-circle"></i> Registrar Nueva Reparación';
+
+    // Reset estado edición
+    reparacionEditandoId = null;
+    const btnGuardar = document.querySelector('#formNuevaReparacion button[onclick="guardarReparacion()"]');
+    if (btnGuardar) {
+        btnGuardar.innerHTML = '<i class="bi bi-save me-1"></i> Guardar Reparación';
+        btnGuardar.style.background = 'linear-gradient(135deg,var(--danger),#c93030)';
+    }
+};
+
+// ── GUARDAR REPARACIÓN ────────────────────────────────────────────────────────
+// ── GUARDAR REPARACIÓN (crea o actualiza según reparacionEditandoId) ──────────
+const guardarReparacion = async () => {
+    const tipo = document.getElementById('repTipo').value;
+    const desc = document.getElementById('repDescripcion').value;
+    const fecha = document.getElementById('repFechaInicio').value;
+    const km = document.getElementById('repKm').value;
+
+    if (!tipo || !desc || !fecha || !km) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Tipo, descripción, fecha y KM son obligatorios',
+            background: '#1a1d27',
+            color: '#e8eaf0',
+            confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+
+    const body = new FormData();
+    body.append('placa', fichaPlacaActual);
+    body.append('id_tipo_reparacion', tipo);
+    body.append('descripcion', desc);
+    body.append('fecha_inicio', fecha);
+    body.append('fecha_fin', document.getElementById('repFechaFin').value);
+    body.append('km_al_momento', km);
+    body.append('costo', document.getElementById('repCosto').value);
+    body.append('proveedor', document.getElementById('repProveedor').value);
+    body.append('responsable', document.getElementById('repResponsable').value);
+    body.append('estado', document.getElementById('repEstado').value);
+    body.append('observaciones', document.getElementById('repObs').value);
+
+    // Si hay ID de edición, es modificación
+    const esEdicion = reparacionEditandoId !== null;
+    if (esEdicion) body.append('id_reparacion', reparacionEditandoId);
+
+    const url = esEdicion
+        ? `${BASE_FICHA}/API/vehiculos/reparacion/modificar`
+        : `${BASE_FICHA}/API/vehiculos/reparacion/guardar`;
+
+    try {
+        const r = await fetch(url, { method: 'POST', body });
+        const d = await r.json();
+
+        Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
+
+        if (d.codigo === 1) {
+            reparacionEditandoId = null;
+            ['repTipo', 'repDescripcion', 'repFechaFin', 'repCosto',
+                'repProveedor', 'repResponsable', 'repObs'].forEach(id => {
+                    document.getElementById(id).value = '';
+                });
+            document.getElementById('repEstado').value = 'En proceso';
+            resetFormReparacion();
+            await abrirFicha(fichaPlacaActual);
+            switchTab(document.querySelector('.ficha-tab[data-tab="reparaciones"]'), 'reparaciones');
+            buscar();
+        }
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    }
+};
+// ── ELIMINAR REPARACIÓN ───────────────────────────────────────────────────────
+const eliminarReparacion = async (id) => {
+    const conf = await Swal.fire({
+        icon: 'warning',
+        title: '¿Eliminar reparación?',
+        text: 'Esta acción no se puede deshacer.',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#e05252',
+        cancelButtonColor: '#3a7bd5',
+        background: '#1a1d27',
+        color: '#e8eaf0',
+        customClass: { container: 'swal-over-modal' }
+    });
+
+    if (!conf.isConfirmed) return;
+
+    const body = new FormData();
+    body.append('id_reparacion', id);
+
+    const r = await fetch(`${BASE_FICHA}/API/vehiculos/reparacion/eliminar`, {
+        method: 'POST', body
+    });
+    const d = await r.json();
+
+    Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
+    if (d.codigo === 1) {
+        await abrirFicha(fichaPlacaActual);
+        switchTab(document.querySelector('.ficha-tab[data-tab="reparaciones"]'), 'reparaciones');
+    }
+};
+// ── RENDER TABLA REPARACIONES ─────────────────────────────────────────────────
+// Variable para saber si estamos editando
+let reparacionEditandoId = null;
+
+const renderTablaReparaciones = (reparaciones) => {
+    const wrap = document.getElementById('tablaReparacionesWrap');
+    if (!reparaciones.length) {
+        wrap.innerHTML = `
+            <div style="text-align:center;padding:3rem;color:var(--text-muted);">
+                <i class="bi bi-wrench-adjustable" style="font-size:3rem;opacity:.2;display:block;margin-bottom:1rem;"></i>
+                <p>No hay reparaciones registradas</p>
+            </div>`;
+        return;
+    }
+
+    wrap.innerHTML = reparaciones.map(r => `
+        <div class="svc-row" style="grid-template-columns:1.5fr 1fr 1fr 1fr 1fr auto;">
+            <div>
+                <div class="svc-label">Tipo</div>
+                <div class="svc-val">${r.tipo_nombre}</div>
+            </div>
+            <div>
+                <div class="svc-label">Estado</div>
+                <div class="svc-val" style="color:${r.estado === 'En proceso' ? 'var(--accent)' : 'var(--success)'}">
+                    ${r.estado}
+                </div>
+            </div>
+            <div>
+                <div class="svc-label">Inicio</div>
+                <div class="svc-val">${r.fecha_inicio}</div>
+            </div>
+            <div>
+                <div class="svc-label">Fin</div>
+                <div class="svc-val">${r.fecha_fin || '—'}</div>
+            </div>
+            <div>
+                <div class="svc-label">Costo</div>
+                <div class="svc-val">${r.costo ? 'Q ' + Number(r.costo).toLocaleString() : '—'}</div>
+            </div>
+            <div style="display:flex;gap:.4rem;align-items:center;">
+                <button onclick="editarReparacion(${JSON.stringify(r).replace(/"/g, '&quot;')})" style="
+                    background:rgba(58,123,213,.15);border:1px solid rgba(58,123,213,.3);
+                    color:#5b9bd5;border-radius:6px;padding:.35rem .6rem;
+                    cursor:pointer;font-size:.8rem;" title="Editar">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+                <button onclick="eliminarReparacion(${r.id_reparacion})" style="
+                    background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
+                    color:var(--danger);border-radius:6px;padding:.35rem .6rem;
+                    cursor:pointer;font-size:.8rem;" title="Eliminar">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </div>
+        </div>
+        <div style="font-size:.75rem;color:var(--text-muted);margin-top:-.4rem;margin-bottom:.6rem;padding-left:.25rem;">
+            ${r.descripcion}
+            ${r.proveedor ? ' · <i class="bi bi-shop"></i> ' + r.proveedor : ''}
+            ${r.responsable ? ' · <i class="bi bi-person"></i> ' + r.responsable : ''}
+            ${r.km_al_momento ? ' · <i class="bi bi-speedometer"></i> ' + Number(r.km_al_momento).toLocaleString() + ' km' : ''}
+        </div>
+    `).join('');
+};
+
+// ── EDITAR REPARACIÓN (llena el form con los datos) ───────────────────────────
+const editarReparacion = async (r) => {
+    reparacionEditandoId = r.id_reparacion;
+
+    // Abrir el form si está cerrado
+    const form = document.getElementById('formNuevaReparacion');
+    const btn = document.getElementById('btnToggleFormReparacion');
+    form.style.display = 'block';
+    btn.innerHTML = '<i class="bi bi-x-circle"></i> Cancelar';
+
+    // Asegurarse que los tipos estén cargados
+    await cargarTiposReparacion();
+
+    // Llenar campos
+    document.getElementById('repTipo').value = r.id_tipo_reparacion;
+    document.getElementById('repFechaInicio').value = r.fecha_inicio;
+    document.getElementById('repFechaFin').value = r.fecha_fin || '';
+    document.getElementById('repDescripcion').value = r.descripcion;
+    document.getElementById('repKm').value = r.km_al_momento;
+    document.getElementById('repCosto').value = r.costo || '';
+    document.getElementById('repProveedor').value = r.proveedor || '';
+    document.getElementById('repResponsable').value = r.responsable || '';
+    document.getElementById('repEstado').value = r.estado;
+    document.getElementById('repObs').value = r.observaciones || '';
+
+    // Cambiar el botón de guardar a "Actualizar"
+    const btnGuardar = document.querySelector('#formNuevaReparacion button[onclick="guardarReparacion()"]');
+    if (btnGuardar) {
+        btnGuardar.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Actualizar Reparación';
+        btnGuardar.style.background = 'linear-gradient(135deg,#3a7bd5,#2563b0)';
+    }
+
+    // Scroll al form
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+
+
+// ── GUARDAR SERVICIO ──────────────────────────────────────────────────────────
+const guardarServicio = async () => {
+    const tipo = document.getElementById('svcTipo').value;
+    const fecha = document.getElementById('svcFecha').value;
+    const km = document.getElementById('svcKm').value;
+
+    if (!tipo || !fecha || !km) {
+        // FIX: z-index sobre el modal (z-index: 2000)
+        Swal.fire({
+            icon: 'info',
+            title: 'Tipo, fecha y KM son obligatorios',
+            background: '#1a1d27',
+            color: '#e8eaf0',
+            confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+
+    const body = new FormData();
+    body.append('placa', fichaPlacaActual);
+    body.append('id_tipo_servicio', tipo);
+    body.append('fecha_realizado', fecha);
+    body.append('km_al_servicio', km);
+    body.append('responsable', document.getElementById('svcResponsable').value);
+    body.append('observaciones', document.getElementById('svcObs').value);
+
+    try {
+        const r = await fetch(`${BASE_FICHA}/API/vehiculos/servicio/guardar`, {
+            method: 'POST', body
+        });
+        const d = await r.json();
+
+        Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
+
+        if (d.codigo === 1) {
+            document.getElementById('svcTipo').value = '';
+            document.getElementById('svcResponsable').value = '';
+            document.getElementById('svcObs').value = '';
+            resetFormServicio(); // ← cierra el form
+            await abrirFicha(fichaPlacaActual);
+            switchTab(document.querySelector('.ficha-tab[data-tab="servicios"]'), 'servicios');
+            buscar();
+        }
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    }
+};
+
+// ── ELIMINAR SERVICIO ─────────────────────────────────────────────────────────
+const eliminarServicio = async (id) => {
+    const conf = await Swal.fire({
+        icon: 'warning',
+        title: '¿Eliminar servicio?',
+        text: 'Esta acción no se puede deshacer.',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#e05252',
+        cancelButtonColor: '#3a7bd5',
+        background: '#1a1d27',
+        color: '#e8eaf0',
+        customClass: { container: 'swal-over-modal' }
+    });
+
+    if (!conf.isConfirmed) return;
+
+    const body = new FormData();
+    body.append('id_servicio', id);
+
+    const r = await fetch(`${BASE_FICHA}/API/vehiculos/servicio/eliminar`, {
+        method: 'POST', body
+    });
+    const d = await r.json();
+
+    Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
+    if (d.codigo === 1) {
+        await abrirFicha(fichaPlacaActual);
+        switchTab(document.querySelector('.ficha-tab[data-tab="servicios"]'), 'servicios');
+    }
+};
+
+
+
+
+// Exponer globalmente
+window.toggleFormReparacion = toggleFormReparacion;
+window.guardarReparacion = guardarReparacion;
+window.eliminarReparacion = eliminarReparacion;
+window.editarReparacion = editarReparacion;
+
 // ── AUTO-UPPERCASE ────────────────────────────────────────────────────────────
 document.getElementById('placa').addEventListener('input', function () { this.value = this.value.toUpperCase(); });
 document.getElementById('numero_serie').addEventListener('input', function () { this.value = this.value.toUpperCase(); });
@@ -525,6 +1105,15 @@ document.getElementById('numero_serie').addEventListener('input', function () { 
 formulario.addEventListener('submit', guardar);
 btnCancelar.addEventListener('click', cancelar);
 btnModificar.addEventListener('click', modificar);
+
+
+// ── EXPONER FUNCIONES GLOBALES (necesario por type="module") ──────────────────
+window.abrirFicha = abrirFicha;
+window.cerrarFicha = cerrarFicha;
+window.switchTab = switchTab;
+window.guardarServicio = guardarServicio;
+window.eliminarServicio = eliminarServicio;
+
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 buscar();

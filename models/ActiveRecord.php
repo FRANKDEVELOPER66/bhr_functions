@@ -66,7 +66,8 @@ class ActiveRecord
     // Busca un registro por su id
     public static function find($id = [])
     {
-        $query = "SELECT * FROM vehiculos WHERE placa = " . self::$db->quote($id) . " LIMIT 1";
+        $id_col    = static::$idTabla ?: 'id';
+        $query     = "SELECT * FROM " . static::$tabla . " WHERE " . $id_col . " = " . self::$db->quote($id) . " LIMIT 1";
         $resultado = self::consultarSQL($query);
         return array_shift($resultado);
     }
@@ -166,7 +167,8 @@ class ActiveRecord
     // Eliminar un registro - Toma el ID de Active Record
     public function eliminar()
     {
-        $query = "DELETE FROM vehiculos WHERE placa = " . self::$db->quote($this->placa);
+        $id_col = static::$idTabla ?: 'id';
+        $query  = "DELETE FROM " . static::$tabla . " WHERE " . $id_col . " = " . self::$db->quote($this->$id_col);
         return self::$db->exec($query);
     }
 
@@ -269,7 +271,8 @@ class ActiveRecord
         $atributos = $this->atributos();
         $sanitizado = [];
         foreach ($atributos as $key => $value) {
-            $sanitizado[$key] = self::$db->quote($value);
+            // FIX: si es null, insertar NULL de verdad, no comillas vacías
+            $sanitizado[$key] = is_null($value) ? 'NULL' : self::$db->quote($value);
         }
         return $sanitizado;
     }

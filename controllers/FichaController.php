@@ -1,0 +1,394 @@
+<?php
+
+namespace Controllers;
+
+use Exception;
+use Model\Vehiculos;
+use Model\Servicios;
+use Model\Reparaciones;
+use Model\TiposServicio;
+use Model\TiposReparacion;
+use MVC\Router;
+
+
+class FichaController
+{
+    // ── FICHA COMPLETA ───────────────────────────────────────────────────────
+    public static function fichaAPI(Router $router)
+    {
+        header('Content-Type: application/json; charset=UTF-8');
+
+        $placa = strtoupper(trim($_GET['placa'] ?? ''));
+
+        if (!$placa) {
+            http_response_code(400);
+            echo json_encode(['codigo' => 0, 'mensaje' => 'Placa requerida'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        try {
+            $vehiculo = Vehiculos::traerConDetalle($placa);
+
+            if (!$vehiculo) {
+                http_response_code(404);
+                echo json_encode(['codigo' => 0, 'mensaje' => 'Vehículo no encontrado'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            // URLs de archivos
+            $urlBase = rtrim($_ENV['SFTP_PUBLIC_URL'] ?? '', '/');
+            $vehiculo['foto_url'] = $vehiculo['foto_frente']
+                ? "{$urlBase}/{$vehiculo['foto_frente']}" : null;
+            $vehiculo['pdf_url'] = $vehiculo['tarjeta_pdf']
+                ? "{$urlBase}/{$vehiculo['tarjeta_pdf']}" : null;
+
+            // Historial servicios y reparaciones
+            $servicios    = Servicios::traerPorPlaca($placa);
+            $reparaciones = Reparaciones::traerPorPlaca($placa);
+
+            // Próximo servicio (el más cercano por km)
+            $proximoServicio = null;
+            foreach ($servicios as $s) {
+                if ($s['km_proximo_servicio']) {
+                    if (
+                        !$proximoServicio ||
+                        $s['km_proximo_servicio'] < $proximoServicio['km_proximo_servicio']
+                    ) {
+                        $proximoServicio = $s;
+                    }
+                }
+            }
+
+            // Alerta si km actual ya superó el próximo servicio
+            $alertaKm = $proximoServicio &&
+                $vehiculo['km_actuales'] >= $proximoServicio['km_proximo_servicio'];
+
+            echo json_encode([
+                'codigo'          => 1,
+                'vehiculo'        => $vehiculo,
+                'servicios'       => $servicios,
+                'reparaciones'    => $reparaciones,
+                'proximo_servicio' => $proximoServicio,
+                'alerta_km'       => $alertaKm
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'codigo' => 0,
+                'mensaje' => 'Error al obtener ficha',
+                'detalle' => $e->getMessage()
+            ], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    // ── TIPOS DE SERVICIO ────────────────────────────────────────────────────
+    public static function tiposServicioAPI(Router $router)
+    {
+        header('Content-Type: application/json; charset=UTF-8');
+
+        try {
+            $tipos = TiposServicio::traerTodos();
+            echo json_encode(['codigo' => 1, 'datos' => $tipos], JSON_UNESCAPED_UNICODE);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(
+                ['codigo' => 0, 'mensaje' => 'Error al obtener tipos de servicio'],
+                JSON_UNESCAPED_UNICODE
+            );
+        }
+    }
+
+    // ── GUARDAR SERVICIO ─────────────────────────────────────────────────────
+    // ── GUARDAR SERVICIO ─────────────────────────────────────────────────────────
+    public static function guardarServicioAPI(Router $router)
+    {
+        header('Content-Type: application/json; charset=UTF-8');
+
+        $placa = strtoupper(trim(htmlspecialchars($_POST['placa'] ?? '')));
+
+        if (!$placa) {
+            http_response_code(400);
+            echo json_encode(['codigo' => 0, 'mensaje' => 'Placa requerida'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        foreach (['id_tipo_servicio', 'fecha_realizado', 'km_al_servicio'] as $campo) {
+            if (empty($_POST[$campo])) {
+                http_response_code(400);
+                echo json_encode([
+                    'codigo' => 0,
+                    'mensaje' => "El campo '{$campo}' es obligatorio"
+                ], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+        }
+
+        try {
+            $kmAlServicio = (int)$_POST['km_al_servicio'];
+
+            $tipo = TiposServicio::find($_POST['id_tipo_servicio']);
+            // DEBUG TEMPORAL - borrarlo después
+            error_log("TIPO: " . print_r($tipo, true));
+            error_log("intervalo_km: [" . $tipo->intervalo_km . "]");
+            error_log("empty: " . var_export(empty($tipo->intervalo_km), true));
+
+            // FIX: usar NULL explícito cuando no hay intervalo, nunca string vacío
+            $kmProximo    = null;
+            $fechaProximo = null;
+
+            if ($tipo) {
+                if (!empty($tipo->intervalo_km)) {
+                    $kmProximo = $kmAlServicio + (int)$tipo->intervalo_km;
+                }
+                if (!empty($tipo->intervalo_dias)) {
+                    $fechaProximo = date(
+                        'Y-m-d',
+                        strtotime($_POST['fecha_realizado'] . " +{$tipo->intervalo_dias} days")
+                    );
+                }
+            }
+
+            $servicio = new Servicios([
+                'placa'               => $placa,
+                'id_tipo_servicio'    => (int)$_POST['id_tipo_servicio'],
+                'fecha_realizado'     => $_POST['fecha_realizado'],
+                'km_al_servicio'      => $kmAlServicio,
+                'km_proximo_servicio' => $kmProximo,   // NULL si no aplica
+                'fecha_proximo'       => $fechaProximo, // NULL si no aplica
+                'observaciones'       => htmlspecialchars($_POST['observaciones'] ?? ''),
+                'responsable'         => htmlspecialchars($_POST['responsable']   ?? '')
+            ]);
+
+            $servicio->crear();
+
+            $vehiculo = Vehiculos::find($placa);
+            if ($vehiculo && $kmAlServicio > (int)$vehiculo->km_actuales) {
+                Vehiculos::actualizarKm($placa, $kmAlServicio);
+            }
+
+            echo json_encode([
+                'codigo'        => 1,
+                'mensaje'       => 'Servicio registrado exitosamente',
+                'km_proximo'    => $kmProximo,
+                'fecha_proximo' => $fechaProximo
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'codigo'  => 0,
+                'mensaje' => 'Error al guardar servicio',
+                'detalle' => $e->getMessage()
+            ], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    // ── ELIMINAR SERVICIO ────────────────────────────────────────────────────
+    public static function eliminarServicioAPI(Router $router)
+    {
+        header('Content-Type: application/json; charset=UTF-8');
+
+        $id = (int)($_POST['id_servicio'] ?? 0);
+
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['codigo' => 0, 'mensaje' => 'ID inválido'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        try {
+            $servicio = Servicios::find($id);
+
+            if (!$servicio) {
+                http_response_code(404);
+                echo json_encode(
+                    ['codigo' => 0, 'mensaje' => 'Servicio no encontrado'],
+                    JSON_UNESCAPED_UNICODE
+                );
+                return;
+            }
+
+            $servicio->eliminar();
+
+            echo json_encode(
+                ['codigo' => 1, 'mensaje' => 'Servicio eliminado'],
+                JSON_UNESCAPED_UNICODE
+            );
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'codigo' => 0,
+                'mensaje' => 'Error al eliminar servicio',
+                'detalle' => $e->getMessage()
+            ], JSON_UNESCAPED_UNICODE);
+        }
+    }
+    // ── TIPOS DE REPARACIÓN ──────────────────────────────────────────────────────
+    public static function tiposReparacionAPI(Router $router)
+    {
+        header('Content-Type: application/json; charset=UTF-8');
+        try {
+            $tipos = TiposReparacion::traerTodos();
+            echo json_encode(['codigo' => 1, 'datos' => $tipos], JSON_UNESCAPED_UNICODE);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['codigo' => 0, 'mensaje' => 'Error'], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    // ── GUARDAR REPARACIÓN ───────────────────────────────────────────────────────
+    public static function guardarReparacionAPI(Router $router)
+    {
+        header('Content-Type: application/json; charset=UTF-8');
+
+        $placa = strtoupper(trim(htmlspecialchars($_POST['placa'] ?? '')));
+
+        if (!$placa) {
+            http_response_code(400);
+            echo json_encode(['codigo' => 0, 'mensaje' => 'Placa requerida'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        foreach (['id_tipo_reparacion', 'descripcion', 'fecha_inicio', 'km_al_momento'] as $campo) {
+            if (empty($_POST[$campo])) {
+                http_response_code(400);
+                echo json_encode(['codigo' => 0, 'mensaje' => "El campo '{$campo}' es obligatorio"], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+        }
+
+        try {
+            $reparacion = new Reparaciones([
+                'placa'              => $placa,
+                'id_tipo_reparacion' => (int)$_POST['id_tipo_reparacion'],
+                'descripcion'        => htmlspecialchars($_POST['descripcion']),
+                'fecha_inicio'       => $_POST['fecha_inicio'],
+                'fecha_fin'          => $_POST['fecha_fin']       ?? null,
+                'km_al_momento'      => (int)$_POST['km_al_momento'],
+                'costo'              => $_POST['costo']           ?? null,
+                'proveedor'          => htmlspecialchars($_POST['proveedor']    ?? ''),
+                'responsable'        => htmlspecialchars($_POST['responsable']  ?? ''),
+                'estado'             => $_POST['estado']          ?? 'En proceso',
+                'observaciones'      => htmlspecialchars($_POST['observaciones'] ?? '')
+            ]);
+
+            $reparacion->crear();
+
+            // ── Cambiar estado del vehículo automáticamente ──────────────────────────────
+            $vehiculo = Vehiculos::find($placa);
+            if ($vehiculo) {
+                if ($_POST['estado'] === 'En proceso') {
+                    $vehiculo->estado = 'Taller';
+                } elseif ($_POST['estado'] === 'Finalizada') {
+                    $vehiculo->estado = 'Alta';
+                }
+                $vehiculo->actualizar();
+            }
+
+            echo json_encode(['codigo' => 1, 'mensaje' => 'Reparación registrada exitosamente'], JSON_UNESCAPED_UNICODE);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['codigo' => 0, 'mensaje' => 'Error al guardar reparación', 'detalle' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    // ── ELIMINAR REPARACIÓN ──────────────────────────────────────────────────────
+    public static function eliminarReparacionAPI(Router $router)
+    {
+        header('Content-Type: application/json; charset=UTF-8');
+
+        $id = (int)($_POST['id_reparacion'] ?? 0);
+
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['codigo' => 0, 'mensaje' => 'ID inválido'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        try {
+            $reparacion = Reparaciones::find($id);
+
+            if (!$reparacion) {
+                http_response_code(404);
+                echo json_encode(['codigo' => 0, 'mensaje' => 'Reparación no encontrada'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            $reparacion->eliminar();
+
+            // ── Si no quedan reparaciones en proceso, volver a Alta ──────────────────────
+            $enProceso = Reparaciones::contarEnProceso($reparacion->placa);
+            if ($enProceso === 0) {
+                $vehiculo = Vehiculos::find($reparacion->placa);
+                if ($vehiculo) {
+                    $vehiculo->estado = 'Alta';
+                    $vehiculo->actualizar();
+                }
+            }
+            echo json_encode(['codigo' => 1, 'mensaje' => 'Reparación eliminada'], JSON_UNESCAPED_UNICODE);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['codigo' => 0, 'mensaje' => 'Error al eliminar', 'detalle' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    // ── MODIFICAR REPARACIÓN ─────────────────────────────────────────────────────
+    public static function modificarReparacionAPI(Router $router)
+    {
+        header('Content-Type: application/json; charset=UTF-8');
+
+        $id = (int)($_POST['id_reparacion'] ?? 0);
+
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['codigo' => 0, 'mensaje' => 'ID inválido'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        try {
+            $reparacion = Reparaciones::find($id);
+
+            if (!$reparacion) {
+                http_response_code(404);
+                echo json_encode(['codigo' => 0, 'mensaje' => 'Reparación no encontrada'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            $reparacion->sincronizar([
+                'id_tipo_reparacion' => (int)$_POST['id_tipo_reparacion'],
+                'descripcion'        => htmlspecialchars($_POST['descripcion']        ?? ''),
+                'fecha_inicio'       => $_POST['fecha_inicio']                        ?? $reparacion->fecha_inicio,
+                'fecha_fin'          => !empty($_POST['fecha_fin'])  ? $_POST['fecha_fin']   : null,
+                'km_al_momento'      => (int)($_POST['km_al_momento']                 ?? 0),
+                'costo'              => !empty($_POST['costo'])      ? $_POST['costo']       : null,
+                'proveedor'          => htmlspecialchars($_POST['proveedor']          ?? ''),
+                'responsable'        => htmlspecialchars($_POST['responsable']        ?? ''),
+                'estado'             => $_POST['estado']                              ?? $reparacion->estado,
+                'observaciones'      => htmlspecialchars($_POST['observaciones']      ?? ''),
+            ]);
+
+            $reparacion->actualizar();
+
+            // ── Actualizar estado del vehículo ───────────────────────────────────
+            $vehiculo = Vehiculos::find($reparacion->placa);
+            if ($vehiculo) {
+                if ($reparacion->estado === 'En proceso') {
+                    $vehiculo->estado = 'Taller';
+                } else {
+                    // Verificar si quedan otras en proceso
+                    $enProceso = Reparaciones::contarEnProceso($reparacion->placa);
+                    $vehiculo->estado = $enProceso > 0 ? 'Taller' : 'Alta';
+                }
+                $vehiculo->actualizar();
+            }
+
+            echo json_encode(['codigo' => 1, 'mensaje' => 'Reparación actualizada exitosamente'], JSON_UNESCAPED_UNICODE);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'codigo'  => 0,
+                'mensaje' => 'Error al modificar reparación',
+                'detalle' => $e->getMessage()
+            ], JSON_UNESCAPED_UNICODE);
+        }
+    }
+}
