@@ -21,7 +21,6 @@
         font-family: 'Inter', sans-serif;
     }
 
-    /* ── HEADER ───────────────────────────────── */
     .veh-header {
         background: linear-gradient(135deg, var(--dark-2), var(--dark-3));
         border: 1px solid var(--border);
@@ -61,7 +60,6 @@
         font-size: .875rem;
     }
 
-    /* ── FLOATING BTN ─────────────────────────── */
     .floating-btn {
         position: fixed;
         bottom: 32px;
@@ -97,7 +95,6 @@
         box-shadow: 0 14px 40px rgba(224, 82, 82, .5);
     }
 
-    /* ── FORM CONTAINER ───────────────────────── */
     .form-container {
         background: var(--dark-2);
         border: 1px solid var(--border);
@@ -140,7 +137,6 @@
         padding: 2rem;
     }
 
-    /* ── INPUTS ───────────────────────────────── */
     .form-label {
         font-size: .8rem;
         font-weight: 600;
@@ -184,7 +180,6 @@
         color: var(--text-main);
     }
 
-    /* File input */
     .file-upload-area {
         border: 2px dashed var(--border);
         border-radius: 10px;
@@ -235,7 +230,6 @@
         color: var(--success);
     }
 
-    /* Preview foto */
     .foto-preview {
         width: 100%;
         height: 140px;
@@ -250,7 +244,6 @@
         display: block;
     }
 
-    /* Section divider */
     .section-divider {
         display: flex;
         align-items: center;
@@ -275,7 +268,6 @@
         color: var(--accent);
     }
 
-    /* ── BUTTONS ──────────────────────────────── */
     .btn-guardar {
         background: linear-gradient(135deg, var(--accent), var(--accent-2));
         border: none;
@@ -343,7 +335,6 @@
         box-shadow: 0 8px 25px rgba(224, 82, 82, .3);
     }
 
-    /* ── FILTROS ──────────────────────────────── */
     .filtros-container {
         background: var(--dark-2);
         border: 1px solid var(--border);
@@ -438,14 +429,12 @@
         font-weight: 700;
     }
 
-    /* ── CARDS GRID ───────────────────────────── */
     .cards-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
         gap: 1.25rem;
     }
 
-    /* ── VEHICLE CARD ─────────────────────────── */
     .vehicle-card {
         background: var(--dark-2);
         border: 1px solid var(--border);
@@ -476,7 +465,6 @@
         }
     }
 
-    /* Foto */
     .card-foto {
         width: 100%;
         aspect-ratio: 1 / 1;
@@ -517,7 +505,6 @@
         opacity: .5;
     }
 
-    /* Badge estado sobre la foto */
     .card-estado {
         position: absolute;
         top: 10px;
@@ -548,7 +535,6 @@
         border: 1px solid rgba(232, 184, 75, .4);
     }
 
-    /* Badge PDF */
     .card-pdf-badge {
         position: absolute;
         top: 10px;
@@ -573,7 +559,6 @@
         color: #fff;
     }
 
-    /* Info */
     .card-info {
         padding: 1rem;
         flex: 1;
@@ -606,12 +591,28 @@
         gap: .3rem;
     }
 
-    /* SweetAlert sobre el modal de ficha */
+    /* ── NUEVO: unidad en la card ── */
+    .card-unidad {
+        font-size: .72rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: .3rem;
+        margin-top: .1rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .card-unidad i {
+        color: var(--accent);
+        flex-shrink: 0;
+    }
+
     .swal-over-modal {
         z-index: 9999 !important;
     }
 
-    /* Acciones */
     .card-acciones {
         padding: .75rem 1rem;
         border-top: 1px solid var(--border);
@@ -655,7 +656,6 @@
         background: rgba(224, 82, 82, .3);
     }
 
-    /* Empty state */
     .empty-state {
         grid-column: 1 / -1;
         text-align: center;
@@ -675,7 +675,6 @@
         margin: 0;
     }
 
-    /* Animaciones */
     .slide-down {
         animation: slideDown .4s ease-out;
     }
@@ -777,11 +776,30 @@
         color: var(--text-main);
         font-weight: 600;
     }
+
+    /* ── INFO DESTACAMENTO (panel lateral al select) ── */
+    .info-destacamento-panel {
+        background: rgba(232, 184, 75, .08);
+        border: 1px solid rgba(232, 184, 75, .25);
+        border-radius: 8px;
+        padding: .65rem 1rem;
+        font-size: .82rem;
+        color: var(--text-muted);
+        line-height: 1.6;
+        width: 100%;
+    }
+
+    .info-destacamento-panel .panel-titulo {
+        color: var(--accent);
+        font-weight: 600;
+        margin-bottom: .15rem;
+        font-size: .85rem;
+    }
 </style>
 
 <div class="container-fluid mt-4">
 
-    <!-- Header -->
+    <!-- ── HEADER ──────────────────────────────────────────────────────────── -->
     <div class="veh-header">
         <div class="icon-wrap"><i class="bi bi-truck-front-fill"></i></div>
         <div>
@@ -790,12 +808,12 @@
         </div>
     </div>
 
-    <!-- Botón flotante -->
+    <!-- ── BOTÓN FLOTANTE ──────────────────────────────────────────────────── -->
     <button id="btnFlotante" class="floating-btn" title="Nuevo Vehículo">
         <i class="bi bi-plus"></i>
     </button>
 
-    <!-- ── FORMULARIO (inicia oculto) ─────────── -->
+    <!-- ── FORMULARIO ──────────────────────────────────────────────────────── -->
     <div class="row justify-content-center mb-4" id="contenedorFormulario" style="display:none;">
         <div class="col-lg-11">
             <div class="form-container">
@@ -860,9 +878,37 @@
                             </select>
                         </div>
                     </div>
-                    
 
-                    <!-- Estado y KM -->
+                    <!-- Asignación -->
+                    <div class="section-divider"><i class="bi bi-diagram-3"></i> Asignación</div>
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label class="form-label"><i class="bi bi-people"></i> Unidad Asignada</label>
+                            <select name="id_unidad" id="id_unidad" class="form-select" required>
+                                <option value="">Seleccione...</option>
+                                <?php foreach ($destacamentos as $destacamento): ?>
+                                    <option value="<?= $destacamento['id_unidad'] ?>">
+                                        <?= $destacamento['unidad_destacamento'] ?>
+                                    </option>
+                                <?php endforeach ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <div id="infoDestacamento" style="display:none; width:100%;"
+                                class="info-destacamento-panel">
+                                <div class="panel-titulo">
+                                    <i class="bi bi-geo-alt-fill"></i>
+                                    <span id="infoNombreDestacamento"></span>
+                                </div>
+                                <div>
+                                    <i class="bi bi-map"></i>
+                                    <span id="infoUbicacion"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Estado Operacional -->
                     <div class="section-divider"><i class="bi bi-speedometer2"></i> Estado Operacional</div>
                     <div class="row mb-3">
                         <div class="col-md-3">
@@ -875,11 +921,13 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label"><i class="bi bi-speedometer"></i> Kilometraje Actual</label>
-                            <input type="number" name="km_actuales" id="km_actuales" class="form-control" placeholder="0" min="0" value="0">
+                            <input type="number" name="km_actuales" id="km_actuales" class="form-control"
+                                placeholder="0" min="0" value="0">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label"><i class="bi bi-file-text"></i> Observaciones</label>
-                            <textarea name="observaciones" id="observaciones" class="form-control" rows="2" placeholder="Información adicional..."></textarea>
+                            <textarea name="observaciones" id="observaciones" class="form-control"
+                                rows="2" placeholder="Información adicional..."></textarea>
                         </div>
                     </div>
 
@@ -889,7 +937,8 @@
                         <div class="col-md-5">
                             <label class="form-label"><i class="bi bi-camera"></i> Foto de Frente</label>
                             <div class="file-upload-area" id="areaFoto">
-                                <input type="file" name="foto_frente" id="foto_frente" accept="image/jpeg,image/png,image/webp">
+                                <input type="file" name="foto_frente" id="foto_frente"
+                                    accept="image/jpeg,image/png,image/webp">
                                 <div class="upload-icon"><i class="bi bi-image"></i></div>
                                 <div class="upload-label">
                                     <span>Haz clic</span> o arrastra la foto aquí<br>
@@ -944,7 +993,7 @@
         </div>
     </div>
 
-    <!-- ── VISTA DE CARTAS ─────────────────────── -->
+    <!-- ── VISTA DE CARTAS ─────────────────────────────────────────────────── -->
     <div id="contenedorTabla">
 
         <!-- Filtros -->
@@ -970,7 +1019,7 @@
             </select>
 
             <input type="text" id="filtroBusqueda" class="filtro-search"
-                placeholder="&#xF52A; Buscar por placa, marca, modelo...">
+                placeholder="Buscar por placa, marca, modelo...">
 
             <button id="btnLimpiarFiltros" class="btn-limpiar-filtros">
                 <i class="bi bi-x-circle"></i> Limpiar
@@ -989,118 +1038,122 @@
             </div>
         </div>
     </div>
-    <!-- ── MODAL FICHA VEHÍCULO ──────────────────────────────────────────────── -->
+
+    <!-- ── MODAL FICHA VEHÍCULO ────────────────────────────────────────────── -->
     <div id="modalFicha" style="
-    display:none;
-    position:fixed;inset:0;
-    background:rgba(0,0,0,.7);
-    backdrop-filter:blur(6px);
-    z-index:2000;
-    align-items:center;
-    justify-content:center;
-    padding:1rem;">
+        display:none;
+        position:fixed;inset:0;
+        background:rgba(0,0,0,.7);
+        backdrop-filter:blur(6px);
+        z-index:2000;
+        align-items:center;
+        justify-content:center;
+        padding:1rem;">
 
         <div style="
-        background:var(--dark-2);
-        border:1px solid var(--border);
-        border-radius:18px;
-        width:100%;max-width:900px;
-        max-height:90vh;
-        display:flex;flex-direction:column;
-        box-shadow:0 30px 80px rgba(0,0,0,.6);
-        overflow:hidden;">
+            background:var(--dark-2);
+            border:1px solid var(--border);
+            border-radius:18px;
+            width:100%;max-width:900px;
+            max-height:90vh;
+            display:flex;flex-direction:column;
+            box-shadow:0 30px 80px rgba(0,0,0,.6);
+            overflow:hidden;">
 
             <!-- Header modal -->
             <div style="
-            background:linear-gradient(90deg,var(--dark-3),#1f2335);
-            border-bottom:1px solid var(--border);
-            padding:1.25rem 1.5rem;
-            display:flex;align-items:center;gap:1rem;flex-shrink:0;">
+                background:linear-gradient(90deg,var(--dark-3),#1f2335);
+                border-bottom:1px solid var(--border);
+                padding:1.25rem 1.5rem;
+                display:flex;align-items:center;gap:1rem;flex-shrink:0;">
                 <div style="
-                width:42px;height:42px;border-radius:10px;
-                background:linear-gradient(135deg,var(--accent),var(--accent-2));
-                display:flex;align-items:center;justify-content:center;
-                color:var(--dark);font-size:1.2rem;flex-shrink:0;">
+                    width:42px;height:42px;border-radius:10px;
+                    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+                    display:flex;align-items:center;justify-content:center;
+                    color:var(--dark);font-size:1.2rem;flex-shrink:0;">
                     <i class="bi bi-card-checklist"></i>
                 </div>
                 <div style="flex:1;min-width:0;">
                     <div id="fichaPlaca" style="
-                    font-family:'Rajdhani',sans-serif;font-size:1.4rem;
-                    font-weight:700;color:var(--accent);letter-spacing:2px;"></div>
+                        font-family:'Rajdhani',sans-serif;font-size:1.4rem;
+                        font-weight:700;color:var(--accent);letter-spacing:2px;"></div>
                     <div id="fichaVehiculo" style="font-size:.85rem;color:var(--text-muted);"></div>
                 </div>
                 <button onclick="cerrarFicha()" style="
-                background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
-                color:var(--danger);width:36px;height:36px;border-radius:8px;
-                cursor:pointer;font-size:1rem;display:flex;align-items:center;
-                justify-content:center;flex-shrink:0;">
+                    background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
+                    color:var(--danger);width:36px;height:36px;border-radius:8px;
+                    cursor:pointer;font-size:1rem;display:flex;align-items:center;
+                    justify-content:center;flex-shrink:0;">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
 
             <!-- Tabs -->
             <div style="
-            display:flex;border-bottom:1px solid var(--border);
-            background:var(--dark-3);flex-shrink:0;">
-                <button class="ficha-tab activo" data-tab="info" onclick="switchTab(this,'info')" style="
-                flex:1;padding:.85rem;border:none;background:transparent;
-                color:var(--text-muted);cursor:pointer;font-size:.85rem;
-                font-weight:600;letter-spacing:.4px;transition:all .2s;
-                border-bottom:2px solid transparent;font-family:'Inter',sans-serif;">
+                display:flex;border-bottom:1px solid var(--border);
+                background:var(--dark-3);flex-shrink:0;">
+                <button class="ficha-tab activo" data-tab="info"
+                    onclick="switchTab(this,'info')" style="
+                    flex:1;padding:.85rem;border:none;background:transparent;
+                    color:var(--text-muted);cursor:pointer;font-size:.85rem;
+                    font-weight:600;letter-spacing:.4px;transition:all .2s;
+                    border-bottom:2px solid transparent;font-family:'Inter',sans-serif;">
                     <i class="bi bi-info-circle me-1"></i> Info General
                 </button>
-                <button class="ficha-tab" data-tab="servicios" onclick="switchTab(this,'servicios')" style="
-                flex:1;padding:.85rem;border:none;background:transparent;
-                color:var(--text-muted);cursor:pointer;font-size:.85rem;
-                font-weight:600;letter-spacing:.4px;transition:all .2s;
-                border-bottom:2px solid transparent;font-family:'Inter',sans-serif;">
+                <button class="ficha-tab" data-tab="servicios"
+                    onclick="switchTab(this,'servicios')" style="
+                    flex:1;padding:.85rem;border:none;background:transparent;
+                    color:var(--text-muted);cursor:pointer;font-size:.85rem;
+                    font-weight:600;letter-spacing:.4px;transition:all .2s;
+                    border-bottom:2px solid transparent;font-family:'Inter',sans-serif;">
                     <i class="bi bi-tools me-1"></i> Servicios
                     <span id="badgeServicios" style="
-                    background:var(--accent);color:var(--dark);
-                    border-radius:20px;padding:.1rem .5rem;
-                    font-size:.7rem;margin-left:.3rem;">0</span>
+                        background:var(--accent);color:var(--dark);
+                        border-radius:20px;padding:.1rem .5rem;
+                        font-size:.7rem;margin-left:.3rem;">0</span>
                 </button>
-                <button class="ficha-tab" data-tab="reparaciones" onclick="switchTab(this,'reparaciones')" style="
-                flex:1;padding:.85rem;border:none;background:transparent;
-                color:var(--text-muted);cursor:pointer;font-size:.85rem;
-                font-weight:600;letter-spacing:.4px;transition:all .2s;
-                border-bottom:2px solid transparent;font-family:'Inter',sans-serif;">
+                <button class="ficha-tab" data-tab="reparaciones"
+                    onclick="switchTab(this,'reparaciones')" style="
+                    flex:1;padding:.85rem;border:none;background:transparent;
+                    color:var(--text-muted);cursor:pointer;font-size:.85rem;
+                    font-weight:600;letter-spacing:.4px;transition:all .2s;
+                    border-bottom:2px solid transparent;font-family:'Inter',sans-serif;">
                     <i class="bi bi-wrench-adjustable me-1"></i> Reparaciones
                     <span id="badgeReparaciones" style="
-                    background:var(--danger);color:#fff;
-                    border-radius:20px;padding:.1rem .5rem;
-                    font-size:.7rem;margin-left:.3rem;">0</span>
+                        background:var(--danger);color:#fff;
+                        border-radius:20px;padding:.1rem .5rem;
+                        font-size:.7rem;margin-left:.3rem;">0</span>
                 </button>
             </div>
 
             <!-- Contenido tabs -->
             <div style="overflow-y:auto;flex:1;padding:1.5rem;">
 
-                <!-- TAB INFO ─────────────────────────────────────── -->
+                <!-- TAB INFO -->
                 <div id="tabInfo" class="ficha-tab-content">
                     <div style="display:grid;grid-template-columns:200px 1fr;gap:1.5rem;">
                         <!-- Foto -->
                         <div>
-                            <div id="fichaFotoWrap" style="
-                width:100%;aspect-ratio:1/1;border-radius:12px;
-                overflow:hidden;background:var(--dark-3);
-                border:2px solid var(--border);position:relative;">
+                            <div style="
+                                width:100%;aspect-ratio:1/1;border-radius:12px;
+                                overflow:hidden;background:var(--dark-3);
+                                border:2px solid var(--border);position:relative;">
                                 <img id="fichaFoto" src="" alt="" style="
-                    width:100%;height:100%;object-fit:cover;display:none;">
+                                    width:100%;height:100%;object-fit:cover;display:none;">
                                 <div id="fichaNoFoto" style="
-                    width:100%;height:100%;display:flex;flex-direction:column;
-                    align-items:center;justify-content:center;
-                    color:var(--text-muted);gap:.5rem;">
+                                    width:100%;height:100%;display:flex;flex-direction:column;
+                                    align-items:center;justify-content:center;
+                                    color:var(--text-muted);gap:.5rem;">
                                     <i class="bi bi-truck-front" style="font-size:3rem;opacity:.3;"></i>
                                     <span style="font-size:.75rem;opacity:.5;">Sin foto</span>
                                 </div>
                             </div>
                             <a id="fichaPdfBtn" href="#" target="_blank" style="
-                display:none;margin-top:.75rem;width:100%;
-                padding:.6rem;border-radius:8px;text-align:center;
-                background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
-                color:#e05252;font-size:.8rem;font-weight:600;
-                text-decoration:none;">
+                                display:none;margin-top:.75rem;width:100%;
+                                padding:.6rem;border-radius:8px;text-align:center;
+                                background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
+                                color:#e05252;font-size:.8rem;font-weight:600;
+                                text-decoration:none;">
                                 <i class="bi bi-file-earmark-pdf-fill me-1"></i> Ver Tarjeta PDF
                             </a>
                         </div>
@@ -1116,28 +1169,35 @@
                             <div class="ficha-dato"><span>Estado</span><strong id="fd-estado">—</strong></div>
                             <div class="ficha-dato"><span>KM Actuales</span><strong id="fd-km">—</strong></div>
                             <div class="ficha-dato"><span>Ingreso</span><strong id="fd-ingreso">—</strong></div>
+                            <!-- ── NUEVO: Unidad y Destacamento en ficha ── -->
+                            <div class="ficha-dato"><span>Unidad</span><strong id="fd-unidad">—</strong></div>
+                            <div class="ficha-dato"><span>Destacamento</span><strong id="fd-destacamento">—</strong></div>
                             <div class="ficha-dato" style="grid-column:1/-1;">
                                 <span>Observaciones</span><strong id="fd-obs">—</strong>
                             </div>
                         </div>
                     </div>
+
                     <!-- Alerta km vencido -->
                     <div id="fichaAlerta" style="display:none;margin-top:1.25rem;
-        background:rgba(224,82,82,.1);border:1px solid rgba(224,82,82,.4);
-        border-radius:10px;padding:1rem 1.25rem;
-        display:flex;align-items:center;gap:.75rem;">
-                        <i class="bi bi-exclamation-triangle-fill" style="color:var(--danger);font-size:1.4rem;flex-shrink:0;"></i>
+                        background:rgba(224,82,82,.1);border:1px solid rgba(224,82,82,.4);
+                        border-radius:10px;padding:1rem 1.25rem;
+                        align-items:center;gap:.75rem;">
+                        <i class="bi bi-exclamation-triangle-fill"
+                            style="color:var(--danger);font-size:1.4rem;flex-shrink:0;"></i>
                         <div>
                             <div style="color:var(--danger);font-weight:700;font-size:.9rem;">¡Servicio vencido!</div>
                             <div id="fichaAlertaTexto" style="color:var(--text-muted);font-size:.82rem;"></div>
                         </div>
                     </div>
+
                     <!-- Próximo servicio OK -->
                     <div id="fichaProximo" style="display:none;margin-top:1.25rem;
-        background:rgba(76,175,125,.1);border:1px solid rgba(76,175,125,.4);
-        border-radius:10px;padding:1rem 1.25rem;
-        display:flex;align-items:center;gap:.75rem;">
-                        <i class="bi bi-check-circle-fill" style="color:var(--success);font-size:1.4rem;flex-shrink:0;"></i>
+                        background:rgba(76,175,125,.1);border:1px solid rgba(76,175,125,.4);
+                        border-radius:10px;padding:1rem 1.25rem;
+                        align-items:center;gap:.75rem;">
+                        <i class="bi bi-check-circle-fill"
+                            style="color:var(--success);font-size:1.4rem;flex-shrink:0;"></i>
                         <div>
                             <div style="color:var(--success);font-weight:700;font-size:.9rem;">Próximo servicio programado</div>
                             <div id="fichaProximoTexto" style="color:var(--text-muted);font-size:.82rem;"></div>
@@ -1145,19 +1205,19 @@
                     </div>
                 </div>
 
-                <!-- TAB SERVICIOS ────────────────────────────────── -->
+                <!-- TAB SERVICIOS -->
                 <div id="tabServicios" class="ficha-tab-content" style="display:none;">
                     <button id="btnToggleFormServicio" onclick="toggleFormServicio()" style="
-        margin-bottom:1.25rem;
-        background:linear-gradient(135deg,var(--accent),var(--accent-2));
-        border:none;color:var(--dark);padding:.7rem 1.5rem;border-radius:8px;
-        font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;
-        cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:.5rem;">
+                        margin-bottom:1.25rem;
+                        background:linear-gradient(135deg,var(--accent),var(--accent-2));
+                        border:none;color:var(--dark);padding:.7rem 1.5rem;border-radius:8px;
+                        font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;
+                        cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:.5rem;">
                         <i class="bi bi-plus-circle"></i> Registrar Nuevo Servicio
                     </button>
                     <div id="formNuevoServicio" style="display:none;
-        background:var(--dark-3);border:1px solid var(--border);
-        border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
+                        background:var(--dark-3);border:1px solid var(--border);
+                        border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
                         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;">
                             <div>
                                 <label class="form-label"><i class="bi bi-gear"></i> Tipo *</label>
@@ -1181,29 +1241,30 @@
                             </div>
                         </div>
                         <button onclick="guardarServicio()" style="
-            margin-top:1rem;background:linear-gradient(135deg,var(--accent),var(--accent-2));
-            border:none;color:var(--dark);padding:.7rem 1.5rem;border-radius:8px;
-            font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;
-            cursor:pointer;transition:all .2s;">
+                            margin-top:1rem;
+                            background:linear-gradient(135deg,var(--accent),var(--accent-2));
+                            border:none;color:var(--dark);padding:.7rem 1.5rem;border-radius:8px;
+                            font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;
+                            cursor:pointer;transition:all .2s;">
                             <i class="bi bi-save me-1"></i> Guardar Servicio
                         </button>
                     </div>
                     <div id="tablaServiciosWrap"></div>
                 </div>
 
-                <!-- TAB REPARACIONES ─────────────────────────────── -->
+                <!-- TAB REPARACIONES -->
                 <div id="tabReparaciones" class="ficha-tab-content" style="display:none;">
                     <button id="btnToggleFormReparacion" onclick="toggleFormReparacion()" style="
-        margin-bottom:1.25rem;
-        background:linear-gradient(135deg,var(--danger),#c93030);
-        border:none;color:#fff;padding:.7rem 1.5rem;border-radius:8px;
-        font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;
-        cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:.5rem;">
+                        margin-bottom:1.25rem;
+                        background:linear-gradient(135deg,var(--danger),#c93030);
+                        border:none;color:#fff;padding:.7rem 1.5rem;border-radius:8px;
+                        font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;
+                        cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:.5rem;">
                         <i class="bi bi-plus-circle"></i> Registrar Nueva Reparación
                     </button>
                     <div id="formNuevaReparacion" style="display:none;
-        background:var(--dark-3);border:1px solid var(--border);
-        border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
+                        background:var(--dark-3);border:1px solid var(--border);
+                        border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
                         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;">
                             <div>
                                 <label class="form-label"><i class="bi bi-wrench"></i> Tipo *</label>
@@ -1219,7 +1280,8 @@
                             </div>
                             <div style="grid-column:1/-1;">
                                 <label class="form-label"><i class="bi bi-card-text"></i> Descripción *</label>
-                                <input type="text" id="repDescripcion" class="form-control" placeholder="Detalle de la reparación...">
+                                <input type="text" id="repDescripcion" class="form-control"
+                                    placeholder="Detalle de la reparación...">
                             </div>
                             <div>
                                 <label class="form-label"><i class="bi bi-speedometer"></i> KM al momento *</label>
@@ -1227,7 +1289,8 @@
                             </div>
                             <div>
                                 <label class="form-label"><i class="bi bi-currency-dollar"></i> Costo (Q)</label>
-                                <input type="number" id="repCosto" class="form-control" placeholder="0.00" step="0.01" min="0">
+                                <input type="number" id="repCosto" class="form-control"
+                                    placeholder="0.00" step="0.01" min="0">
                             </div>
                             <div>
                                 <label class="form-label"><i class="bi bi-activity"></i> Estado</label>
@@ -1238,7 +1301,8 @@
                             </div>
                             <div>
                                 <label class="form-label"><i class="bi bi-shop"></i> Proveedor/Taller</label>
-                                <input type="text" id="repProveedor" class="form-control" placeholder="Nombre del taller...">
+                                <input type="text" id="repProveedor" class="form-control"
+                                    placeholder="Nombre del taller...">
                             </div>
                             <div>
                                 <label class="form-label"><i class="bi bi-person"></i> Responsable</label>
@@ -1246,14 +1310,16 @@
                             </div>
                             <div>
                                 <label class="form-label"><i class="bi bi-chat-text"></i> Observaciones</label>
-                                <input type="text" id="repObs" class="form-control" placeholder="Notas adicionales...">
+                                <input type="text" id="repObs" class="form-control"
+                                    placeholder="Notas adicionales...">
                             </div>
                         </div>
                         <button onclick="guardarReparacion()" style="
-            margin-top:1rem;background:linear-gradient(135deg,var(--danger),#c93030);
-            border:none;color:#fff;padding:.7rem 1.5rem;border-radius:8px;
-            font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;
-            cursor:pointer;transition:all .2s;">
+                            margin-top:1rem;
+                            background:linear-gradient(135deg,var(--danger),#c93030);
+                            border:none;color:#fff;padding:.7rem 1.5rem;border-radius:8px;
+                            font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;
+                            cursor:pointer;transition:all .2s;">
                             <i class="bi bi-save me-1"></i> Guardar Reparación
                         </button>
                     </div>
@@ -1261,10 +1327,9 @@
                 </div>
 
             </div><!-- fin contenido tabs -->
-
         </div>
-    </div>
-</div>
-</div>
+    </div><!-- fin modal -->
+
+</div><!-- fin container -->
 
 <script src="build/js/vehiculos/index.js" type="module"></script>

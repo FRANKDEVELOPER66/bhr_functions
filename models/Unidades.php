@@ -25,18 +25,23 @@ class Unidades extends ActiveRecord
         $this->id_destacamento  = $args['id_destacamento']  ?? null;
     }
 
+    // En Model/Unidades.php
     public static function traerTodos(): array
     {
-        return self::fetchArray(
-            "SELECT 
-                u.*,
-                d.nombre      AS destacamento_nombre,
-                d.departamento,
-                d.municipio
-            FROM unidades u
-            LEFT JOIN destacamentos d ON u.id_destacamento = d.id_destacamento
-            ORDER BY u.nombre"
-        );
+        $sql = "SELECT 
+        u.id_unidad,
+        u.nombre AS unidad_nombre,
+        u.tipo,
+        u.id_destacamento,
+        d.nombre AS destacamento_nombre,
+        d.departamento,
+        d.municipio,
+        CONCAT(u.nombre, ' / ' ' Destacada en la ', d.nombre, ', ', d.municipio, ' ', d.departamento) AS unidad_destacamento
+    FROM unidades u
+    LEFT JOIN destacamentos d ON u.id_destacamento = d.id_destacamento
+    ORDER BY u.id_unidad DESC";
+
+        return self::fetchArray($sql);
     }
 
     public static function traerPorDestacamento(int $id): array

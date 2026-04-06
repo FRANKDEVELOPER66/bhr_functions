@@ -85,12 +85,18 @@ class Vehiculos extends ActiveRecord
     public static function traerConDetalle(string $placa)
     {
         $sql = "SELECT 
-                    v.*,
-                    (SELECT COUNT(*) FROM servicios    WHERE placa = v.placa) AS total_servicios,
-                    (SELECT COUNT(*) FROM reparaciones WHERE placa = v.placa) AS total_reparaciones
-                FROM vehiculos v
-                WHERE v.placa = ?
-                LIMIT 1";
+                v.*,
+                u.nombre            AS unidad_nombre,
+                d.nombre            AS destacamento_nombre,
+                d.departamento      AS destacamento_depto,
+                d.municipio         AS destacamento_municipio,
+                (SELECT COUNT(*) FROM servicios    WHERE placa = v.placa) AS total_servicios,
+                (SELECT COUNT(*) FROM reparaciones WHERE placa = v.placa) AS total_reparaciones
+            FROM vehiculos v
+            LEFT JOIN unidades      u ON v.id_unidad        = u.id_unidad
+            LEFT JOIN destacamentos d ON u.id_destacamento  = d.id_destacamento
+            WHERE v.placa = ?
+            LIMIT 1";
 
         $resultado = self::fetchArray($sql, [$placa]);
         return $resultado[0] ?? null;
