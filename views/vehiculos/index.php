@@ -829,7 +829,7 @@
                     <div class="section-divider"><i class="bi bi-card-text"></i> Identificación</div>
                     <div class="row mb-3">
                         <div class="col-md-3">
-                            <label class="form-label"><i class="bi bi-hash"></i> Placa *</label>
+                            <label class="form-label"><i class="bi bi-hash"></i> Catalogo *</label>
                             <input type="text" name="placa" id="placa" class="form-control"
                                 placeholder="Ej: ABC-123" required
                                 style="text-transform:uppercase;font-weight:600;letter-spacing:1px">
@@ -1159,7 +1159,7 @@
                         </div>
                         <!-- Datos -->
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
-                            <div class="ficha-dato"><span>Placa</span><strong id="fd-placa">—</strong></div>
+                            <div class="ficha-dato"><span>Catalogo</span><strong id="fd-placa">—</strong></div>
                             <div class="ficha-dato"><span>N° Serie</span><strong id="fd-serie">—</strong></div>
                             <div class="ficha-dato"><span>Marca</span><strong id="fd-marca">—</strong></div>
                             <div class="ficha-dato"><span>Modelo</span><strong id="fd-modelo">—</strong></div>

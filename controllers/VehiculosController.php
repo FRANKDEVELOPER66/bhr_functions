@@ -49,7 +49,7 @@ class VehiculosController
 
         if (Vehiculos::existePlaca($_POST['placa'])) {
             http_response_code(409);
-            echo json_encode(['codigo' => 0, 'mensaje' => 'Ya existe un vehículo con esa placa'], JSON_UNESCAPED_UNICODE);
+            echo json_encode(['codigo' => 0, 'mensaje' => 'Ya existe un vehículo con ese Catalogo'], JSON_UNESCAPED_UNICODE);
             return;
         }
 
