@@ -1,6 +1,7 @@
 import { Toast, validarFormulario } from "../funciones";
 import Swal from "sweetalert2";
 
+
 const BASE = '/bhr_functions';
 
 // ── ELEMENTOS DOM ─────────────────────────────────────────────────────────────
@@ -1087,6 +1088,11 @@ const eliminarReparacion = async (id) => {
     }
 };
 
+// ── GENERAR EXPEDIENTE ────────────────────────────────────────────────────────
+const generarExpediente = (placa) => {
+    window.open(`${BASE}/vehiculos/expediente?placa=${encodeURIComponent(placa)}`, '_blank');
+};
+
 // ── AUTO-UPPERCASE ────────────────────────────────────────────────────────────
 document.getElementById('placa').addEventListener('input', function () {
     this.value = this.value.toUpperCase();
@@ -1101,6 +1107,7 @@ btnCancelar.addEventListener('click', cancelar);
 btnModificar.addEventListener('click', modificar);
 
 // ── EXPONER GLOBALES (type="module") ──────────────────────────────────────────
+window.generarExpediente = generarExpediente;
 window.abrirFicha = abrirFicha;
 window.cerrarFicha = cerrarFicha;
 window.switchTab = switchTab;

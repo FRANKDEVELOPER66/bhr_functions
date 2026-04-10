@@ -591,7 +591,6 @@
         gap: .3rem;
     }
 
-    /* ── NUEVO: unidad en la card ── */
     .card-unidad {
         font-size: .72rem;
         color: var(--text-muted);
@@ -777,7 +776,6 @@
         font-weight: 600;
     }
 
-    /* ── INFO DESTACAMENTO (panel lateral al select) ── */
     .info-destacamento-panel {
         background: rgba(232, 184, 75, .08);
         border: 1px solid rgba(232, 184, 75, .25);
@@ -1148,6 +1146,8 @@
                                     <span style="font-size:.75rem;opacity:.5;">Sin foto</span>
                                 </div>
                             </div>
+
+                            <!-- Botón Ver Tarjeta PDF -->
                             <a id="fichaPdfBtn" href="#" target="_blank" style="
                                 display:none;margin-top:.75rem;width:100%;
                                 padding:.6rem;border-radius:8px;text-align:center;
@@ -1156,7 +1156,19 @@
                                 text-decoration:none;">
                                 <i class="bi bi-file-earmark-pdf-fill me-1"></i> Ver Tarjeta PDF
                             </a>
+
+                            <!-- Botón Generar Expediente — usa getElementById para evitar problema de scope del módulo JS -->
+                            <button
+                                onclick="generarExpediente(document.getElementById('fichaPlaca').textContent.trim())"
+                                style="
+                                    margin-top:.5rem;width:100%;padding:.6rem;border-radius:8px;
+                                    background:rgba(199,91,0,.15);border:1px solid rgba(199,91,0,.4);
+                                    color:#C75B00;font-size:.8rem;font-weight:600;cursor:pointer;
+                                    font-family:'Inter',sans-serif;">
+                                <i class="bi bi-printer-fill me-1"></i> Generar Expediente
+                            </button>
                         </div>
+
                         <!-- Datos -->
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
                             <div class="ficha-dato"><span>Catalogo</span><strong id="fd-placa">—</strong></div>
@@ -1169,7 +1181,6 @@
                             <div class="ficha-dato"><span>Estado</span><strong id="fd-estado">—</strong></div>
                             <div class="ficha-dato"><span>KM Actuales</span><strong id="fd-km">—</strong></div>
                             <div class="ficha-dato"><span>Ingreso</span><strong id="fd-ingreso">—</strong></div>
-                            <!-- ── NUEVO: Unidad y Destacamento en ficha ── -->
                             <div class="ficha-dato"><span>Unidad</span><strong id="fd-unidad">—</strong></div>
                             <div class="ficha-dato"><span>Destacamento</span><strong id="fd-destacamento">—</strong></div>
                             <div class="ficha-dato" style="grid-column:1/-1;">
