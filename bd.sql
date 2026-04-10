@@ -95,6 +95,62 @@ CREATE TABLE `vehiculos` (
 
 
 
+-- ============================================================
+-- TABLA: seguros
+-- Se registra al ingresar un vehículo o en cualquier momento
+-- ============================================================
+CREATE TABLE `seguros` (
+  `id_seguro`         INT NOT NULL AUTO_INCREMENT,
+  `placa`             VARCHAR(20) NOT NULL,
+  `aseguradora`       VARCHAR(150) NOT NULL,
+  `numero_poliza`     VARCHAR(80) NOT NULL,
+  `tipo_cobertura`    ENUM('Básico','Amplio','Todo riesgo') NOT NULL DEFAULT 'Básico',
+  `fecha_inicio`      DATE NOT NULL,
+  `fecha_vencimiento` DATE NOT NULL,
+  `prima_anual`       DECIMAL(10,2) DEFAULT NULL,
+  `agente_contacto`   VARCHAR(150) DEFAULT NULL,
+  `telefono_agente`   VARCHAR(20) DEFAULT NULL,
+  `archivo_poliza`    VARCHAR(255) DEFAULT NULL COMMENT 'Ruta al PDF de la póliza',
+  `estado`            ENUM('Vigente','Vencido','Cancelado') NOT NULL DEFAULT 'Vigente',
+  `observaciones`     TEXT,
+  PRIMARY KEY (`id_seguro`),
+  KEY `fk_seguro_vehiculo` (`placa`),
+  UNIQUE KEY `uk_poliza` (`numero_poliza`),
+  CONSTRAINT `fk_seguro_vehiculo`
+    FOREIGN KEY (`placa`) REFERENCES `vehiculos` (`placa`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+-- ============================================================
+-- TABLA: accidentes
+-- Historial de choques o accidentes por vehículo
+-- El id_seguro es nullable: puede haber accidente sin seguro
+-- ============================================================
+CREATE TABLE `accidentes` (
+  `id_accidente`         INT NOT NULL AUTO_INCREMENT,
+  `placa`                VARCHAR(20) NOT NULL,
+  `id_seguro`            INT DEFAULT NULL COMMENT 'Seguro activo al momento del accidente',
+  `fecha_accidente`      DATE NOT NULL,
+  `lugar`                VARCHAR(255) NOT NULL,
+  `tipo_accidente`       ENUM('Colisión','Volcamiento','Atropello','Daño por tercero','Robo parcial','Otro') NOT NULL DEFAULT 'Colisión',
+  `descripcion`          TEXT NOT NULL,
+  `conductor_responsable` VARCHAR(150) DEFAULT NULL,
+  `costo_estimado`       DECIMAL(10,2) DEFAULT NULL,
+  `costo_real`           DECIMAL(10,2) DEFAULT NULL,
+  `estado_caso`          ENUM('Reportado','En trámite','Cerrado','Sin seguro') NOT NULL DEFAULT 'Reportado',
+  `numero_expediente`    VARCHAR(80) DEFAULT NULL COMMENT 'Número de reclamo ante la aseguradora',
+  `archivo_fotos`        VARCHAR(255) DEFAULT NULL COMMENT 'Ruta a carpeta o zip de fotos',
+  `archivo_informe`      VARCHAR(255) DEFAULT NULL COMMENT 'Ruta al informe policial o PDF',
+  `observaciones`        TEXT,
+  PRIMARY KEY (`id_accidente`),
+  KEY `fk_accidente_vehiculo` (`placa`),
+  KEY `fk_accidente_seguro` (`id_seguro`),
+  CONSTRAINT `fk_accidente_vehiculo`
+    FOREIGN KEY (`placa`) REFERENCES `vehiculos` (`placa`) ON DELETE CASCADE,
+  CONSTRAINT `fk_accidente_seguro`
+    FOREIGN KEY (`id_seguro`) REFERENCES `seguros` (`id_seguro`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 
 
 -- ============================================================
