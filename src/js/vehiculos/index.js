@@ -402,108 +402,83 @@ const buscar = async () => {
 const guardar = async (e) => {
     e.preventDefault();
 
-    const get = (id) => document.getElementById(id)?.value?.trim() || '';
-
-    // ── CAMPOS PRINCIPALES ─────────────────────────────
-    const placa = get('placa');
-    const numeroSerie = get('numero_serie');
-    const marca = get('marca');
-    const modelo = get('modelo');
-    const anio = get('anio');
-    const color = get('color');
-    const tipo = get('tipo');
-    const km = get('km_actual');
-    const estado = get('estado');
-    const fechaIngreso = get('fecha_ingreso');
-    const observaciones = get('observaciones');
-
-    const idUnidad = document.getElementById('id_unidad')?.value || '';
-
-    // ── VALIDACIÓN ─────────────────────────────────────
-    const faltantes = [];
-
-    if (!placa) faltantes.push('Placa');
-    if (!numeroSerie) faltantes.push('Número de serie');
-    if (!marca) faltantes.push('Marca');
-    if (!modelo) faltantes.push('Modelo');
-    if (!anio) faltantes.push('Año');
-    if (!color) faltantes.push('Color');
-    if (!tipo) faltantes.push('Tipo');
-    if (!fechaIngreso) faltantes.push('Fecha ingreso');
-
-    if (faltantes.length) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Campos obligatorios',
-            html: `
-                <div style="text-align:left">
-                    Faltan los siguientes campos:
-                    <ul>
-                        ${faltantes.map(f => `<li>${f}</li>`).join('')}
-                    </ul>
-                </div>
-            `,
-            background: '#1a1d27',
-            color: '#e8eaf0',
-            confirmButtonColor: '#e8b84b'
-        });
-        return;
-    }
-
-    // ── FORM DATA ─────────────────────────────────────
     const body = new FormData();
 
-    body.append('placa', placa);
-    body.append('numero_serie', numeroSerie);
-    body.append('marca', marca);
-    body.append('modelo', modelo);
-    body.append('anio', anio);
-    body.append('color', color);
-    body.append('tipo', tipo);
-    body.append('km_actuales', km);
-    body.append('estado', estado);
-    body.append('fecha_ingreso', fechaIngreso);
-    body.append('observaciones', observaciones);
+    /* ===============================
+       VEHICULO
+    =============================== */
 
-    // ── FK UNIDAD (NULL permitido) ────────────────────
-    if (idUnidad !== '') {
-        body.append('id_unidad', idUnidad);
-    }
+    body.append('placa', document.getElementById('placa').value);
+    body.append('numero_serie', document.getElementById('numero_serie').value);
+    body.append('marca', document.getElementById('marca').value);
+    body.append('modelo', document.getElementById('modelo').value);
+    body.append('anio', document.getElementById('anio').value);
+    body.append('color', document.getElementById('color').value);
+    body.append('tipo', document.getElementById('tipo').value);
+    body.append('estado', document.getElementById('estado').value);
+    body.append('fecha_ingreso', document.getElementById('fecha_ingreso').value);
+    body.append('km_actuales', document.getElementById('km_actuales').value);
+    body.append('observaciones', document.getElementById('observaciones').value);
+    body.append('id_unidad', document.getElementById('id_unidad').value);
 
-    // ── FOTO ─────────────────────────────────────────
+    /* ===============================
+       ARCHIVOS VEHICULO
+    =============================== */
+
     const foto = document.getElementById('foto_frente');
-    if (foto?.files?.[0]) {
-        body.append('foto_frente', foto.files[0]);
-    }
+    if (foto.files[0]) body.append('foto_frente', foto.files[0]);
 
-    // ── TARJETA PDF ─────────────────────────────────
     const tarjeta = document.getElementById('tarjeta_pdf');
-    if (tarjeta?.files?.[0]) {
-        body.append('tarjeta_pdf', tarjeta.files[0]);
-    }
+    if (tarjeta.files[0]) body.append('tarjeta_pdf', tarjeta.files[0]);
 
-    // ── TIENE SEGURO ────────────────────────────────
-    const tieneSeguro =
-        document.getElementById('btnSeguroSi')?.classList.contains('sel-si');
+    /* ===============================
+       ¿TIENE SEGURO?
+    =============================== */
+
+    const tieneSeguro = document.getElementById('btnSeguroSi')
+        .classList.contains('sel-si');
 
     if (tieneSeguro) {
-        body.append('numero_poliza', get('fsNumeroPoliza'));
-        body.append('aseguradora', get('fsAseguradora'));
-        body.append('tipo_cobertura', get('fsTipoCobertura'));
-        body.append('fecha_inicio', get('fsFechaInicio'));
-        body.append('fecha_vencimiento', get('fsFechaVenc'));
-        body.append('prima_anual', get('fsPrima'));
-        body.append('agente_contacto', get('fsAgente'));
-        body.append('observaciones_seguro', get('fsObs'));
 
-        const pdf = document.getElementById('fsArchivo');
-        if (pdf?.files?.[0]) {
-            body.append('archivo_poliza', pdf.files[0]);
+        const aseguradora = document.getElementById('seg_aseguradora').value;
+        const poliza = document.getElementById('seg_numero_poliza').value;
+        const inicio = document.getElementById('seg_fecha_inicio').value;
+        const venc = document.getElementById('seg_fecha_vencimiento').value;
+
+        if (!aseguradora || !poliza || !inicio || !venc) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Complete los datos del seguro',
+                text: 'Faltan campos obligatorios del seguro',
+                background: '#1a1d27',
+                color: '#e8eaf0'
+            });
+            return;
+        }
+
+        body.append('seg_aseguradora', aseguradora);
+        body.append('seg_numero_poliza', poliza);
+        body.append('seg_tipo_cobertura', document.getElementById('seg_tipo_cobertura').value);
+        body.append('seg_fecha_inicio', inicio);
+        body.append('seg_fecha_vencimiento', venc);
+        body.append('seg_prima_anual', document.getElementById('seg_prima_anual').value);
+        body.append('seg_agente_contacto', document.getElementById('seg_agente_contacto').value);
+        body.append('seg_telefono_agente', document.getElementById('seg_telefono_agente').value);
+        body.append('seg_observaciones', document.getElementById('seg_observaciones').value);
+
+        const pdfPoliza = document.getElementById('archivo_poliza');
+
+        if (pdfPoliza && pdfPoliza.files.length > 0) {
+            body.append('archivo_poliza', pdfPoliza.files[0]);
         }
     }
 
-    // ── REQUEST ─────────────────────────────────────
+    /* ===============================
+       ENVIAR
+    =============================== */
+
     try {
+
         const r = await fetch(`${BASE}/API/vehiculos/guardar`, {
             method: 'POST',
             body
@@ -522,12 +497,12 @@ const guardar = async (e) => {
         }
 
     } catch (err) {
-        console.error(err);
 
         Toast.fire({
             icon: 'error',
             title: 'Error de conexión'
         });
+
     }
 };
 

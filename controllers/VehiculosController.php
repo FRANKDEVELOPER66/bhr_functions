@@ -21,127 +21,215 @@ class VehiculosController
     // ── GUARDAR ──────────────────────────────────────────────────────────────
     public static function guardarAPI()
     {
-        // Esto debe ir PRIMERO, antes de cualquier otra cosa
         ob_start();
         header('Content-Type: application/json; charset=UTF-8');
-
-        // Limpiar cualquier output previo (warnings de PHP, etc.)
         ob_clean();
-        header('Content-Type: application/json; charset=UTF-8');
-
-        $_POST['placa']         = strtoupper(trim(htmlspecialchars($_POST['placa']         ?? '')));
-        $_POST['numero_serie']  = strtoupper(trim(htmlspecialchars($_POST['numero_serie']  ?? '')));
-        $_POST['marca']         = htmlspecialchars($_POST['marca']         ?? '');
-        $_POST['modelo']        = htmlspecialchars($_POST['modelo']        ?? '');
-        $_POST['color']         = htmlspecialchars($_POST['color']         ?? '');
-        $_POST['tipo']          = htmlspecialchars($_POST['tipo']          ?? '');
-        $_POST['observaciones'] = htmlspecialchars($_POST['observaciones'] ?? '');
-        $_POST['km_actuales']   = (int)($_POST['km_actuales'] ?? 0);
-
-        // Validar obligatorios
-        foreach (['placa', 'numero_serie', 'marca', 'modelo', 'anio', 'color', 'tipo', 'estado', 'fecha_ingreso'] as $campo) {
-            if (empty($_POST[$campo])) {
-                http_response_code(400);
-                echo json_encode(['codigo' => 0, 'mensaje' => "El campo '{$campo}' es obligatorio"], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-        }
-
-        if (Vehiculos::existePlaca($_POST['placa'])) {
-            http_response_code(409);
-            echo json_encode(['codigo' => 0, 'mensaje' => 'Ya existe un vehículo con ese Catalogo'], JSON_UNESCAPED_UNICODE);
-            return;
-        }
-
-        if (Vehiculos::existeNumeroSerie($_POST['numero_serie'])) {
-            http_response_code(409);
-            echo json_encode(['codigo' => 0, 'mensaje' => 'Ya existe un vehículo con ese número de serie'], JSON_UNESCAPED_UNICODE);
-            return;
-        }
 
         try {
-            // ── Subir foto de frente ─────────────────────────────────────────
-            $nombreFoto = null;
-            if (!empty($_FILES['foto_frente']['name'])) {
-                $ext = strtolower(pathinfo($_FILES['foto_frente']['name'], PATHINFO_EXTENSION));
-                if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
+
+            /* =============================
+           LIMPIAR DATOS VEHICULO
+        ============================= */
+
+            $_POST['placa']         = strtoupper(trim($_POST['placa'] ?? ''));
+            $_POST['numero_serie']  = strtoupper(trim($_POST['numero_serie'] ?? ''));
+            $_POST['marca']         = trim($_POST['marca'] ?? '');
+            $_POST['modelo']        = trim($_POST['modelo'] ?? '');
+            $_POST['color']         = trim($_POST['color'] ?? '');
+            $_POST['tipo']          = trim($_POST['tipo'] ?? '');
+            $_POST['observaciones'] = trim($_POST['observaciones'] ?? '');
+            $_POST['km_actuales']   = (int)($_POST['km_actuales'] ?? 0);
+
+            /* =============================
+           VALIDAR VEHICULO
+        ============================= */
+
+            $obligatorios = [
+                'placa',
+                'numero_serie',
+                'marca',
+                'modelo',
+                'anio',
+                'color',
+                'tipo',
+                'estado',
+                'fecha_ingreso'
+            ];
+
+            foreach ($obligatorios as $campo) {
+                if (empty($_POST[$campo])) {
                     http_response_code(400);
-                    echo json_encode(['codigo' => 0, 'mensaje' => 'La foto debe ser JPG, PNG o WEBP'], JSON_UNESCAPED_UNICODE);
-                    return;
-                }
-                $nombreFoto = Vehiculos::subirArchivoSFTP($_FILES['foto_frente'], 'fotos', $_POST['placa']);
-                if (!$nombreFoto) {
-                    http_response_code(500);
-                    echo json_encode(['codigo' => 0, 'mensaje' => 'Error al subir la foto al servidor'], JSON_UNESCAPED_UNICODE);
+                    echo json_encode([
+                        'codigo' => 0,
+                        'mensaje' => "El campo {$campo} es obligatorio"
+                    ]);
                     return;
                 }
             }
 
-            // ── Subir tarjeta PDF ────────────────────────────────────────────
+            if (Vehiculos::existePlaca($_POST['placa'])) {
+                echo json_encode([
+                    'codigo' => 0,
+                    'mensaje' => 'Ya existe un vehículo con ese catálogo'
+                ]);
+                return;
+            }
+
+            if (Vehiculos::existeNumeroSerie($_POST['numero_serie'])) {
+                echo json_encode([
+                    'codigo' => 0,
+                    'mensaje' => 'Ya existe un vehículo con ese número de serie'
+                ]);
+                return;
+            }
+
+            /* =============================
+           FOTO
+        ============================= */
+
+            $nombreFoto = null;
+
+            if (!empty($_FILES['foto_frente']['name'])) {
+
+                $ext = strtolower(pathinfo($_FILES['foto_frente']['name'], PATHINFO_EXTENSION));
+
+                if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
+                    echo json_encode([
+                        'codigo' => 0,
+                        'mensaje' => 'Foto debe ser JPG PNG o WEBP'
+                    ]);
+                    return;
+                }
+
+                $nombreFoto = Vehiculos::subirArchivoSFTP(
+                    $_FILES['foto_frente'],
+                    'fotos',
+                    $_POST['placa']
+                );
+            }
+
+            /* =============================
+           TARJETA PDF
+        ============================= */
+
             $nombrePdf = null;
+
             if (!empty($_FILES['tarjeta_pdf']['name'])) {
+
                 $ext = strtolower(pathinfo($_FILES['tarjeta_pdf']['name'], PATHINFO_EXTENSION));
-                if ($ext !== 'pdf') {
-                    http_response_code(400);
-                    echo json_encode(['codigo' => 0, 'mensaje' => 'La tarjeta de circulación debe ser PDF'], JSON_UNESCAPED_UNICODE);
+
+                if ($ext != 'pdf') {
+                    echo json_encode([
+                        'codigo' => 0,
+                        'mensaje' => 'Tarjeta debe ser PDF'
+                    ]);
                     return;
                 }
-                $nombrePdf = Vehiculos::subirArchivoSFTP($_FILES['tarjeta_pdf'], 'tarjetas', $_POST['placa']);
-                if (!$nombrePdf) {
-                    http_response_code(500);
-                    echo json_encode(['codigo' => 0, 'mensaje' => 'Error al subir el PDF al servidor'], JSON_UNESCAPED_UNICODE);
-                    return;
-                }
+
+                $nombrePdf = Vehiculos::subirArchivoSFTP(
+                    $_FILES['tarjeta_pdf'],
+                    'tarjetas',
+                    $_POST['placa']
+                );
             }
 
             $_POST['foto_frente'] = $nombreFoto;
             $_POST['tarjeta_pdf'] = $nombrePdf;
 
+            /* =============================
+           GUARDAR VEHICULO
+        ============================= */
+
             $vehiculo = new Vehiculos($_POST);
             $vehiculo->crear();
 
-            // ── Crear seguro si el usuario eligió "Sí tiene seguro" ──────────────────────
-            $tienSeguro = !empty($_POST['seg_aseguradora']) && !empty($_POST['seg_numero_poliza']) && !empty($_POST['seg_fecha_inicio']);
 
-            if ($tienSeguro) {
-                // Subir PDF de póliza si viene
-                $nombrePolizaPdf = null;
-                if (!empty($_FILES['archivo_poliza']['name'])) {
-                    $extPol = strtolower(pathinfo($_FILES['archivo_poliza']['name'], PATHINFO_EXTENSION));
-                    if ($extPol === 'pdf') {
-                        $nombrePolizaPdf = Vehiculos::subirArchivoSFTP(
-                            $_FILES['archivo_poliza'],
-                            'polizas',
-                            $_POST['placa'] . '_POL_' . time()
-                        );
-                    }
-                }
+            /* =====================================================
+           VALIDAR SI TIENE SEGURO
+        ===================================================== */
 
-                // Solo crear si no existe ya esa póliza
-                if (!\Model\Seguros::existePoliza(trim($_POST['seg_numero_poliza']))) {
-                    $seguro = new \Model\Seguros([
-                        'placa'             => $_POST['placa'],
-                        'aseguradora'       => htmlspecialchars(trim($_POST['seg_aseguradora'])),
-                        'numero_poliza'     => htmlspecialchars(trim($_POST['seg_numero_poliza'])),
-                        'tipo_cobertura'    => $_POST['seg_tipo_cobertura']    ?? 'Básico',
-                        'fecha_inicio'      => $_POST['seg_fecha_inicio'],
-                        'fecha_vencimiento' => $_POST['seg_fecha_vencimiento'] ?? null,
-                        'prima_anual'       => !empty($_POST['seg_prima_anual']) ? (float)$_POST['seg_prima_anual'] : null,
-                        'agente_contacto'   => htmlspecialchars($_POST['seg_agente_contacto']  ?? ''),
-                        'telefono_agente'   => htmlspecialchars($_POST['seg_telefono_agente']  ?? ''),
-                        'archivo_poliza'    => $nombrePolizaPdf,
-                        'estado'            => 'Vigente',
-                        'observaciones'     => htmlspecialchars($_POST['seg_observaciones']    ?? '')
+            $tieneSeguro = !empty($_POST['seg_aseguradora']) ||
+                !empty($_POST['seg_numero_poliza']) ||
+                !empty($_POST['seg_fecha_inicio']);
+
+
+            if ($tieneSeguro) {
+
+                /* VALIDAR CAMPOS OBLIGATORIOS SEGURO */
+
+                if (
+                    empty($_POST['seg_aseguradora']) ||
+                    empty($_POST['seg_numero_poliza']) ||
+                    empty($_POST['seg_fecha_inicio']) ||
+                    empty($_POST['seg_fecha_vencimiento'])
+                ) {
+                    echo json_encode([
+                        'codigo' => 0,
+                        'mensaje' => 'Debe completar todos los campos del seguro'
                     ]);
-                    $seguro->crear();
+                    return;
                 }
+
+                /* =============================
+               PDF POLIZA
+            ============================= */
+
+                $nombrePoliza = null;
+
+                if (!empty($_FILES['archivo_poliza']['name'])) {
+
+                    $ext = strtolower(pathinfo($_FILES['archivo_poliza']['name'], PATHINFO_EXTENSION));
+
+                    if ($ext != 'pdf') {
+                        echo json_encode([
+                            'codigo' => 0,
+                            'mensaje' => 'La póliza debe ser PDF'
+                        ]);
+                        return;
+                    }
+
+                    $nombrePoliza = Vehiculos::subirArchivoSFTP(
+                        $_FILES['archivo_poliza'],
+                        'polizas',
+                        $_POST['placa'] . '_POL'
+                    );
+                }
+
+                /* =============================
+               GUARDAR SEGURO
+            ============================= */
+
+                $seguro = new \Model\Seguros([
+                    'placa' => $_POST['placa'],
+                    'aseguradora' => $_POST['seg_aseguradora'],
+                    'numero_poliza' => $_POST['seg_numero_poliza'],
+                    'tipo_cobertura' => $_POST['seg_tipo_cobertura'] ?? 'Básico',
+                    'fecha_inicio' => $_POST['seg_fecha_inicio'],
+                    'fecha_vencimiento' => $_POST['seg_fecha_vencimiento'],
+                    'prima_anual' => $_POST['seg_prima_anual'] ?? null,
+                    'agente_contacto' => $_POST['seg_agente_contacto'] ?? null,
+                    'telefono_agente' => $_POST['seg_telefono_agente'] ?? null,
+                    'archivo_poliza' => $nombrePoliza,
+                    'estado' => 'Vigente',
+                    'observaciones' => $_POST['seg_observaciones'] ?? null
+                ]);
+
+                $seguro->crear();
             }
 
-            http_response_code(200);
-            echo json_encode(['codigo' => 1, 'mensaje' => 'Vehículo registrado exitosamente'], JSON_UNESCAPED_UNICODE);
+            echo json_encode([
+                'codigo' => 1,
+                'mensaje' => 'Vehículo registrado correctamente'
+            ]);
         } catch (Exception $e) {
+
             http_response_code(500);
-            echo json_encode(['codigo' => 0, 'mensaje' => 'Error al registrar el vehículo', 'detalle' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+
+            echo json_encode([
+                'codigo' => 0,
+                'mensaje' => 'Error al registrar',
+                'detalle' => $e->getMessage()
+            ]);
         }
     }
 
