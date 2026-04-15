@@ -8,6 +8,8 @@ use Model\Servicios;
 use Model\Reparaciones;
 use Model\TiposServicio;
 use Model\TiposReparacion;
+use Model\Seguros;
+use Model\Accidentes;
 use MVC\Router;
 
 
@@ -46,6 +48,34 @@ class FichaController
             $servicios    = Servicios::traerPorPlaca($placa);
             $reparaciones = Reparaciones::traerPorPlaca($placa);
 
+            // ── SEGUROS ───────────────────────────────────────────────────────
+            Seguros::actualizarEstadosVencidos($placa);
+            $seguros = Seguros::traerPorPlaca($placa);
+            foreach ($seguros as &$s) {
+                $s['pdf_poliza_url'] = $s['archivo_poliza']
+                    ? "{$urlBase}/{$s['archivo_poliza']}"
+                    : null;
+            }
+            unset($s);
+
+            // ── ACCIDENTES ────────────────────────────────────────────────────
+            $accidentes = Accidentes::traerPorPlaca($placa);
+            foreach ($accidentes as &$a) {
+                $a['fotos_url']   = $a['archivo_fotos']
+                    ? "{$urlBase}/{$a['archivo_fotos']}"
+                    : null;
+                $a['informe_url'] = $a['archivo_informe']
+                    ? "{$urlBase}/{$a['archivo_informe']}"
+                    : null;
+                // Alias para que el JS pueda leer costo_danos y costo_reparacion
+                // (el JS renderTablaAccidentes usa esos nombres)
+                $a['costo_danos']      = $a['costo_estimado'] ?? null;
+                $a['costo_reparacion'] = $a['costo_real']     ?? null;
+                $a['no_expediente']    = $a['numero_expediente'] ?? null;
+                $a['estado']           = $a['estado_caso']    ?? null;
+            }
+            unset($a);
+
             // Próximo servicio (el más cercano por km)
             $proximoServicio = null;
             foreach ($servicios as $s) {
@@ -64,12 +94,14 @@ class FichaController
                 $vehiculo['km_actuales'] >= $proximoServicio['km_proximo_servicio'];
 
             echo json_encode([
-                'codigo'          => 1,
-                'vehiculo'        => $vehiculo,
-                'servicios'       => $servicios,
-                'reparaciones'    => $reparaciones,
+                'codigo'           => 1,
+                'vehiculo'         => $vehiculo,
+                'servicios'        => $servicios,
+                'reparaciones'     => $reparaciones,
+                'seguros'          => $seguros,
+                'accidentes'       => $accidentes,
                 'proximo_servicio' => $proximoServicio,
-                'alerta_km'       => $alertaKm
+                'alerta_km'        => $alertaKm
             ], JSON_UNESCAPED_UNICODE);
         } catch (Exception $e) {
             http_response_code(500);
@@ -98,8 +130,7 @@ class FichaController
         }
     }
 
-    // ── GUARDAR SERVICIO ─────────────────────────────────────────────────────
-    // ── GUARDAR SERVICIO ─────────────────────────────────────────────────────────
+    // ── GUARDAR SERVICIO ──────────────────────────────────────────────────────
     public static function guardarServicioAPI(Router $router)
     {
         header('Content-Type: application/json; charset=UTF-8');
@@ -127,12 +158,7 @@ class FichaController
             $kmAlServicio = (int)$_POST['km_al_servicio'];
 
             $tipo = TiposServicio::find($_POST['id_tipo_servicio']);
-            // DEBUG TEMPORAL - borrarlo después
-            error_log("TIPO: " . print_r($tipo, true));
-            error_log("intervalo_km: [" . $tipo->intervalo_km . "]");
-            error_log("empty: " . var_export(empty($tipo->intervalo_km), true));
 
-            // FIX: usar NULL explícito cuando no hay intervalo, nunca string vacío
             $kmProximo    = null;
             $fechaProximo = null;
 
@@ -153,8 +179,8 @@ class FichaController
                 'id_tipo_servicio'    => (int)$_POST['id_tipo_servicio'],
                 'fecha_realizado'     => $_POST['fecha_realizado'],
                 'km_al_servicio'      => $kmAlServicio,
-                'km_proximo_servicio' => $kmProximo,   // NULL si no aplica
-                'fecha_proximo'       => $fechaProximo, // NULL si no aplica
+                'km_proximo_servicio' => $kmProximo,
+                'fecha_proximo'       => $fechaProximo,
                 'observaciones'       => htmlspecialchars($_POST['observaciones'] ?? ''),
                 'responsable'         => htmlspecialchars($_POST['responsable']   ?? '')
             ]);
@@ -222,7 +248,8 @@ class FichaController
             ], JSON_UNESCAPED_UNICODE);
         }
     }
-    // ── TIPOS DE REPARACIÓN ──────────────────────────────────────────────────────
+
+    // ── TIPOS DE REPARACIÓN ──────────────────────────────────────────────────
     public static function tiposReparacionAPI(Router $router)
     {
         header('Content-Type: application/json; charset=UTF-8');
@@ -235,7 +262,7 @@ class FichaController
         }
     }
 
-    // ── GUARDAR REPARACIÓN ───────────────────────────────────────────────────────
+    // ── GUARDAR REPARACIÓN ───────────────────────────────────────────────────
     public static function guardarReparacionAPI(Router $router)
     {
         header('Content-Type: application/json; charset=UTF-8');
@@ -273,7 +300,6 @@ class FichaController
 
             $reparacion->crear();
 
-            // ── Cambiar estado del vehículo automáticamente ──────────────────────────────
             $vehiculo = Vehiculos::find($placa);
             if ($vehiculo) {
                 if ($_POST['estado'] === 'En proceso') {
@@ -291,7 +317,7 @@ class FichaController
         }
     }
 
-    // ── ELIMINAR REPARACIÓN ──────────────────────────────────────────────────────
+    // ── ELIMINAR REPARACIÓN ──────────────────────────────────────────────────
     public static function eliminarReparacionAPI(Router $router)
     {
         header('Content-Type: application/json; charset=UTF-8');
@@ -315,7 +341,6 @@ class FichaController
 
             $reparacion->eliminar();
 
-            // ── Si no quedan reparaciones en proceso, volver a Alta ──────────────────────
             $enProceso = Reparaciones::contarEnProceso($reparacion->placa);
             if ($enProceso === 0) {
                 $vehiculo = Vehiculos::find($reparacion->placa);
@@ -331,7 +356,7 @@ class FichaController
         }
     }
 
-    // ── MODIFICAR REPARACIÓN ─────────────────────────────────────────────────────
+    // ── MODIFICAR REPARACIÓN ─────────────────────────────────────────────────
     public static function modificarReparacionAPI(Router $router)
     {
         header('Content-Type: application/json; charset=UTF-8');
@@ -368,13 +393,11 @@ class FichaController
 
             $reparacion->actualizar();
 
-            // ── Actualizar estado del vehículo ───────────────────────────────────
             $vehiculo = Vehiculos::find($reparacion->placa);
             if ($vehiculo) {
                 if ($reparacion->estado === 'En proceso') {
                     $vehiculo->estado = 'Taller';
                 } else {
-                    // Verificar si quedan otras en proceso
                     $enProceso = Reparaciones::contarEnProceso($reparacion->placa);
                     $vehiculo->estado = $enProceso > 0 ? 'Taller' : 'Alta';
                 }

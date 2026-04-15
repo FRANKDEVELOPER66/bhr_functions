@@ -215,6 +215,11 @@ const mostrarFormulario = () => {
     btnFlotante.classList.add('activo');
     btnFlotante.innerHTML = '<i class="bi bi-skip-backward"></i>';
     btnFlotante.setAttribute('title', 'Volver');
+    // Reset seguro toggle
+    document.getElementById('btnSeguroSi').classList.remove('sel-si');
+    document.getElementById('btnSeguroNo').classList.remove('sel-no');
+    document.getElementById('panelFormSeguro').style.display = 'none';
+    document.getElementById('avisoSinSeguro').style.display = 'none';
 };
 
 const ocultarFormulario = () => {
@@ -267,6 +272,16 @@ const renderCartas = (vehiculos) => {
                    <i class="bi bi-file-earmark-pdf-fill"></i>
                </a>` : '';
 
+        // Badge de seguro: posicionado sobre la foto, esquina inferior izquierda
+        let seguroBadge = '';
+        if (v.seguro_estado === 'vigente') {
+            seguroBadge = `<span style="position:absolute;bottom:.5rem;left:.5rem;background:rgba(76,175,125,.85);color:#fff;font-size:.65rem;font-weight:600;padding:.2rem .55rem;border-radius:20px;backdrop-filter:blur(4px);display:flex;align-items:center;gap:.3rem;"><i class="bi bi-shield-check"></i> Vigente</span>`;
+        } else if (v.seguro_estado === 'vencido') {
+            seguroBadge = `<span style="position:absolute;bottom:.5rem;left:.5rem;background:rgba(224,82,82,.85);color:#fff;font-size:.65rem;font-weight:600;padding:.2rem .55rem;border-radius:20px;backdrop-filter:blur(4px);display:flex;align-items:center;gap:.3rem;"><i class="bi bi-shield-exclamation"></i> Vencido</span>`;
+        } else {
+            seguroBadge = `<span style="position:absolute;bottom:.5rem;left:.5rem;background:rgba(30,33,48,.85);color:#888;font-size:.65rem;font-weight:600;padding:.2rem .55rem;border-radius:20px;border:1px solid rgba(150,150,150,.25);backdrop-filter:blur(4px);display:flex;align-items:center;gap:.3rem;"><i class="bi bi-shield-slash"></i> Sin seguro</span>`;
+        }
+
         const unidadHTML = v.unidad_nombre
             ? `<div class="card-unidad">
            <i class="bi bi-people-fill"></i>
@@ -283,6 +298,7 @@ const renderCartas = (vehiculos) => {
                     ${fotoHTML}
                     ${estadoBadge(v.estado)}
                     ${pdfBadge}
+                    ${seguroBadge}
                 </div>
                 <div class="card-info">
                     <div class="card-placa">${v.placa}</div>
@@ -333,10 +349,12 @@ const aplicarFiltros = () => {
     const tipo = filtroTipo.value.toLowerCase();
     const estado = filtroEstado.value.toLowerCase();
     const busq = filtroBusqueda.value.toLowerCase().trim();
+    const filtroSeguro = document.getElementById('filtroSeguro')?.value.toLowerCase() || '';
 
     const filtrados = todosLosVehiculos.filter(v => {
         const matchTipo = !tipo || v.tipo.toLowerCase() === tipo;
         const matchEstado = !estado || v.estado.toLowerCase() === estado;
+        const matchSeguro = !filtroSeguro || (v.seguro_estado || 'sin seguro').toLowerCase() === filtroSeguro;
         const matchBusq = !busq
             || v.placa.toLowerCase().includes(busq)
             || v.marca.toLowerCase().includes(busq)
@@ -344,7 +362,7 @@ const aplicarFiltros = () => {
             || (v.numero_serie || '').toLowerCase().includes(busq)
             || (v.unidad_nombre || '').toLowerCase().includes(busq)
             || (v.destacamento_nombre || '').toLowerCase().includes(busq);
-        return matchTipo && matchEstado && matchBusq;
+        return matchTipo && matchEstado && matchSeguro && matchBusq;
     });
 
     renderCartas(filtrados);
@@ -353,10 +371,13 @@ const aplicarFiltros = () => {
 filtroTipo.addEventListener('change', aplicarFiltros);
 filtroEstado.addEventListener('change', aplicarFiltros);
 filtroBusqueda.addEventListener('input', aplicarFiltros);
+document.getElementById('filtroSeguro')?.addEventListener('change', aplicarFiltros);
 btnLimpiarFiltros.addEventListener('click', () => {
     filtroTipo.value = '';
     filtroEstado.value = '';
     filtroBusqueda.value = '';
+    const fs = document.getElementById('filtroSeguro');
+    if (fs) fs.value = '';
     renderCartas(todosLosVehiculos);
 });
 
@@ -380,41 +401,134 @@ const buscar = async () => {
 // ── GUARDAR ───────────────────────────────────────────────────────────────────
 const guardar = async (e) => {
     e.preventDefault();
-    btnGuardar.disabled = true;
 
-    if (!validarFormulario(formulario, ['placa_original', 'observaciones', 'foto_frente', 'tarjeta_pdf', 'id_unidad'])) {
+    const get = (id) => document.getElementById(id)?.value?.trim() || '';
+
+    // ── CAMPOS PRINCIPALES ─────────────────────────────
+    const placa = get('placa');
+    const numeroSerie = get('numero_serie');
+    const marca = get('marca');
+    const modelo = get('modelo');
+    const anio = get('anio');
+    const color = get('color');
+    const tipo = get('tipo');
+    const km = get('km_actual');
+    const estado = get('estado');
+    const fechaIngreso = get('fecha_ingreso');
+    const observaciones = get('observaciones');
+
+    const idUnidad = document.getElementById('id_unidad')?.value || '';
+
+    // ── VALIDACIÓN ─────────────────────────────────────
+    const faltantes = [];
+
+    if (!placa) faltantes.push('Placa');
+    if (!numeroSerie) faltantes.push('Número de serie');
+    if (!marca) faltantes.push('Marca');
+    if (!modelo) faltantes.push('Modelo');
+    if (!anio) faltantes.push('Año');
+    if (!color) faltantes.push('Color');
+    if (!tipo) faltantes.push('Tipo');
+    if (!fechaIngreso) faltantes.push('Fecha ingreso');
+
+    if (faltantes.length) {
         Swal.fire({
-            title: 'Campos vacíos',
-            text: 'Debe llenar todos los campos obligatorios',
-            icon: 'info',
+            icon: 'warning',
+            title: 'Campos obligatorios',
+            html: `
+                <div style="text-align:left">
+                    Faltan los siguientes campos:
+                    <ul>
+                        ${faltantes.map(f => `<li>${f}</li>`).join('')}
+                    </ul>
+                </div>
+            `,
             background: '#1a1d27',
             color: '#e8eaf0',
             confirmButtonColor: '#e8b84b'
         });
-        btnGuardar.disabled = false;
         return;
     }
 
-    try {
-        const body = new FormData(formulario);
-        const respuesta = await fetch(`${BASE}/API/vehiculos/guardar`, { method: 'POST', body });
-        const data = await respuesta.json();
+    // ── FORM DATA ─────────────────────────────────────
+    const body = new FormData();
 
-        if (data.codigo == 1) {
-            formulario.reset();
-            resetArchivos();
-            resetAsignacion();
-            buscar();
-            ocultarFormulario();
-        }
+    body.append('placa', placa);
+    body.append('numero_serie', numeroSerie);
+    body.append('marca', marca);
+    body.append('modelo', modelo);
+    body.append('anio', anio);
+    body.append('color', color);
+    body.append('tipo', tipo);
+    body.append('km_actuales', km);
+    body.append('estado', estado);
+    body.append('fecha_ingreso', fechaIngreso);
+    body.append('observaciones', observaciones);
 
-        Toast.fire({ icon: data.codigo == 1 ? 'success' : 'error', title: data.mensaje });
-    } catch (error) {
-        console.error(error);
-        Toast.fire({ icon: 'error', title: 'Error de conexión al guardar' });
+    // ── FK UNIDAD (NULL permitido) ────────────────────
+    if (idUnidad !== '') {
+        body.append('id_unidad', idUnidad);
     }
 
-    btnGuardar.disabled = false;
+    // ── FOTO ─────────────────────────────────────────
+    const foto = document.getElementById('foto_frente');
+    if (foto?.files?.[0]) {
+        body.append('foto_frente', foto.files[0]);
+    }
+
+    // ── TARJETA PDF ─────────────────────────────────
+    const tarjeta = document.getElementById('tarjeta_pdf');
+    if (tarjeta?.files?.[0]) {
+        body.append('tarjeta_pdf', tarjeta.files[0]);
+    }
+
+    // ── TIENE SEGURO ────────────────────────────────
+    const tieneSeguro =
+        document.getElementById('btnSeguroSi')?.classList.contains('sel-si');
+
+    if (tieneSeguro) {
+        body.append('numero_poliza', get('fsNumeroPoliza'));
+        body.append('aseguradora', get('fsAseguradora'));
+        body.append('tipo_cobertura', get('fsTipoCobertura'));
+        body.append('fecha_inicio', get('fsFechaInicio'));
+        body.append('fecha_vencimiento', get('fsFechaVenc'));
+        body.append('prima_anual', get('fsPrima'));
+        body.append('agente_contacto', get('fsAgente'));
+        body.append('observaciones_seguro', get('fsObs'));
+
+        const pdf = document.getElementById('fsArchivo');
+        if (pdf?.files?.[0]) {
+            body.append('archivo_poliza', pdf.files[0]);
+        }
+    }
+
+    // ── REQUEST ─────────────────────────────────────
+    try {
+        const r = await fetch(`${BASE}/API/vehiculos/guardar`, {
+            method: 'POST',
+            body
+        });
+
+        const d = await r.json();
+
+        Toast.fire({
+            icon: d.codigo === 1 ? 'success' : 'error',
+            title: d.mensaje
+        });
+
+        if (d.codigo === 1) {
+            cancelar();
+            buscar();
+        }
+
+    } catch (err) {
+        console.error(err);
+
+        Toast.fire({
+            icon: 'error',
+            title: 'Error de conexión'
+        });
+    }
 };
 
 // ── TRAER DATOS ───────────────────────────────────────────────────────────────
@@ -682,6 +796,8 @@ const abrirFicha = async (placa) => {
     document.body.style.overflow = 'hidden';
     resetFormServicio();
     resetFormReparacion();
+    resetFormSeguro();
+    resetFormAccidente();
 
     switchTab(document.querySelector('.ficha-tab[data-tab="info"]'), 'info');
 
@@ -772,9 +888,15 @@ const abrirFicha = async (placa) => {
         // Badges
         document.getElementById('badgeServicios').textContent = d.servicios.length;
         document.getElementById('badgeReparaciones').textContent = d.reparaciones.length;
+        const elBadgeSeg = document.getElementById('badgeSeguro');
+        if (elBadgeSeg) elBadgeSeg.textContent = (d.seguros || []).length;
+        const elBadgeAcc = document.getElementById('badgeAccidentes');
+        if (elBadgeAcc) elBadgeAcc.textContent = (d.accidentes || []).length;
 
         renderTablaServicios(d.servicios);
         renderTablaReparaciones(d.reparaciones);
+        renderTablaSeguros(d.seguros || []);
+        renderTablaAccidentes(d.accidentes || []);
 
     } catch (err) {
         console.error(err);
@@ -1088,6 +1210,587 @@ const eliminarReparacion = async (id) => {
     }
 };
 
+
+// ════════════════════════════════════════════════════════════════════════════
+// ── SEGUROS ──────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+
+let seguroEditandoId = null;
+
+// Helpers badge de estado de seguro
+const seguroEstadoBadge = (fechaVence) => {
+    if (!fechaVence) return `<span style="background:rgba(150,150,150,.15);color:#888;border:1px solid rgba(150,150,150,.25);padding:.2rem .6rem;border-radius:20px;font-size:.7rem;">Sin fecha</span>`;
+    const hoy = new Date();
+    const vence = new Date(fechaVence);
+    const diasRestantes = Math.ceil((vence - hoy) / (1000 * 60 * 60 * 24));
+
+    if (diasRestantes < 0) {
+        return `<span style="background:rgba(224,82,82,.15);color:var(--danger);border:1px solid rgba(224,82,82,.3);padding:.2rem .6rem;border-radius:20px;font-size:.7rem;"><i class="bi bi-shield-exclamation"></i> Vencido</span>`;
+    } else if (diasRestantes <= 30) {
+        return `<span style="background:rgba(232,184,75,.15);color:var(--accent);border:1px solid rgba(232,184,75,.3);padding:.2rem .6rem;border-radius:20px;font-size:.7rem;"><i class="bi bi-shield-slash"></i> Vence en ${diasRestantes}d</span>`;
+    } else {
+        return `<span style="background:rgba(76,175,125,.15);color:var(--success);border:1px solid rgba(76,175,125,.3);padding:.2rem .6rem;border-radius:20px;font-size:.7rem;"><i class="bi bi-shield-check"></i> Vigente</span>`;
+    }
+};
+
+// Toggle form seguro
+const toggleFormSeguro = () => {
+    const form = document.getElementById('formNuevoSeguroFicha');
+    const btn = document.getElementById('btnToggleFormSeguro');
+    const visible = form.style.display !== 'none';
+    form.style.display = visible ? 'none' : 'block';
+    btn.innerHTML = visible
+        ? '<i class="bi bi-plus-circle"></i> Registrar Nuevo Seguro'
+        : '<i class="bi bi-x-circle"></i> Cancelar';
+    if (visible) {
+        seguroEditandoId = null;
+        limpiarCamposSeguros();
+    }
+};
+
+const resetFormSeguro = () => {
+    const form = document.getElementById('formNuevoSeguroFicha');
+    const btn = document.getElementById('btnToggleFormSeguro');
+    if (form) form.style.display = 'none';
+    if (btn) btn.innerHTML = '<i class="bi bi-plus-circle"></i> Registrar Nuevo Seguro';
+    seguroEditandoId = null;
+    limpiarCamposSeguros();
+};
+
+const limpiarCamposSeguros = () => {
+    ['fsNumeroPoliza', 'fsAseguradora', 'fsTipoCobertura', 'fsFechaInicio',
+        'fsFechaVenc', 'fsPrima', 'fsAgente', 'fsObs'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+    // Reset área PDF seguro
+    const areaSeg = document.getElementById('areaPolizaFicha');
+    const nombreSeg = document.getElementById('seguroPdfNombre');
+    if (areaSeg) {
+        areaSeg.classList.remove('has-file');
+        areaSeg.querySelector('.upload-icon i').className = 'bi bi-file-pdf';
+        areaSeg.querySelector('.upload-label').innerHTML = `
+            <span>Haz clic</span> o arrastra la póliza aquí<br>
+            <small>Solo PDF — máx. 10 MB</small>`;
+    }
+    if (nombreSeg) nombreSeg.style.display = 'none';
+    // Reset botón guardar
+    const btnSave = document.querySelector('#formNuevoSeguro button[onclick="guardarSeguro()"]');
+    if (btnSave) {
+        btnSave.innerHTML = '<i class="bi bi-save me-1"></i> Guardar Seguro';
+        btnSave.style.background = 'linear-gradient(135deg,var(--success),#2e7d52)';
+    }
+};
+
+// Render tabla de seguros
+const renderTablaSeguros = (seguros) => {
+    const wrap = document.getElementById('tablaSeguroWrap');
+    if (!wrap) return;
+
+    // guardar en memoria
+    segurosData = seguros;
+
+    if (!seguros.length) {
+        wrap.innerHTML = `
+            <div style="text-align:center;padding:3rem;color:var(--text-muted);">
+                <i class="bi bi-shield-slash" style="font-size:3rem;opacity:.2;display:block;margin-bottom:1rem;"></i>
+                <p>No hay seguros registrados para este vehículo</p>
+            </div>`;
+        return;
+    }
+
+    wrap.innerHTML = seguros.map(s => `
+        <div class="svc-row" style="grid-template-columns:1.5fr 1fr 1fr 1fr 1fr auto;">
+            <div>
+                <div class="svc-label">Póliza</div>
+                <div class="svc-val" style="font-weight:600;">${s.numero_poliza}</div>
+            </div>
+            <div>
+                <div class="svc-label">Aseguradora</div>
+                <div class="svc-val">${s.aseguradora}</div>
+            </div>
+            <div>
+                <div class="svc-label">Vigencia</div>
+                <div class="svc-val">${s.fecha_inicio} → ${s.fecha_vencimiento || '—'}</div>
+            </div>
+            <div>
+                <div class="svc-label">Estado</div>
+                <div class="svc-val">${seguroEstadoBadge(s.fecha_vencimiento)}</div>
+            </div>
+            <div>
+                <div class="svc-label">Costo Anual</div>
+                <div class="svc-val">${s.costo_anual ? 'Q ' + Number(s.costo_anual).toLocaleString() : '—'}</div>
+            </div>
+            <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
+                ${s.pdf_poliza_url ? `
+                <a href="${s.pdf_poliza_url}" target="_blank" style="
+                    background:rgba(232,184,75,.15);border:1px solid rgba(232,184,75,.3);
+                    color:var(--accent);border-radius:6px;padding:.35rem .6rem;
+                    font-size:.8rem;text-decoration:none;" title="Ver póliza PDF">
+                    <i class="bi bi-file-earmark-pdf"></i>
+                </a>` : ''}
+                <button onclick="editarSeguro(${s.id_seguro})" style="
+                    background:rgba(58,123,213,.15);border:1px solid rgba(58,123,213,.3);
+                    color:#5b9bd5;border-radius:6px;padding:.35rem .6rem;
+                    cursor:pointer;font-size:.8rem;" title="Editar">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+                <button onclick="eliminarSeguro(${s.id_seguro})" style="
+                    background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
+                    color:var(--danger);border-radius:6px;padding:.35rem .6rem;
+                    cursor:pointer;font-size:.8rem;" title="Eliminar">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </div>
+        </div>
+        <div style="font-size:.75rem;color:var(--text-muted);margin-top:-.4rem;margin-bottom:.6rem;padding-left:.25rem;">
+            ${s.tipo_cobertura ? '<i class="bi bi-patch-check"></i> ' + s.tipo_cobertura : ''}
+            ${s.contacto_agente ? ' · <i class="bi bi-person-lines-fill"></i> ' + s.contacto_agente : ''}
+            ${s.observaciones ? ' · ' + s.observaciones : ''}
+        </div>
+    `).join('');
+};
+
+// Guardar seguro (nuevo o edición)
+const guardarSeguro = async () => {
+    const poliza = document.getElementById('fsNumeroPoliza').value.trim();
+    const aseguradora = document.getElementById('fsAseguradora').value.trim();
+    const fechaInicio = document.getElementById('fsFechaInicio').value;
+
+    if (!poliza || !aseguradora || !fechaInicio) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Nº de póliza, aseguradora y fecha de inicio son obligatorios',
+            background: '#1a1d27',
+            color: '#e8eaf0',
+            confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+
+    const body = new FormData();
+    body.append('placa', fichaPlacaActual);
+    body.append('numero_poliza', poliza);
+    body.append('aseguradora', aseguradora);
+    body.append('tipo_cobertura', document.getElementById('fsTipoCobertura').value);
+    body.append('fecha_inicio', fechaInicio);
+    body.append('fecha_vencimiento', document.getElementById('fsFechaVenc').value);
+    body.append('costo_anual', document.getElementById('fsPrima').value);
+    body.append('contacto_agente', document.getElementById('fsAgente').value);
+    body.append('observaciones', document.getElementById('fsObs').value);
+
+    // PDF de póliza (opcional)
+    const inputPdfSeg = document.getElementById('fsArchivo');
+    if (inputPdfSeg && inputPdfSeg.files[0]) {
+        body.append('archivo_poliza', inputPdfSeg.files[0]);
+    }
+
+    const esEdicion = seguroEditandoId !== null;
+    if (esEdicion) body.append('id_seguro', seguroEditandoId);
+
+    // ── FIX: rutas corregidas a plural /seguros/ ──────────────────────────────
+    const url = esEdicion
+        ? `${BASE}/API/vehiculos/seguros/modificar`
+        : `${BASE}/API/vehiculos/seguros/guardar`;
+
+    try {
+        const r = await fetch(url, { method: 'POST', body });
+        const d = await r.json();
+
+        Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
+
+        if (d.codigo === 1) {
+            resetFormSeguro();
+            await abrirFicha(fichaPlacaActual);
+            switchTab(document.querySelector('.ficha-tab[data-tab="seguros"]'), 'seguros');
+            buscar();
+        }
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    }
+};
+
+// Editar seguro: cargar datos en el form
+const editarSeguro = (id) => {
+
+    const s = segurosData.find(x => x.id_seguro == id);
+    if (!s) return;
+
+    seguroEditandoId = s.id_seguro;
+
+    const form = document.getElementById('formNuevoSeguroFicha');
+    const btn = document.getElementById('btnToggleFormSeguro');
+    form.style.display = 'block';
+    btn.innerHTML = '<i class="bi bi-x-circle"></i> Cancelar';
+
+    document.getElementById('fsNumeroPoliza').value = s.numero_poliza || '';
+    document.getElementById('fsAseguradora').value = s.aseguradora || '';
+    document.getElementById('fsTipoCobertura').value = s.tipo_cobertura || '';
+    document.getElementById('fsFechaInicio').value = s.fecha_inicio || '';
+    document.getElementById('fsFechaVenc').value = s.fecha_vencimiento || '';
+    document.getElementById('fsPrima').value = s.costo_anual || '';
+    document.getElementById('fsAgente').value = s.contacto_agente || '';
+    document.getElementById('fsObs').value = s.observaciones || '';
+
+    const btnSave = document.querySelector('#formNuevoSeguro button[onclick="guardarSeguro()"]');
+    if (btnSave) {
+        btnSave.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Actualizar Seguro';
+        btnSave.style.background = 'linear-gradient(135deg,#3a7bd5,#2563b0)';
+    }
+
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+// Eliminar seguro
+const eliminarSeguro = async (id) => {
+    const conf = await Swal.fire({
+        icon: 'warning',
+        title: '¿Eliminar seguro?',
+        text: 'Se eliminará la póliza y sus archivos. Esta acción no se puede deshacer.',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#e05252',
+        cancelButtonColor: '#3a7bd5',
+        background: '#1a1d27',
+        color: '#e8eaf0',
+        customClass: { container: 'swal-over-modal' }
+    });
+
+    if (!conf.isConfirmed) return;
+
+    const body = new FormData();
+    body.append('id_seguro', id);
+
+    try {
+        // ── FIX: ruta corregida a plural /seguros/ ────────────────────────────
+        const r = await fetch(`${BASE}/API/vehiculos/seguros/eliminar`, { method: 'POST', body });
+        const d = await r.json();
+
+        Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
+        if (d.codigo === 1) {
+            await abrirFicha(fichaPlacaActual);
+            switchTab(document.querySelector('.ficha-tab[data-tab="seguros"]'), 'seguros');
+            buscar();
+        }
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    }
+};
+
+// Preview PDF póliza en el form
+const inputSeguroPdf = document.getElementById('fsArchivo');
+if (inputSeguroPdf) {
+    inputSeguroPdf.addEventListener('change', () => {
+        const file = inputSeguroPdf.files[0];
+        if (!file) return;
+        const area = document.getElementById('areaPolizaFicha');
+        const nombre = document.getElementById('seguroPdfNombre');
+        if (area) {
+            area.classList.add('has-file');
+            area.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
+            area.querySelector('.upload-label').innerHTML = `
+                <span style="color:var(--success)">${file.name}</span><br>
+                <small>PDF seleccionado</small>`;
+        }
+        if (nombre) {
+            nombre.style.display = 'block';
+            nombre.querySelector('span').textContent = file.name;
+        }
+    });
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// ── ACCIDENTES ────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+
+let accidenteEditandoId = null;
+
+const toggleFormAccidente = () => {
+    const form = document.getElementById('formNuevoAccidente');
+    const btn = document.getElementById('btnToggleFormAccidente');
+    const visible = form.style.display !== 'none';
+    form.style.display = visible ? 'none' : 'block';
+    btn.innerHTML = visible
+        ? '<i class="bi bi-plus-circle"></i> Registrar Nuevo Accidente'
+        : '<i class="bi bi-x-circle"></i> Cancelar';
+    if (visible) {
+        accidenteEditandoId = null;
+        limpiarCamposAccidente();
+    }
+};
+
+const resetFormAccidente = () => {
+    const form = document.getElementById('formNuevoAccidente');
+    const btn = document.getElementById('btnToggleFormAccidente');
+    if (form) form.style.display = 'none';
+    if (btn) btn.innerHTML = '<i class="bi bi-plus-circle"></i> Registrar Nuevo Accidente';
+    accidenteEditandoId = null;
+    limpiarCamposAccidente();
+};
+
+const limpiarCamposAccidente = () => {
+    // IDs reales del HTML
+    ['acFecha', 'acTipo', 'acLugar', 'acDescripcion', 'acConductor',
+        'acCostoEst', 'acCostoReal', 'acExpediente', 'acObs'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+    const selEstado = document.getElementById('acEstado');
+    if (selEstado) selEstado.value = 'Reportado';
+    // Resetear btn guardar
+    const btnSave = document.querySelector('#formNuevoAccidente button[onclick="guardarAccidente()"]');
+    if (btnSave) {
+        btnSave.innerHTML = '<i class="bi bi-save me-1"></i> Guardar Accidente';
+        btnSave.style.background = 'linear-gradient(135deg,var(--danger),#c93030)';
+    }
+};
+
+// Render tabla accidentes
+const renderTablaAccidentes = (accidentes) => {
+    accidentesData = accidentes;
+    const wrap = document.getElementById('tablaAccidentesWrap');
+    if (!wrap) return;
+
+    if (!accidentes.length) {
+        wrap.innerHTML = `
+            <div style="text-align:center;padding:3rem;color:var(--text-muted);">
+                <i class="bi bi-cone-striped" style="font-size:3rem;opacity:.2;display:block;margin-bottom:1rem;"></i>
+                <p>No hay accidentes registrados para este vehículo</p>
+            </div>`;
+        return;
+    }
+
+    // Calcular costo total acumulado
+    const costoTotal = accidentes.reduce((sum, a) => {
+        return sum + (parseFloat(a.costo_reparacion) || 0) + (parseFloat(a.costo_danos) || 0);
+    }, 0);
+
+    const resumenHTML = costoTotal > 0 ? `
+        <div style="
+            background:rgba(224,82,82,.08);
+            border:1px solid rgba(224,82,82,.2);
+            border-radius:8px;padding:.75rem 1rem;
+            margin-bottom:1rem;
+            display:flex;align-items:center;gap:.75rem;">
+            <i class="bi bi-currency-dollar" style="color:var(--danger);font-size:1.25rem;"></i>
+            <div>
+                <div style="font-size:.75rem;color:var(--text-muted);">Costo total acumulado (daños + reparaciones)</div>
+                <div style="font-weight:700;color:var(--danger);">Q ${Number(costoTotal).toLocaleString()}</div>
+            </div>
+        </div>` : '';
+
+    const estadoColor = (estado) => {
+        const map = { 'Cerrado': 'var(--success)', 'En proceso': 'var(--accent)', 'Pendiente': '#888' };
+        return map[estado] || 'inherit';
+    };
+
+    const culpaBadge = (culpa) => {
+        if (!culpa) return '';
+        const map = {
+            'Propio': 'rgba(224,82,82,.15)',
+            'Tercero': 'rgba(58,123,213,.15)',
+            'Compartida': 'rgba(232,184,75,.15)',
+            'Sin determinar': 'rgba(150,150,150,.15)'
+        };
+        return `<span style="
+            background:${map[culpa] || 'rgba(150,150,150,.15)'};
+            padding:.15rem .5rem;border-radius:20px;
+            font-size:.7rem;color:var(--text-secondary);">${culpa}</span>`;
+    };
+
+    wrap.innerHTML = resumenHTML + accidentes.map(a => `
+        <div class="svc-row" style="grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;">
+            <div>
+                <div class="svc-label">Tipo</div>
+                <div class="svc-val">${a.tipo_accidente}</div>
+            </div>
+            <div>
+                <div class="svc-label">Fecha</div>
+                <div class="svc-val">${a.fecha_accidente}</div>
+            </div>
+            <div>
+                <div class="svc-label">Estado</div>
+                <div class="svc-val" style="color:${estadoColor(a.estado)}">${a.estado}</div>
+            </div>
+            <div>
+                <div class="svc-label">Costo Daños</div>
+                <div class="svc-val">${a.costo_danos ? 'Q ' + Number(a.costo_danos).toLocaleString() : '—'}</div>
+            </div>
+            <div>
+                <div class="svc-label">Costo Reparación</div>
+                <div class="svc-val">${a.costo_reparacion ? 'Q ' + Number(a.costo_reparacion).toLocaleString() : '—'}</div>
+            </div>
+            <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
+                <button onclick="editarAccidente(${a.id_accidente})" style="
+                    background:rgba(58,123,213,.15);border:1px solid rgba(58,123,213,.3);
+                    color:#5b9bd5;border-radius:6px;padding:.35rem .6rem;
+                    cursor:pointer;font-size:.8rem;" title="Editar">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+                <button onclick="eliminarAccidente(${a.id_accidente})" style="
+                    background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
+                    color:var(--danger);border-radius:6px;padding:.35rem .6rem;
+                    cursor:pointer;font-size:.8rem;" title="Eliminar">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </div>
+        </div>
+        <div style="font-size:.75rem;color:var(--text-muted);margin-top:-.4rem;margin-bottom:.6rem;padding-left:.25rem;">
+            ${a.lugar ? '<i class="bi bi-geo-alt"></i> ' + a.lugar : ''}
+            ${a.conductor_responsable ? ' · <i class="bi bi-person-fill"></i> ' + a.conductor_responsable : ''}
+            ${a.culpabilidad ? ' · ' + culpaBadge(a.culpabilidad) : ''}
+            ${a.no_expediente ? ' · <i class="bi bi-journal-text"></i> Exp. ' + a.no_expediente : ''}
+            ${a.km_al_momento ? ' · <i class="bi bi-speedometer"></i> ' + Number(a.km_al_momento).toLocaleString() + ' km' : ''}
+        </div>
+        ${a.descripcion ? `
+        <div style="font-size:.75rem;color:var(--text-secondary);margin-top:-.3rem;margin-bottom:.6rem;padding-left:.25rem;padding-right:1rem;">
+            ${a.descripcion}
+        </div>` : ''}
+    `).join('');
+};
+
+// Guardar accidente
+const guardarAccidente = async () => {
+    const fecha = document.getElementById('acFecha').value;
+    const tipo = document.getElementById('acTipo').value.trim();
+    const desc = document.getElementById('acDescripcion').value.trim();
+
+    if (!fecha || !tipo || !desc) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Fecha, tipo y descripción son obligatorios',
+            background: '#1a1d27',
+            color: '#e8eaf0',
+            confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+
+    const body = new FormData();
+    body.append('placa', fichaPlacaActual);
+    body.append('fecha_accidente', fecha);
+    body.append('tipo_accidente', tipo);
+    body.append('descripcion', desc);
+    body.append('lugar', (document.getElementById('acLugar') || { value: '' }).value);
+    body.append('conductor_responsable', (document.getElementById('acConductor') || { value: '' }).value);
+    body.append('costo_estimado', (document.getElementById('acCostoEst') || { value: '' }).value);
+    body.append('costo_real', (document.getElementById('acCostoReal') || { value: '' }).value);
+    body.append('estado_caso', (document.getElementById('acEstado') || { value: 'Reportado' }).value);
+    body.append('numero_expediente', (document.getElementById('acExpediente') || { value: '' }).value);
+    body.append('observaciones', (document.getElementById('acObs') || { value: '' }).value);
+
+    // ── FIX: nombres de campo corregidos para coincidir con $_FILES en PHP ────
+    const acFotosEl = document.getElementById('acFotos');
+    if (acFotosEl && acFotosEl.files[0]) body.append('archivo_fotos', acFotosEl.files[0]);
+    const acInformeEl = document.getElementById('acInforme');
+    if (acInformeEl && acInformeEl.files[0]) body.append('archivo_informe', acInformeEl.files[0]);
+
+    const esEdicion = accidenteEditandoId !== null;
+    if (esEdicion) body.append('id_accidente', accidenteEditandoId);
+
+    // ── FIX: rutas corregidas a plural /accidentes/ ───────────────────────────
+    const url = esEdicion
+        ? `${BASE}/API/vehiculos/accidentes/modificar`
+        : `${BASE}/API/vehiculos/accidentes/guardar`;
+
+    try {
+        const r = await fetch(url, { method: 'POST', body });
+        const d = await r.json();
+
+        Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
+
+        if (d.codigo === 1) {
+            resetFormAccidente();
+            await abrirFicha(fichaPlacaActual);
+            switchTab(document.querySelector('.ficha-tab[data-tab="accidentes"]'), 'accidentes');
+            buscar();
+        }
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    }
+};
+
+// Editar accidente
+const editarAccidente = (id) => {
+
+    const a = accidentesData.find(x => x.id_accidente == id);
+    if (!a) return;
+
+    accidenteEditandoId = a.id_accidente;
+
+    const form = document.getElementById('formNuevoAccidente');
+    const btn = document.getElementById('btnToggleFormAccidente');
+    form.style.display = 'block';
+    btn.innerHTML = '<i class="bi bi-x-circle"></i> Cancelar';
+
+    const _sv = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val || '';
+    };
+
+    _sv('acFecha', a.fecha_accidente);
+    _sv('acTipo', a.tipo_accidente);
+    _sv('acLugar', a.lugar);
+    _sv('acDescripcion', a.descripcion);
+    _sv('acConductor', a.conductor_responsable);
+    _sv('acCostoEst', a.costo_estimado ?? a.costo_danos);
+    _sv('acCostoReal', a.costo_real ?? a.costo_reparacion);
+    _sv('acExpediente', a.numero_expediente ?? a.no_expediente);
+    _sv('acObs', a.observaciones);
+
+    const selEdAcc = document.getElementById('acEstado');
+    if (selEdAcc) selEdAcc.value = a.estado_caso ?? a.estado ?? 'Reportado';
+
+    const btnSave = document.querySelector('#formNuevoAccidente button[onclick="guardarAccidente()"]');
+    if (btnSave) {
+        btnSave.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Actualizar Accidente';
+        btnSave.style.background = 'linear-gradient(135deg,#3a7bd5,#2563b0)';
+    }
+
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+// Eliminar accidente
+const eliminarAccidente = async (id) => {
+    const conf = await Swal.fire({
+        icon: 'warning',
+        title: '¿Eliminar accidente?',
+        text: 'Esta acción no se puede deshacer.',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#e05252',
+        cancelButtonColor: '#3a7bd5',
+        background: '#1a1d27',
+        color: '#e8eaf0',
+        customClass: { container: 'swal-over-modal' }
+    });
+
+    if (!conf.isConfirmed) return;
+
+    const body = new FormData();
+    body.append('id_accidente', id);
+
+    try {
+        // ── FIX: ruta corregida a plural /accidentes/ ─────────────────────────
+        const r = await fetch(`${BASE}/API/vehiculos/accidentes/eliminar`, { method: 'POST', body });
+        const d = await r.json();
+
+        Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
+        if (d.codigo === 1) {
+            await abrirFicha(fichaPlacaActual);
+            switchTab(document.querySelector('.ficha-tab[data-tab="accidentes"]'), 'accidentes');
+        }
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    }
+};
+
+
 // ── GENERAR EXPEDIENTE ────────────────────────────────────────────────────────
 const generarExpediente = (placa) => {
     window.open(`${BASE}/vehiculos/expediente?placa=${encodeURIComponent(placa)}`, '_blank');
@@ -1118,6 +1821,54 @@ window.toggleFormReparacion = toggleFormReparacion;
 window.guardarReparacion = guardarReparacion;
 window.editarReparacion = editarReparacion;
 window.eliminarReparacion = eliminarReparacion;
+// Seguros — alias dobles para coincidir con el HTML
+window.toggleFormSeguro = toggleFormSeguro;
+window.toggleFormSeguroFicha = toggleFormSeguro;
+window.guardarSeguroFicha = guardarSeguro;
+window.guardarSeguro = guardarSeguro;
+window.editarSeguro = editarSeguro;
+window.eliminarSeguro = eliminarSeguro;
+// Accidentes
+window.toggleFormAccidente = toggleFormAccidente;
+window.guardarAccidente = guardarAccidente;
+window.editarAccidente = editarAccidente;
+window.eliminarAccidente = eliminarAccidente;
+// ── DATA EN MEMORIA ─────────────────────────────────────
+let segurosData = [];
+let accidentesData = [];
+
+
+
+
+// ── SEGURO EN FORMULARIO NUEVO ────────────────────────────────────────────────
+let vehiculoTieneSeguro = false;
+
+const elegirSeguro = (opcion) => {
+
+    const btnSi = document.getElementById('btnSeguroSi');
+    const btnNo = document.getElementById('btnSeguroNo');
+    const panel = document.getElementById('panelFormSeguro');
+    const aviso = document.getElementById('avisoSinSeguro');
+
+    btnSi.classList.remove('sel-si');
+    btnNo.classList.remove('sel-no');
+
+    if (opcion === 'si') {
+        btnSi.classList.add('sel-si');
+        panel.style.display = 'block';
+        aviso.style.display = 'none';
+        vehiculoTieneSeguro = true;
+    } else {
+        btnNo.classList.add('sel-no');
+        panel.style.display = 'none';
+        aviso.style.display = 'flex';
+        vehiculoTieneSeguro = false;
+    }
+};
+
+
+// Exponer global (módulo ES)
+window.elegirSeguro = elegirSeguro;
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 cargarUnidades();

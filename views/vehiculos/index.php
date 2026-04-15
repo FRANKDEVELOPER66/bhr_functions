@@ -268,6 +268,83 @@
         color: var(--accent);
     }
 
+    /* ── SEGURO TOGGLE en formulario ── */
+    .seguro-opcion-wrap {
+        margin-bottom: 1rem;
+    }
+
+    .seguro-toggle-btns {
+        display: flex;
+        gap: 10px;
+        margin-top: .5rem;
+    }
+
+    .seguro-toggle-btn {
+        flex: 1;
+        padding: .85rem 1rem;
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        background: var(--dark-3);
+        color: var(--text-muted);
+        font-size: .9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: .5rem;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .seguro-toggle-btn:hover {
+        border-color: var(--text-muted);
+        color: var(--text-main);
+    }
+
+    .seguro-toggle-btn.sel-si {
+        background: rgba(76, 175, 125, .12);
+        color: var(--success);
+        border-color: var(--success);
+    }
+
+    .seguro-toggle-btn.sel-no {
+        background: rgba(232, 184, 75, .10);
+        color: var(--accent);
+        border-color: var(--accent);
+    }
+
+    .seguro-form-panel {
+        background: var(--dark-3);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-top: 1rem;
+        animation: slideDown .3s ease-out;
+    }
+
+    .seguro-aviso {
+        border-radius: 8px;
+        padding: .75rem 1rem;
+        font-size: .83rem;
+        margin-top: .75rem;
+        display: flex;
+        align-items: center;
+        gap: .6rem;
+    }
+
+    .seguro-aviso.aviso-ok {
+        background: rgba(76, 175, 125, .1);
+        color: var(--success);
+        border: 1px solid rgba(76, 175, 125, .3);
+    }
+
+    .seguro-aviso.aviso-warn {
+        background: rgba(232, 184, 75, .1);
+        color: var(--accent);
+        border: 1px solid rgba(232, 184, 75, .3);
+    }
+
     .btn-guardar {
         background: linear-gradient(135deg, var(--accent), var(--accent-2));
         border: none;
@@ -467,7 +544,7 @@
 
     .card-foto {
         width: 100%;
-        aspect-ratio: 1 / 1;
+        aspect-ratio: 1/1;
         background: var(--dark-3);
         position: relative;
         overflow: hidden;
@@ -533,6 +610,36 @@
         background: rgba(232, 184, 75, .25);
         color: var(--accent);
         border: 1px solid rgba(232, 184, 75, .4);
+    }
+
+    /* Badge seguro en card */
+    .card-seguro-badge {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        padding: .2rem .6rem;
+        border-radius: 20px;
+        font-size: .68rem;
+        font-weight: 700;
+        backdrop-filter: blur(8px);
+    }
+
+    .seguro-vigente {
+        background: rgba(76, 175, 125, .25);
+        color: #4caf7d;
+        border: 1px solid rgba(76, 175, 125, .4);
+    }
+
+    .seguro-vencido {
+        background: rgba(224, 82, 82, .25);
+        color: var(--danger);
+        border: 1px solid rgba(224, 82, 82, .4);
+    }
+
+    .seguro-ninguno {
+        background: rgba(124, 131, 152, .2);
+        color: var(--text-muted);
+        border: 1px solid rgba(124, 131, 152, .3);
     }
 
     .card-pdf-badge {
@@ -656,7 +763,7 @@
     }
 
     .empty-state {
-        grid-column: 1 / -1;
+        grid-column: 1/-1;
         text-align: center;
         padding: 4rem 2rem;
         color: var(--text-muted);
@@ -706,7 +813,7 @@
         }
     }
 
-    @media (max-width: 576px) {
+    @media (max-width:576px) {
         .cards-grid {
             grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
             gap: .75rem;
@@ -793,11 +900,162 @@
         margin-bottom: .15rem;
         font-size: .85rem;
     }
+
+    /* ── SEGURO CARD en ficha ── */
+    .seguro-card {
+        background: var(--dark-3);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .seguro-card::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: var(--success);
+    }
+
+    .seguro-card.vencido::before {
+        background: var(--danger);
+    }
+
+    .seguro-card.cancelado::before {
+        background: var(--text-muted);
+    }
+
+    .seguro-card.pronto::before {
+        background: var(--accent);
+    }
+
+    .seguro-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        padding: .25rem .75rem;
+        border-radius: 20px;
+        font-size: .72rem;
+        font-weight: 700;
+    }
+
+    .badge-vigente {
+        background: rgba(76, 175, 125, .2);
+        color: var(--success);
+        border: 1px solid rgba(76, 175, 125, .4);
+    }
+
+    .badge-vencido {
+        background: rgba(224, 82, 82, .2);
+        color: var(--danger);
+        border: 1px solid rgba(224, 82, 82, .4);
+    }
+
+    .badge-cancelado {
+        background: rgba(124, 131, 152, .15);
+        color: var(--text-muted);
+        border: 1px solid var(--border);
+    }
+
+    .badge-pronto {
+        background: rgba(232, 184, 75, .2);
+        color: var(--accent);
+        border: 1px solid rgba(232, 184, 75, .4);
+    }
+
+    /* ── ACCIDENTE CARD en ficha ── */
+    .accidente-card {
+        background: var(--dark-3);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .accidente-card::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: var(--danger);
+    }
+
+    .accidente-card.cerrado::before {
+        background: var(--text-muted);
+    }
+
+    .accidente-card.tramite::before {
+        background: var(--accent);
+    }
+
+    .badge-reportado {
+        background: rgba(224, 82, 82, .2);
+        color: var(--danger);
+        border: 1px solid rgba(224, 82, 82, .4);
+        font-size: .72rem;
+        font-weight: 700;
+        padding: .2rem .65rem;
+        border-radius: 20px;
+        display: inline-block;
+    }
+
+    .badge-tramite {
+        background: rgba(232, 184, 75, .2);
+        color: var(--accent);
+        border: 1px solid rgba(232, 184, 75, .4);
+        font-size: .72rem;
+        font-weight: 700;
+        padding: .2rem .65rem;
+        border-radius: 20px;
+        display: inline-block;
+    }
+
+    .badge-cerrado {
+        background: rgba(76, 175, 125, .15);
+        color: var(--success);
+        border: 1px solid rgba(76, 175, 125, .3);
+        font-size: .72rem;
+        font-weight: 700;
+        padding: .2rem .65rem;
+        border-radius: 20px;
+        display: inline-block;
+    }
+
+    .badge-sinseguro {
+        background: rgba(124, 131, 152, .15);
+        color: var(--text-muted);
+        border: 1px solid var(--border);
+        font-size: .72rem;
+        font-weight: 700;
+        padding: .2rem .65rem;
+        border-radius: 20px;
+        display: inline-block;
+    }
+
+    .costo-resumen {
+        background: rgba(224, 82, 82, .08);
+        border: 1px solid rgba(224, 82, 82, .2);
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
 </style>
 
 <div class="container-fluid mt-4">
 
-    <!-- ── HEADER ──────────────────────────────────────────────────────────── -->
+    <!-- HEADER -->
     <div class="veh-header">
         <div class="icon-wrap"><i class="bi bi-truck-front-fill"></i></div>
         <div>
@@ -806,12 +1064,12 @@
         </div>
     </div>
 
-    <!-- ── BOTÓN FLOTANTE ──────────────────────────────────────────────────── -->
+    <!-- BOTÓN FLOTANTE -->
     <button id="btnFlotante" class="floating-btn" title="Nuevo Vehículo">
         <i class="bi bi-plus"></i>
     </button>
 
-    <!-- ── FORMULARIO ──────────────────────────────────────────────────────── -->
+    <!-- FORMULARIO -->
     <div class="row justify-content-center mb-4" id="contenedorFormulario" style="display:none;">
         <div class="col-lg-11">
             <div class="form-container">
@@ -880,10 +1138,10 @@
                     <!-- Asignación -->
                     <div class="section-divider"><i class="bi bi-diagram-3"></i> Asignación</div>
                     <div class="row mb-3">
-                        <div class="col-md-12">
+                        <div class="col-md-6">
                             <label class="form-label"><i class="bi bi-people"></i> Unidad Asignada</label>
                             <select name="id_unidad" id="id_unidad" class="form-select" required>
-                                <option value="">Seleccione...</option>
+                                <option value="0">— Sin asignar —</option>
                                 <?php foreach ($destacamentos as $destacamento): ?>
                                     <option value="<?= $destacamento['id_unidad'] ?>">
                                         <?= $destacamento['unidad_destacamento'] ?>
@@ -892,16 +1150,12 @@
                             </select>
                         </div>
                         <div class="col-md-6 d-flex align-items-end">
-                            <div id="infoDestacamento" style="display:none; width:100%;"
-                                class="info-destacamento-panel">
+                            <div id="infoDestacamento" style="display:none;width:100%;" class="info-destacamento-panel">
                                 <div class="panel-titulo">
                                     <i class="bi bi-geo-alt-fill"></i>
                                     <span id="infoNombreDestacamento"></span>
                                 </div>
-                                <div>
-                                    <i class="bi bi-map"></i>
-                                    <span id="infoUbicacion"></span>
-                                </div>
+                                <div><i class="bi bi-map"></i> <span id="infoUbicacion"></span></div>
                             </div>
                         </div>
                     </div>
@@ -935,13 +1189,9 @@
                         <div class="col-md-5">
                             <label class="form-label"><i class="bi bi-camera"></i> Foto de Frente</label>
                             <div class="file-upload-area" id="areaFoto">
-                                <input type="file" name="foto_frente" id="foto_frente"
-                                    accept="image/jpeg,image/png,image/webp">
+                                <input type="file" name="foto_frente" id="foto_frente" accept="image/jpeg,image/png,image/webp">
                                 <div class="upload-icon"><i class="bi bi-image"></i></div>
-                                <div class="upload-label">
-                                    <span>Haz clic</span> o arrastra la foto aquí<br>
-                                    <small>JPG, PNG, WEBP — máx. 5 MB</small>
-                                </div>
+                                <div class="upload-label"><span>Haz clic</span> o arrastra la foto aquí<br><small>JPG, PNG, WEBP — máx. 5 MB</small></div>
                             </div>
                             <img id="fotoPreview" class="foto-preview" src="" alt="Preview">
                         </div>
@@ -950,10 +1200,7 @@
                             <div class="file-upload-area" id="areaPdf">
                                 <input type="file" name="tarjeta_pdf" id="tarjeta_pdf" accept="application/pdf">
                                 <div class="upload-icon"><i class="bi bi-file-pdf"></i></div>
-                                <div class="upload-label">
-                                    <span>Haz clic</span> o arrastra el PDF aquí<br>
-                                    <small>Solo PDF — máx. 10 MB</small>
-                                </div>
+                                <div class="upload-label"><span>Haz clic</span> o arrastra el PDF aquí<br><small>Solo PDF — máx. 10 MB</small></div>
                             </div>
                             <div id="pdfNombre" style="margin-top:.5rem;font-size:.8rem;color:var(--success);display:none;">
                                 <i class="bi bi-check-circle-fill"></i> <span></span>
@@ -968,8 +1215,88 @@
                         </div>
                     </div>
 
+                    <!-- ── SEGURO (NUEVO) ── -->
+                    <div class="section-divider"><i class="bi bi-shield-check"></i> Seguro del Vehículo</div>
+                    <div class="seguro-opcion-wrap">
+                        <label class="form-label"><i class="bi bi-question-circle"></i> ¿Este vehículo tiene seguro?</label>
+                        <div class="seguro-toggle-btns">
+                            <button type="button" class="seguro-toggle-btn" id="btnSeguroSi" onclick="elegirSeguro('si')">
+                                <i class="bi bi-shield-fill-check"></i> Sí, tiene seguro
+                            </button>
+                            <button type="button" class="seguro-toggle-btn" id="btnSeguroNo" onclick="elegirSeguro('no')">
+                                <i class="bi bi-shield-slash"></i> No tiene seguro
+                            </button>
+                        </div>
+
+                        <!-- Panel del formulario de seguro -->
+                        <div id="panelFormSeguro" style="display:none;">
+                            <div class="seguro-form-panel">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label"><i class="bi bi-building"></i> Aseguradora *</label>
+                                        <input type="text" name="seg_aseguradora" id="seg_aseguradora" class="form-control" placeholder="Ej: Seguros Universales, Mapfre...">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label"><i class="bi bi-file-text"></i> Número de Póliza *</label>
+                                        <input type="text" name="seg_numero_poliza" id="seg_numero_poliza" class="form-control" placeholder="POL-00001">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label"><i class="bi bi-shield"></i> Tipo de Cobertura</label>
+                                        <select name="seg_tipo_cobertura" id="seg_tipo_cobertura" class="form-select">
+                                            <option value="Básico">Básico</option>
+                                            <option value="Amplio">Amplio</option>
+                                            <option value="Todo riesgo">Todo riesgo</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label"><i class="bi bi-calendar-check"></i> Fecha Inicio *</label>
+                                        <input type="date" name="seg_fecha_inicio" id="seg_fecha_inicio" class="form-control">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label"><i class="bi bi-calendar-x"></i> Fecha Vencimiento *</label>
+                                        <input type="date" name="seg_fecha_vencimiento" id="seg_fecha_vencimiento" class="form-control">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label"><i class="bi bi-currency-dollar"></i> Prima Anual (Q)</label>
+                                        <input type="number" name="seg_prima_anual" id="seg_prima_anual" class="form-control" placeholder="0.00" step="0.01" min="0">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label"><i class="bi bi-person"></i> Agente de Contacto</label>
+                                        <input type="text" name="seg_agente_contacto" id="seg_agente_contacto" class="form-control" placeholder="Nombre del agente">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label"><i class="bi bi-telephone"></i> Teléfono Agente</label>
+                                        <input type="tel" name="seg_telefono_agente" id="seg_telefono_agente" class="form-control" placeholder="502-XXXX-XXXX">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label"><i class="bi bi-file-earmark-pdf"></i> Póliza PDF <small style="color:var(--text-muted);font-size:.7rem;text-transform:none;">(opcional)</small></label>
+                                        <div class="file-upload-area" id="areaPoliza">
+                                            <input type="file" name="archivo_poliza" id="archivo_poliza" accept="application/pdf">
+                                            <div class="upload-icon"><i class="bi bi-file-pdf"></i></div>
+                                            <div class="upload-label"><span>Haz clic</span> para subir la póliza<br><small>Solo PDF — máx. 10 MB</small></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label"><i class="bi bi-chat-text"></i> Observaciones</label>
+                                        <textarea name="seg_observaciones" id="seg_observaciones" class="form-control" rows="3" placeholder="Detalles adicionales sobre la cobertura..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="seguro-aviso aviso-ok mt-2">
+                                <i class="bi bi-info-circle-fill"></i>
+                                Podés omitir campos opcionales y completarlos después desde la ficha del vehículo.
+                            </div>
+                        </div>
+
+                        <!-- Aviso sin seguro -->
+                        <div id="avisoSinSeguro" style="display:none;" class="seguro-aviso aviso-warn mt-2">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            El vehículo quedará registrado sin seguro. Podés asignarlo después desde la ficha del vehículo.
+                        </div>
+                    </div>
+
                     <!-- Botones -->
-                    <div class="row">
+                    <div class="row mt-4">
                         <div class="col" id="contenedorBtnGuardar">
                             <button type="submit" form="formularioVehiculo" id="btnGuardar" class="btn-guardar">
                                 <i class="bi bi-save-fill me-2"></i> Registrar Vehículo
@@ -991,13 +1318,10 @@
         </div>
     </div>
 
-    <!-- ── VISTA DE CARTAS ─────────────────────────────────────────────────── -->
+    <!-- VISTA DE CARTAS -->
     <div id="contenedorTabla">
-
-        <!-- Filtros -->
         <div class="filtros-container">
             <label><i class="bi bi-funnel"></i> Filtrar:</label>
-
             <select id="filtroTipo" class="filtro-select">
                 <option value="">Todos los tipos</option>
                 <option value="Automóvil">Automóvil</option>
@@ -1008,168 +1332,102 @@
                 <option value="Blindado">Blindado</option>
                 <option value="Otro">Otro</option>
             </select>
-
             <select id="filtroEstado" class="filtro-select">
                 <option value="">Todos los estados</option>
                 <option value="Alta">Alta</option>
                 <option value="Baja">Baja</option>
                 <option value="Taller">Taller</option>
             </select>
-
-            <input type="text" id="filtroBusqueda" class="filtro-search"
-                placeholder="Buscar por placa, marca, modelo...">
-
-            <button id="btnLimpiarFiltros" class="btn-limpiar-filtros">
-                <i class="bi bi-x-circle"></i> Limpiar
-            </button>
-
-            <div class="contador-resultados">
-                Mostrando <span id="contadorVisible">0</span> vehículo(s)
-            </div>
+            <select id="filtroSeguro" class="filtro-select">
+                <option value="">Todos los seguros</option>
+                <option value="vigente">Con seguro vigente</option>
+                <option value="vencido">Seguro vencido</option>
+                <option value="ninguno">Sin seguro</option>
+            </select>
+            <input type="text" id="filtroBusqueda" class="filtro-search" placeholder="Buscar por placa, marca, modelo...">
+            <button id="btnLimpiarFiltros" class="btn-limpiar-filtros"><i class="bi bi-x-circle"></i> Limpiar</button>
+            <div class="contador-resultados">Mostrando <span id="contadorVisible">0</span> vehículo(s)</div>
         </div>
-
-        <!-- Grid de cartas -->
         <div class="cards-grid" id="cardsGrid">
-            <div class="empty-state">
-                <i class="bi bi-truck"></i>
+            <div class="empty-state"><i class="bi bi-truck"></i>
                 <p>Cargando vehículos...</p>
             </div>
         </div>
     </div>
 
-    <!-- ── MODAL FICHA VEHÍCULO ────────────────────────────────────────────── -->
+    <!-- MODAL FICHA VEHÍCULO -->
     <div id="modalFicha" style="
-        display:none;
-        position:fixed;inset:0;
-        background:rgba(0,0,0,.7);
-        backdrop-filter:blur(6px);
-        z-index:2000;
-        align-items:center;
-        justify-content:center;
-        padding:1rem;">
+        display:none; position:fixed; inset:0;
+        background:rgba(0,0,0,.7); backdrop-filter:blur(6px);
+        z-index:2000; align-items:center; justify-content:center; padding:1rem;">
 
         <div style="
-            background:var(--dark-2);
-            border:1px solid var(--border);
-            border-radius:18px;
-            width:100%;max-width:900px;
-            max-height:90vh;
-            display:flex;flex-direction:column;
-            box-shadow:0 30px 80px rgba(0,0,0,.6);
-            overflow:hidden;">
+            background:var(--dark-2); border:1px solid var(--border); border-radius:18px;
+            width:100%; max-width:960px; max-height:90vh;
+            display:flex; flex-direction:column;
+            box-shadow:0 30px 80px rgba(0,0,0,.6); overflow:hidden;">
 
             <!-- Header modal -->
-            <div style="
-                background:linear-gradient(90deg,var(--dark-3),#1f2335);
-                border-bottom:1px solid var(--border);
-                padding:1.25rem 1.5rem;
-                display:flex;align-items:center;gap:1rem;flex-shrink:0;">
-                <div style="
-                    width:42px;height:42px;border-radius:10px;
-                    background:linear-gradient(135deg,var(--accent),var(--accent-2));
-                    display:flex;align-items:center;justify-content:center;
-                    color:var(--dark);font-size:1.2rem;flex-shrink:0;">
+            <div style="background:linear-gradient(90deg,var(--dark-3),#1f2335);border-bottom:1px solid var(--border);padding:1.25rem 1.5rem;display:flex;align-items:center;gap:1rem;flex-shrink:0;">
+                <div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;color:var(--dark);font-size:1.2rem;flex-shrink:0;">
                     <i class="bi bi-card-checklist"></i>
                 </div>
                 <div style="flex:1;min-width:0;">
-                    <div id="fichaPlaca" style="
-                        font-family:'Rajdhani',sans-serif;font-size:1.4rem;
-                        font-weight:700;color:var(--accent);letter-spacing:2px;"></div>
+                    <div id="fichaPlaca" style="font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;color:var(--accent);letter-spacing:2px;"></div>
                     <div id="fichaVehiculo" style="font-size:.85rem;color:var(--text-muted);"></div>
                 </div>
-                <button onclick="cerrarFicha()" style="
-                    background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
-                    color:var(--danger);width:36px;height:36px;border-radius:8px;
-                    cursor:pointer;font-size:1rem;display:flex;align-items:center;
-                    justify-content:center;flex-shrink:0;">
+                <button onclick="cerrarFicha()" style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);color:var(--danger);width:36px;height:36px;border-radius:8px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
 
             <!-- Tabs -->
-            <div style="
-                display:flex;border-bottom:1px solid var(--border);
-                background:var(--dark-3);flex-shrink:0;">
-                <button class="ficha-tab activo" data-tab="info"
-                    onclick="switchTab(this,'info')" style="
-                    flex:1;padding:.85rem;border:none;background:transparent;
-                    color:var(--text-muted);cursor:pointer;font-size:.85rem;
-                    font-weight:600;letter-spacing:.4px;transition:all .2s;
-                    border-bottom:2px solid transparent;font-family:'Inter',sans-serif;">
+            <div style="display:flex;border-bottom:1px solid var(--border);background:var(--dark-3);flex-shrink:0;overflow-x:auto;">
+                <button class="ficha-tab activo" data-tab="info" onclick="switchTab(this,'info')" style="flex:1;min-width:100px;padding:.85rem;border:none;background:transparent;color:var(--text-muted);cursor:pointer;font-size:.82rem;font-weight:600;letter-spacing:.4px;transition:all .2s;border-bottom:2px solid transparent;font-family:'Inter',sans-serif;white-space:nowrap;">
                     <i class="bi bi-info-circle me-1"></i> Info General
                 </button>
-                <button class="ficha-tab" data-tab="servicios"
-                    onclick="switchTab(this,'servicios')" style="
-                    flex:1;padding:.85rem;border:none;background:transparent;
-                    color:var(--text-muted);cursor:pointer;font-size:.85rem;
-                    font-weight:600;letter-spacing:.4px;transition:all .2s;
-                    border-bottom:2px solid transparent;font-family:'Inter',sans-serif;">
+                <button class="ficha-tab" data-tab="servicios" onclick="switchTab(this,'servicios')" style="flex:1;min-width:100px;padding:.85rem;border:none;background:transparent;color:var(--text-muted);cursor:pointer;font-size:.82rem;font-weight:600;letter-spacing:.4px;transition:all .2s;border-bottom:2px solid transparent;font-family:'Inter',sans-serif;white-space:nowrap;">
                     <i class="bi bi-tools me-1"></i> Servicios
-                    <span id="badgeServicios" style="
-                        background:var(--accent);color:var(--dark);
-                        border-radius:20px;padding:.1rem .5rem;
-                        font-size:.7rem;margin-left:.3rem;">0</span>
+                    <span id="badgeServicios" style="background:var(--accent);color:var(--dark);border-radius:20px;padding:.1rem .5rem;font-size:.7rem;margin-left:.3rem;">0</span>
                 </button>
-                <button class="ficha-tab" data-tab="reparaciones"
-                    onclick="switchTab(this,'reparaciones')" style="
-                    flex:1;padding:.85rem;border:none;background:transparent;
-                    color:var(--text-muted);cursor:pointer;font-size:.85rem;
-                    font-weight:600;letter-spacing:.4px;transition:all .2s;
-                    border-bottom:2px solid transparent;font-family:'Inter',sans-serif;">
+                <button class="ficha-tab" data-tab="reparaciones" onclick="switchTab(this,'reparaciones')" style="flex:1;min-width:100px;padding:.85rem;border:none;background:transparent;color:var(--text-muted);cursor:pointer;font-size:.82rem;font-weight:600;letter-spacing:.4px;transition:all .2s;border-bottom:2px solid transparent;font-family:'Inter',sans-serif;white-space:nowrap;">
                     <i class="bi bi-wrench-adjustable me-1"></i> Reparaciones
-                    <span id="badgeReparaciones" style="
-                        background:var(--danger);color:#fff;
-                        border-radius:20px;padding:.1rem .5rem;
-                        font-size:.7rem;margin-left:.3rem;">0</span>
+                    <span id="badgeReparaciones" style="background:var(--danger);color:#fff;border-radius:20px;padding:.1rem .5rem;font-size:.7rem;margin-left:.3rem;">0</span>
+                </button>
+                <!-- TAB SEGURO (NUEVO) -->
+                <button class="ficha-tab" data-tab="seguro" onclick="switchTab(this,'seguro')" style="flex:1;min-width:100px;padding:.85rem;border:none;background:transparent;color:var(--text-muted);cursor:pointer;font-size:.82rem;font-weight:600;letter-spacing:.4px;transition:all .2s;border-bottom:2px solid transparent;font-family:'Inter',sans-serif;white-space:nowrap;">
+                    <i class="bi bi-shield-check me-1"></i> Seguro
+                    <span id="badgeSeguro" style="background:#3a7bd5;color:#fff;border-radius:20px;padding:.1rem .5rem;font-size:.7rem;margin-left:.3rem;">0</span>
+                </button>
+                <!-- TAB ACCIDENTES (NUEVO) -->
+                <button class="ficha-tab" data-tab="accidentes" onclick="switchTab(this,'accidentes')" style="flex:1;min-width:100px;padding:.85rem;border:none;background:transparent;color:var(--text-muted);cursor:pointer;font-size:.82rem;font-weight:600;letter-spacing:.4px;transition:all .2s;border-bottom:2px solid transparent;font-family:'Inter',sans-serif;white-space:nowrap;">
+                    <i class="bi bi-car-front me-1"></i> Accidentes
+                    <span id="badgeAccidentes" style="background:rgba(224,82,82,.85);color:#fff;border-radius:20px;padding:.1rem .5rem;font-size:.7rem;margin-left:.3rem;">0</span>
                 </button>
             </div>
 
             <!-- Contenido tabs -->
             <div style="overflow-y:auto;flex:1;padding:1.5rem;">
 
-                <!-- TAB INFO -->
+                <!-- TAB INFO (sin cambios) -->
                 <div id="tabInfo" class="ficha-tab-content">
                     <div style="display:grid;grid-template-columns:200px 1fr;gap:1.5rem;">
-                        <!-- Foto -->
                         <div>
-                            <div style="
-                                width:100%;aspect-ratio:1/1;border-radius:12px;
-                                overflow:hidden;background:var(--dark-3);
-                                border:2px solid var(--border);position:relative;">
-                                <img id="fichaFoto" src="" alt="" style="
-                                    width:100%;height:100%;object-fit:cover;display:none;">
-                                <div id="fichaNoFoto" style="
-                                    width:100%;height:100%;display:flex;flex-direction:column;
-                                    align-items:center;justify-content:center;
-                                    color:var(--text-muted);gap:.5rem;">
+                            <div style="width:100%;aspect-ratio:1/1;border-radius:12px;overflow:hidden;background:var(--dark-3);border:2px solid var(--border);position:relative;">
+                                <img id="fichaFoto" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
+                                <div id="fichaNoFoto" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-muted);gap:.5rem;">
                                     <i class="bi bi-truck-front" style="font-size:3rem;opacity:.3;"></i>
                                     <span style="font-size:.75rem;opacity:.5;">Sin foto</span>
                                 </div>
                             </div>
-
-                            <!-- Botón Ver Tarjeta PDF -->
-                            <a id="fichaPdfBtn" href="#" target="_blank" style="
-                                display:none;margin-top:.75rem;width:100%;
-                                padding:.6rem;border-radius:8px;text-align:center;
-                                background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
-                                color:#e05252;font-size:.8rem;font-weight:600;
-                                text-decoration:none;">
+                            <a id="fichaPdfBtn" href="#" target="_blank" style="display:none;margin-top:.75rem;width:100%;padding:.6rem;border-radius:8px;text-align:center;background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);color:#e05252;font-size:.8rem;font-weight:600;text-decoration:none;">
                                 <i class="bi bi-file-earmark-pdf-fill me-1"></i> Ver Tarjeta PDF
                             </a>
-
-                            <!-- Botón Generar Expediente — usa getElementById para evitar problema de scope del módulo JS -->
-                            <button
-                                onclick="generarExpediente(document.getElementById('fichaPlaca').textContent.trim())"
-                                style="
-                                    margin-top:.5rem;width:100%;padding:.6rem;border-radius:8px;
-                                    background:rgba(199,91,0,.15);border:1px solid rgba(199,91,0,.4);
-                                    color:#C75B00;font-size:.8rem;font-weight:600;cursor:pointer;
-                                    font-family:'Inter',sans-serif;">
+                            <button onclick="generarExpediente(document.getElementById('fichaPlaca').textContent.trim())"
+                                style="margin-top:.5rem;width:100%;padding:.6rem;border-radius:8px;background:rgba(199,91,0,.15);border:1px solid rgba(199,91,0,.4);color:#C75B00;font-size:.8rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;">
                                 <i class="bi bi-printer-fill me-1"></i> Generar Expediente
                             </button>
                         </div>
-
-                        <!-- Datos -->
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
                             <div class="ficha-dato"><span>Catalogo</span><strong id="fd-placa">—</strong></div>
                             <div class="ficha-dato"><span>N° Serie</span><strong id="fd-serie">—</strong></div>
@@ -1183,32 +1441,18 @@
                             <div class="ficha-dato"><span>Ingreso</span><strong id="fd-ingreso">—</strong></div>
                             <div class="ficha-dato"><span>Unidad</span><strong id="fd-unidad">—</strong></div>
                             <div class="ficha-dato"><span>Destacamento</span><strong id="fd-destacamento">—</strong></div>
-                            <div class="ficha-dato" style="grid-column:1/-1;">
-                                <span>Observaciones</span><strong id="fd-obs">—</strong>
-                            </div>
+                            <div class="ficha-dato" style="grid-column:1/-1;"><span>Observaciones</span><strong id="fd-obs">—</strong></div>
                         </div>
                     </div>
-
-                    <!-- Alerta km vencido -->
-                    <div id="fichaAlerta" style="display:none;margin-top:1.25rem;
-                        background:rgba(224,82,82,.1);border:1px solid rgba(224,82,82,.4);
-                        border-radius:10px;padding:1rem 1.25rem;
-                        align-items:center;gap:.75rem;">
-                        <i class="bi bi-exclamation-triangle-fill"
-                            style="color:var(--danger);font-size:1.4rem;flex-shrink:0;"></i>
+                    <div id="fichaAlerta" style="display:none;margin-top:1.25rem;background:rgba(224,82,82,.1);border:1px solid rgba(224,82,82,.4);border-radius:10px;padding:1rem 1.25rem;align-items:center;gap:.75rem;">
+                        <i class="bi bi-exclamation-triangle-fill" style="color:var(--danger);font-size:1.4rem;flex-shrink:0;"></i>
                         <div>
                             <div style="color:var(--danger);font-weight:700;font-size:.9rem;">¡Servicio vencido!</div>
                             <div id="fichaAlertaTexto" style="color:var(--text-muted);font-size:.82rem;"></div>
                         </div>
                     </div>
-
-                    <!-- Próximo servicio OK -->
-                    <div id="fichaProximo" style="display:none;margin-top:1.25rem;
-                        background:rgba(76,175,125,.1);border:1px solid rgba(76,175,125,.4);
-                        border-radius:10px;padding:1rem 1.25rem;
-                        align-items:center;gap:.75rem;">
-                        <i class="bi bi-check-circle-fill"
-                            style="color:var(--success);font-size:1.4rem;flex-shrink:0;"></i>
+                    <div id="fichaProximo" style="display:none;margin-top:1.25rem;background:rgba(76,175,125,.1);border:1px solid rgba(76,175,125,.4);border-radius:10px;padding:1rem 1.25rem;align-items:center;gap:.75rem;">
+                        <i class="bi bi-check-circle-fill" style="color:var(--success);font-size:1.4rem;flex-shrink:0;"></i>
                         <div>
                             <div style="color:var(--success);font-weight:700;font-size:.9rem;">Próximo servicio programado</div>
                             <div id="fichaProximoTexto" style="color:var(--text-muted);font-size:.82rem;"></div>
@@ -1216,125 +1460,214 @@
                     </div>
                 </div>
 
-                <!-- TAB SERVICIOS -->
+                <!-- TAB SERVICIOS (sin cambios) -->
                 <div id="tabServicios" class="ficha-tab-content" style="display:none;">
-                    <button id="btnToggleFormServicio" onclick="toggleFormServicio()" style="
-                        margin-bottom:1.25rem;
-                        background:linear-gradient(135deg,var(--accent),var(--accent-2));
-                        border:none;color:var(--dark);padding:.7rem 1.5rem;border-radius:8px;
-                        font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;
-                        cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:.5rem;">
+                    <button id="btnToggleFormServicio" onclick="toggleFormServicio()" style="margin-bottom:1.25rem;background:linear-gradient(135deg,var(--accent),var(--accent-2));border:none;color:var(--dark);padding:.7rem 1.5rem;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:.5rem;">
                         <i class="bi bi-plus-circle"></i> Registrar Nuevo Servicio
                     </button>
-                    <div id="formNuevoServicio" style="display:none;
-                        background:var(--dark-3);border:1px solid var(--border);
-                        border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
+                    <div id="formNuevoServicio" style="display:none;background:var(--dark-3);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
                         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;">
-                            <div>
-                                <label class="form-label"><i class="bi bi-gear"></i> Tipo *</label>
-                                <select id="svcTipo" class="form-select"></select>
-                            </div>
-                            <div>
-                                <label class="form-label"><i class="bi bi-calendar"></i> Fecha *</label>
-                                <input type="date" id="svcFecha" class="form-control">
-                            </div>
-                            <div>
-                                <label class="form-label"><i class="bi bi-speedometer"></i> KM al servicio *</label>
-                                <input type="number" id="svcKm" class="form-control" placeholder="0" min="0">
-                            </div>
-                            <div>
-                                <label class="form-label"><i class="bi bi-person"></i> Responsable</label>
-                                <input type="text" id="svcResponsable" class="form-control" placeholder="Nombre...">
-                            </div>
-                            <div style="grid-column:2/-1;">
-                                <label class="form-label"><i class="bi bi-chat-text"></i> Observaciones</label>
-                                <input type="text" id="svcObs" class="form-control" placeholder="Notas adicionales...">
-                            </div>
+                            <div><label class="form-label"><i class="bi bi-gear"></i> Tipo *</label><select id="svcTipo" class="form-select"></select></div>
+                            <div><label class="form-label"><i class="bi bi-calendar"></i> Fecha *</label><input type="date" id="svcFecha" class="form-control"></div>
+                            <div><label class="form-label"><i class="bi bi-speedometer"></i> KM al servicio *</label><input type="number" id="svcKm" class="form-control" placeholder="0" min="0"></div>
+                            <div><label class="form-label"><i class="bi bi-person"></i> Responsable</label><input type="text" id="svcResponsable" class="form-control" placeholder="Nombre..."></div>
+                            <div style="grid-column:2/-1;"><label class="form-label"><i class="bi bi-chat-text"></i> Observaciones</label><input type="text" id="svcObs" class="form-control" placeholder="Notas adicionales..."></div>
                         </div>
-                        <button onclick="guardarServicio()" style="
-                            margin-top:1rem;
-                            background:linear-gradient(135deg,var(--accent),var(--accent-2));
-                            border:none;color:var(--dark);padding:.7rem 1.5rem;border-radius:8px;
-                            font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;
-                            cursor:pointer;transition:all .2s;">
+                        <button onclick="guardarServicio()" style="margin-top:1rem;background:linear-gradient(135deg,var(--accent),var(--accent-2));border:none;color:var(--dark);padding:.7rem 1.5rem;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;">
                             <i class="bi bi-save me-1"></i> Guardar Servicio
                         </button>
                     </div>
                     <div id="tablaServiciosWrap"></div>
                 </div>
 
-                <!-- TAB REPARACIONES -->
+                <!-- TAB REPARACIONES (sin cambios) -->
                 <div id="tabReparaciones" class="ficha-tab-content" style="display:none;">
-                    <button id="btnToggleFormReparacion" onclick="toggleFormReparacion()" style="
-                        margin-bottom:1.25rem;
-                        background:linear-gradient(135deg,var(--danger),#c93030);
-                        border:none;color:#fff;padding:.7rem 1.5rem;border-radius:8px;
-                        font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;
-                        cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:.5rem;">
+                    <button id="btnToggleFormReparacion" onclick="toggleFormReparacion()" style="margin-bottom:1.25rem;background:linear-gradient(135deg,var(--danger),#c93030);border:none;color:#fff;padding:.7rem 1.5rem;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;display:flex;align-items:center;gap:.5rem;">
                         <i class="bi bi-plus-circle"></i> Registrar Nueva Reparación
                     </button>
-                    <div id="formNuevaReparacion" style="display:none;
-                        background:var(--dark-3);border:1px solid var(--border);
-                        border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
+                    <div id="formNuevaReparacion" style="display:none;background:var(--dark-3);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
                         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;">
-                            <div>
-                                <label class="form-label"><i class="bi bi-wrench"></i> Tipo *</label>
-                                <select id="repTipo" class="form-select"></select>
-                            </div>
-                            <div>
-                                <label class="form-label"><i class="bi bi-calendar"></i> Fecha Inicio *</label>
-                                <input type="date" id="repFechaInicio" class="form-control">
-                            </div>
-                            <div>
-                                <label class="form-label"><i class="bi bi-calendar-check"></i> Fecha Fin</label>
-                                <input type="date" id="repFechaFin" class="form-control">
-                            </div>
-                            <div style="grid-column:1/-1;">
-                                <label class="form-label"><i class="bi bi-card-text"></i> Descripción *</label>
-                                <input type="text" id="repDescripcion" class="form-control"
-                                    placeholder="Detalle de la reparación...">
-                            </div>
-                            <div>
-                                <label class="form-label"><i class="bi bi-speedometer"></i> KM al momento *</label>
-                                <input type="number" id="repKm" class="form-control" placeholder="0" min="0">
-                            </div>
-                            <div>
-                                <label class="form-label"><i class="bi bi-currency-dollar"></i> Costo (Q)</label>
-                                <input type="number" id="repCosto" class="form-control"
-                                    placeholder="0.00" step="0.01" min="0">
-                            </div>
-                            <div>
-                                <label class="form-label"><i class="bi bi-activity"></i> Estado</label>
-                                <select id="repEstado" class="form-select">
+                            <div><label class="form-label"><i class="bi bi-wrench"></i> Tipo *</label><select id="repTipo" class="form-select"></select></div>
+                            <div><label class="form-label"><i class="bi bi-calendar"></i> Fecha Inicio *</label><input type="date" id="repFechaInicio" class="form-control"></div>
+                            <div><label class="form-label"><i class="bi bi-calendar-check"></i> Fecha Fin</label><input type="date" id="repFechaFin" class="form-control"></div>
+                            <div style="grid-column:1/-1;"><label class="form-label"><i class="bi bi-card-text"></i> Descripción *</label><input type="text" id="repDescripcion" class="form-control" placeholder="Detalle de la reparación..."></div>
+                            <div><label class="form-label"><i class="bi bi-speedometer"></i> KM al momento *</label><input type="number" id="repKm" class="form-control" placeholder="0" min="0"></div>
+                            <div><label class="form-label"><i class="bi bi-currency-dollar"></i> Costo (Q)</label><input type="number" id="repCosto" class="form-control" placeholder="0.00" step="0.01" min="0"></div>
+                            <div><label class="form-label"><i class="bi bi-activity"></i> Estado</label><select id="repEstado" class="form-select">
                                     <option value="En proceso">En proceso</option>
                                     <option value="Finalizada">Finalizada</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="form-label"><i class="bi bi-shop"></i> Proveedor/Taller</label>
-                                <input type="text" id="repProveedor" class="form-control"
-                                    placeholder="Nombre del taller...">
-                            </div>
-                            <div>
-                                <label class="form-label"><i class="bi bi-person"></i> Responsable</label>
-                                <input type="text" id="repResponsable" class="form-control" placeholder="Nombre...">
-                            </div>
-                            <div>
-                                <label class="form-label"><i class="bi bi-chat-text"></i> Observaciones</label>
-                                <input type="text" id="repObs" class="form-control"
-                                    placeholder="Notas adicionales...">
-                            </div>
+                                </select></div>
+                            <div><label class="form-label"><i class="bi bi-shop"></i> Proveedor/Taller</label><input type="text" id="repProveedor" class="form-control" placeholder="Nombre del taller..."></div>
+                            <div><label class="form-label"><i class="bi bi-person"></i> Responsable</label><input type="text" id="repResponsable" class="form-control" placeholder="Nombre..."></div>
+                            <div><label class="form-label"><i class="bi bi-chat-text"></i> Observaciones</label><input type="text" id="repObs" class="form-control" placeholder="Notas adicionales..."></div>
                         </div>
-                        <button onclick="guardarReparacion()" style="
-                            margin-top:1rem;
-                            background:linear-gradient(135deg,var(--danger),#c93030);
-                            border:none;color:#fff;padding:.7rem 1.5rem;border-radius:8px;
-                            font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;
-                            cursor:pointer;transition:all .2s;">
+                        <button onclick="guardarReparacion()" style="margin-top:1rem;background:linear-gradient(135deg,var(--danger),#c93030);border:none;color:#fff;padding:.7rem 1.5rem;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;">
                             <i class="bi bi-save me-1"></i> Guardar Reparación
                         </button>
                     </div>
                     <div id="tablaReparacionesWrap"></div>
+                </div>
+
+                <!-- TAB SEGURO (NUEVO) -->
+                <div id="tabSeguro" class="ficha-tab-content" style="display:none;">
+                    <button id="btnToggleFormSeguro" onclick="toggleFormSeguroFicha()" style="margin-bottom:1.25rem;background:linear-gradient(135deg,#3a7bd5,#2563b0);border:none;color:#fff;padding:.7rem 1.5rem;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;display:flex;align-items:center;gap:.5rem;">
+                        <i class="bi bi-plus-circle"></i> Agregar Nuevo Seguro
+                    </button>
+
+                    <div id="formNuevoSeguroFicha" style="display:none;background:var(--dark-3);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;">
+                            <div style="grid-column:1/-1;">
+                                <label class="form-label"><i class="bi bi-building"></i> Aseguradora *</label>
+                                <input type="text" id="fsAseguradora" class="form-control" placeholder="Ej: Seguros Universales...">
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-file-text"></i> Número de Póliza *</label>
+                                <input type="text" id="fsNumeroPoliza" class="form-control" placeholder="POL-00001">
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-shield"></i> Tipo de Cobertura</label>
+                                <select id="fsTipoCobertura" class="form-select">
+                                    <option value="Básico">Básico</option>
+                                    <option value="Amplio">Amplio</option>
+                                    <option value="Todo riesgo">Todo riesgo</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-currency-dollar"></i> Prima Anual (Q)</label>
+                                <input type="number" id="fsPrima" class="form-control" placeholder="0.00" step="0.01" min="0">
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-calendar-check"></i> Fecha Inicio *</label>
+                                <input type="date" id="fsFechaInicio" class="form-control">
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-calendar-x"></i> Fecha Vencimiento *</label>
+                                <input type="date" id="fsFechaVenc" class="form-control">
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-person"></i> Agente de Contacto</label>
+                                <input type="text" id="fsAgente" class="form-control" placeholder="Nombre...">
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-telephone"></i> Teléfono Agente</label>
+                                <input type="tel" id="fsTelefono" class="form-control" placeholder="502-XXXX-XXXX">
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-file-earmark-pdf"></i> Póliza PDF <small style="font-size:.7rem;color:var(--text-muted);text-transform:none;">(opcional)</small></label>
+                                <div class="file-upload-area" id="areaPolizaFicha" style="padding:.75rem;">
+                                    <input type="file" id="fsArchivo" accept="application/pdf">
+                                    <div class="upload-icon" style="font-size:1.3rem;"><i class="bi bi-file-pdf"></i></div>
+                                    <div class="upload-label" style="font-size:.75rem;"><span>Subir PDF</span></div>
+                                </div>
+                            </div>
+                            <div style="grid-column:1/-1;">
+                                <label class="form-label"><i class="bi bi-chat-text"></i> Observaciones</label>
+                                <textarea id="fsObs" class="form-control" rows="2" placeholder="Detalles adicionales..."></textarea>
+                            </div>
+                        </div>
+                        <button onclick="guardarSeguroFicha()" style="margin-top:1rem;background:linear-gradient(135deg,#3a7bd5,#2563b0);border:none;color:#fff;padding:.7rem 1.5rem;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;">
+                            <i class="bi bi-save me-1"></i> Guardar Seguro
+                        </button>
+                    </div>
+
+                    <div id="tablaSeguroWrap"></div>
+                </div>
+
+                <!-- TAB ACCIDENTES (NUEVO) -->
+                <div id="tabAccidentes" class="ficha-tab-content" style="display:none;">
+                    <button id="btnToggleFormAccidente" onclick="toggleFormAccidente()" style="margin-bottom:1.25rem;background:linear-gradient(135deg,var(--danger),#c93030);border:none;color:#fff;padding:.7rem 1.5rem;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;display:flex;align-items:center;gap:.5rem;">
+                        <i class="bi bi-plus-circle"></i> Registrar Accidente / Choque
+                    </button>
+
+                    <div id="formNuevoAccidente" style="display:none;background:var(--dark-3);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;">
+                            <div>
+                                <label class="form-label"><i class="bi bi-calendar-event"></i> Fecha del Accidente *</label>
+                                <input type="date" id="acFecha" class="form-control">
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-geo-alt"></i> Lugar *</label>
+                                <input type="text" id="acLugar" class="form-control" placeholder="Dirección o referencia...">
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-exclamation-triangle"></i> Tipo de Accidente *</label>
+                                <select id="acTipo" class="form-select">
+                                    <option value="Colisión">Colisión</option>
+                                    <option value="Volcamiento">Volcamiento</option>
+                                    <option value="Atropello">Atropello</option>
+                                    <option value="Daño por tercero">Daño por tercero</option>
+                                    <option value="Robo parcial">Robo parcial</option>
+                                    <option value="Otro">Otro</option>
+                                </select>
+                            </div>
+                            <div style="grid-column:1/-1;">
+                                <label class="form-label"><i class="bi bi-card-text"></i> Descripción *</label>
+                                <textarea id="acDescripcion" class="form-control" rows="2" placeholder="Describa cómo ocurrió el accidente..."></textarea>
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-person"></i> Conductor Responsable</label>
+                                <input type="text" id="acConductor" class="form-control" placeholder="Nombre del conductor...">
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-hash"></i> No. Expediente / Reclamo</label>
+                                <input type="text" id="acExpediente" class="form-control" placeholder="EXP-0001">
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-activity"></i> Estado del Caso</label>
+                                <select id="acEstado" class="form-select">
+                                    <option value="Reportado">Reportado</option>
+                                    <option value="En trámite">En trámite</option>
+                                    <option value="Cerrado">Cerrado</option>
+                                    <option value="Sin seguro">Sin seguro</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-currency-dollar"></i> Costo Estimado (Q)</label>
+                                <input type="number" id="acCostoEst" class="form-control" placeholder="0.00" step="0.01" min="0">
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-currency-dollar"></i> Costo Real (Q)</label>
+                                <input type="number" id="acCostoReal" class="form-control" placeholder="0.00" step="0.01" min="0">
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-camera"></i> Fotos / Evidencia <small style="font-size:.7rem;color:var(--text-muted);text-transform:none;">(PDF, ZIP, JPG)</small></label>
+                                <div class="file-upload-area" id="areaFotosAcc" style="padding:.75rem;">
+                                    <input type="file" id="acFotos" accept=".pdf,.zip,.jpg,.jpeg,.png">
+                                    <div class="upload-icon" style="font-size:1.3rem;"><i class="bi bi-images"></i></div>
+                                    <div class="upload-label" style="font-size:.75rem;"><span>Subir evidencia</span></div>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-file-earmark-text"></i> Informe Policial <small style="font-size:.7rem;color:var(--text-muted);text-transform:none;">(PDF)</small></label>
+                                <div class="file-upload-area" id="areaInformeAcc" style="padding:.75rem;">
+                                    <input type="file" id="acInforme" accept="application/pdf">
+                                    <div class="upload-icon" style="font-size:1.3rem;"><i class="bi bi-file-pdf"></i></div>
+                                    <div class="upload-label" style="font-size:.75rem;"><span>Subir informe PDF</span></div>
+                                </div>
+                            </div>
+                            <div style="grid-column:1/-1;">
+                                <label class="form-label"><i class="bi bi-chat-text"></i> Observaciones</label>
+                                <textarea id="acObs" class="form-control" rows="2" placeholder="Notas adicionales..."></textarea>
+                            </div>
+                        </div>
+                        <button onclick="guardarAccidente()" style="margin-top:1rem;background:linear-gradient(135deg,var(--danger),#c93030);border:none;color:#fff;padding:.7rem 1.5rem;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;">
+                            <i class="bi bi-save me-1"></i> Guardar Accidente
+                        </button>
+                    </div>
+
+                    <!-- Resumen de costos -->
+                    <div id="resumenCostos" style="display:none;" class="costo-resumen">
+                        <div>
+                            <div style="font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">Costo total acumulado</div>
+                            <div id="costoTotalTexto" style="font-size:1.3rem;font-weight:700;color:var(--danger);font-family:'Rajdhani',sans-serif;">Q 0.00</div>
+                        </div>
+                        <div style="font-size:.8rem;color:var(--text-muted);">
+                            <i class="bi bi-exclamation-triangle-fill" style="color:var(--accent);"></i>
+                            Solo incluye costos reales registrados
+                        </div>
+                    </div>
+
+                    <div id="tablaAccidentesWrap"></div>
                 </div>
 
             </div><!-- fin contenido tabs -->

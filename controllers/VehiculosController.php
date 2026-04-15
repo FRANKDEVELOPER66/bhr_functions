@@ -100,6 +100,43 @@ class VehiculosController
             $vehiculo = new Vehiculos($_POST);
             $vehiculo->crear();
 
+            // ── Crear seguro si el usuario eligió "Sí tiene seguro" ──────────────────────
+            $tienSeguro = !empty($_POST['seg_aseguradora']) && !empty($_POST['seg_numero_poliza']) && !empty($_POST['seg_fecha_inicio']);
+
+            if ($tienSeguro) {
+                // Subir PDF de póliza si viene
+                $nombrePolizaPdf = null;
+                if (!empty($_FILES['archivo_poliza']['name'])) {
+                    $extPol = strtolower(pathinfo($_FILES['archivo_poliza']['name'], PATHINFO_EXTENSION));
+                    if ($extPol === 'pdf') {
+                        $nombrePolizaPdf = Vehiculos::subirArchivoSFTP(
+                            $_FILES['archivo_poliza'],
+                            'polizas',
+                            $_POST['placa'] . '_POL_' . time()
+                        );
+                    }
+                }
+
+                // Solo crear si no existe ya esa póliza
+                if (!\Model\Seguros::existePoliza(trim($_POST['seg_numero_poliza']))) {
+                    $seguro = new \Model\Seguros([
+                        'placa'             => $_POST['placa'],
+                        'aseguradora'       => htmlspecialchars(trim($_POST['seg_aseguradora'])),
+                        'numero_poliza'     => htmlspecialchars(trim($_POST['seg_numero_poliza'])),
+                        'tipo_cobertura'    => $_POST['seg_tipo_cobertura']    ?? 'Básico',
+                        'fecha_inicio'      => $_POST['seg_fecha_inicio'],
+                        'fecha_vencimiento' => $_POST['seg_fecha_vencimiento'] ?? null,
+                        'prima_anual'       => !empty($_POST['seg_prima_anual']) ? (float)$_POST['seg_prima_anual'] : null,
+                        'agente_contacto'   => htmlspecialchars($_POST['seg_agente_contacto']  ?? ''),
+                        'telefono_agente'   => htmlspecialchars($_POST['seg_telefono_agente']  ?? ''),
+                        'archivo_poliza'    => $nombrePolizaPdf,
+                        'estado'            => 'Vigente',
+                        'observaciones'     => htmlspecialchars($_POST['seg_observaciones']    ?? '')
+                    ]);
+                    $seguro->crear();
+                }
+            }
+
             http_response_code(200);
             echo json_encode(['codigo' => 1, 'mensaje' => 'Vehículo registrado exitosamente'], JSON_UNESCAPED_UNICODE);
         } catch (Exception $e) {
