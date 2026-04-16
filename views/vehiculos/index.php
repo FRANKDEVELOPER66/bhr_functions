@@ -1404,6 +1404,7 @@
                     <i class="bi bi-car-front me-1"></i> Accidentes
                     <span id="badgeAccidentes" style="background:rgba(224,82,82,.85);color:#fff;border-radius:20px;padding:.1rem .5rem;font-size:.7rem;margin-left:.3rem;">0</span>
                 </button>
+
             </div>
 
             <!-- Contenido tabs -->
@@ -1412,6 +1413,8 @@
                 <!-- TAB INFO (sin cambios) -->
                 <div id="tabInfo" class="ficha-tab-content">
                     <div style="display:grid;grid-template-columns:200px 1fr;gap:1.5rem;">
+
+                        <!-- Columna izquierda: foto y botones -->
                         <div>
                             <div style="width:100%;aspect-ratio:1/1;border-radius:12px;overflow:hidden;background:var(--dark-3);border:2px solid var(--border);position:relative;">
                                 <img id="fichaFoto" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
@@ -1420,14 +1423,31 @@
                                     <span style="font-size:.75rem;opacity:.5;">Sin foto</span>
                                 </div>
                             </div>
+
                             <a id="fichaPdfBtn" href="#" target="_blank" style="display:none;margin-top:.75rem;width:100%;padding:.6rem;border-radius:8px;text-align:center;background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);color:#e05252;font-size:.8rem;font-weight:600;text-decoration:none;">
                                 <i class="bi bi-file-earmark-pdf-fill me-1"></i> Ver Tarjeta PDF
                             </a>
-                            <button onclick="generarExpediente(document.getElementById('fichaPlaca').textContent.trim())"
-                                style="margin-top:.5rem;width:100%;padding:.6rem;border-radius:8px;background:rgba(199,91,0,.15);border:1px solid rgba(199,91,0,.4);color:#C75B00;font-size:.8rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;">
-                                <i class="bi bi-printer-fill me-1"></i> Generar Expediente
+
+                            <button id="btnIrAChequeo" onclick="abrirModalChequeo()"
+                                style="margin-top:.5rem;width:100%;padding:.75rem;border-radius:8px;
+                                background:linear-gradient(135deg,#6f42c1,#5a2d9e);
+                                border:none;color:#fff;font-size:.85rem;font-weight:700;
+                                cursor:pointer;font-family:'Rajdhani',sans-serif;
+                                display:flex;align-items:center;justify-content:center;gap:.5rem;
+                                box-shadow:0 4px 15px rgba(111,66,193,.3);">
+                                <i class="bi bi-clipboard2-check-fill"></i> Realizar Chequeo Mensual
+                            </button>
+
+                            <button id="btnGenerarExpediente" onclick="generarExpediente(document.getElementById('fichaPlaca').textContent.trim())"
+                                style="display:none;margin-top:.5rem;width:100%;padding:.75rem;border-radius:8px;
+                                background:linear-gradient(135deg,#C75B00,#a34900);
+                                border:none;color:#fff;font-size:.85rem;font-weight:700;
+                                cursor:pointer;font-family:'Rajdhani',sans-serif;">
+                                <i class="bi bi-printer-fill"> </i> Generar Expediente
                             </button>
                         </div>
+
+                        <!-- Columna derecha: datos del vehículo -->
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
                             <div class="ficha-dato"><span>Catalogo</span><strong id="fd-placa">—</strong></div>
                             <div class="ficha-dato"><span>N° Serie</span><strong id="fd-serie">—</strong></div>
@@ -1443,7 +1463,9 @@
                             <div class="ficha-dato"><span>Destacamento</span><strong id="fd-destacamento">—</strong></div>
                             <div class="ficha-dato" style="grid-column:1/-1;"><span>Observaciones</span><strong id="fd-obs">—</strong></div>
                         </div>
+
                     </div>
+
                     <div id="fichaAlerta" style="display:none;margin-top:1.25rem;background:rgba(224,82,82,.1);border:1px solid rgba(224,82,82,.4);border-radius:10px;padding:1rem 1.25rem;align-items:center;gap:.75rem;">
                         <i class="bi bi-exclamation-triangle-fill" style="color:var(--danger);font-size:1.4rem;flex-shrink:0;"></i>
                         <div>
@@ -1451,6 +1473,7 @@
                             <div id="fichaAlertaTexto" style="color:var(--text-muted);font-size:.82rem;"></div>
                         </div>
                     </div>
+
                     <div id="fichaProximo" style="display:none;margin-top:1.25rem;background:rgba(76,175,125,.1);border:1px solid rgba(76,175,125,.4);border-radius:10px;padding:1rem 1.25rem;align-items:center;gap:.75rem;">
                         <i class="bi bi-check-circle-fill" style="color:var(--success);font-size:1.4rem;flex-shrink:0;"></i>
                         <div>
@@ -1673,6 +1696,117 @@
             </div><!-- fin contenido tabs -->
         </div>
     </div><!-- fin modal -->
+
+    <!-- MODAL CHEQUEO -->
+    <div id="modalChequeo" style="
+    display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,.75); backdrop-filter:blur(6px);
+    z-index:3000; align-items:center; justify-content:center; padding:1rem;">
+
+        <div style="
+        background:var(--dark-2); border:1px solid var(--border); border-radius:18px;
+        width:100%; max-width:800px; max-height:92vh;
+        display:flex; flex-direction:column;
+        box-shadow:0 30px 80px rgba(0,0,0,.6); overflow:hidden;">
+
+            <!-- Header -->
+            <div style="background:linear-gradient(90deg,var(--dark-3),#1f2335);border-bottom:1px solid var(--border);padding:1.25rem 1.5rem;display:flex;align-items:center;gap:1rem;flex-shrink:0;">
+                <div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#6f42c1,#5a2d9e);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.2rem;flex-shrink:0;">
+                    <i class="bi bi-clipboard2-check"></i>
+                </div>
+                <div style="flex:1;">
+                    <div style="font-family:'Rajdhani',sans-serif;font-size:1.3rem;font-weight:700;color:#a78bfa;letter-spacing:1px;">Hoja de Chequeo</div>
+                    <div id="chequeoModalSubtitulo" style="font-size:.82rem;color:var(--text-muted);">Vehículo — Chequeo mensual</div>
+                </div>
+                <button onclick="cerrarModalChequeo()" style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);color:var(--danger);width:36px;height:36px;border-radius:8px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <!-- Contenido -->
+            <div style="overflow-y:auto;flex:1;padding:1.5rem;">
+
+                <!-- Historial -->
+                <div id="chequeoHistorialWrap" style="margin-bottom:1.5rem;"></div>
+
+                <!-- Alerta mes completado -->
+                <div id="chequeoAlertaMes" style="display:none;margin-bottom:1.25rem;background:rgba(76,175,125,.1);border:1px solid rgba(76,175,125,.3);border-radius:10px;padding:1rem 1.25rem;align-items:center;gap:.75rem;">
+                    <i class="bi bi-check-circle-fill" style="color:var(--success);font-size:1.4rem;flex-shrink:0;"></i>
+                    <div>
+                        <div style="color:var(--success);font-weight:700;font-size:.9rem;">Chequeo del mes completado</div>
+                        <div style="color:var(--text-muted);font-size:.82rem;">Ya existe un chequeo completado este mes.</div>
+                    </div>
+                </div>
+
+                <button id="btnNuevoChequeo" onclick="iniciarNuevoChequeo()"
+                    style="margin-bottom:1.25rem;background:linear-gradient(135deg,#6f42c1,#5a2d9e);border:none;color:#fff;padding:.7rem 1.5rem;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;display:flex;align-items:center;gap:.5rem;">
+                    <i class="bi bi-plus-circle"></i> Nuevo Chequeo Mensual
+                </button>
+
+                <!-- Formulario -->
+                <div id="formNuevoChequeo" style="display:none;background:var(--dark-3);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-bottom:1.25rem;">
+                        <div>
+                            <label class="form-label"><i class="bi bi-calendar"></i> Fecha *</label>
+                            <input type="date" id="chqFecha" class="form-control">
+                        </div>
+                        <div>
+                            <label class="form-label"><i class="bi bi-speedometer"></i> KM al chequeo *</label>
+                            <input type="number" id="chqKm" class="form-control" placeholder="0" min="0">
+                        </div>
+                        <div>
+                            <label class="form-label"><i class="bi bi-person"></i> Realizado por</label>
+                            <input type="text" id="chqResponsable" class="form-control" placeholder="Nombre...">
+                        </div>
+                    </div>
+
+                    <div style="overflow-x:auto;margin-bottom:1.25rem;">
+                        <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+                            <thead>
+                                <tr style="background:var(--dark-2);border-bottom:2px solid var(--border);">
+                                    <th style="padding:.6rem .75rem;text-align:left;color:var(--text-muted);font-size:.72rem;letter-spacing:.5px;text-transform:uppercase;width:40px;">No.</th>
+                                    <th style="padding:.6rem .75rem;text-align:left;color:var(--text-muted);font-size:.72rem;letter-spacing:.5px;text-transform:uppercase;">Descripción</th>
+                                    <th style="padding:.6rem .75rem;text-align:center;color:#4caf7d;font-size:.72rem;letter-spacing:.5px;text-transform:uppercase;width:60px;">BE</th>
+                                    <th style="padding:.6rem .75rem;text-align:center;color:#e8b84b;font-size:.72rem;letter-spacing:.5px;text-transform:uppercase;width:60px;">ME</th>
+                                    <th style="padding:.6rem .75rem;text-align:center;color:#e05252;font-size:.72rem;letter-spacing:.5px;text-transform:uppercase;width:60px;">MEI</th>
+                                    <th style="padding:.6rem .75rem;text-align:center;color:#7c8398;font-size:.72rem;letter-spacing:.5px;text-transform:uppercase;width:60px;">NT</th>
+                                    <th style="padding:.6rem .75rem;text-align:left;color:var(--text-muted);font-size:.72rem;letter-spacing:.5px;text-transform:uppercase;">Obs.</th>
+                                </tr>
+                            </thead>
+                            <tbody id="chequeoTablaItems"></tbody>
+                        </table>
+                    </div>
+
+                    <div style="margin-bottom:1rem;">
+                        <label class="form-label"><i class="bi bi-chat-text"></i> Observaciones Generales</label>
+                        <textarea id="chqObservaciones" class="form-control" rows="2" placeholder="Notas adicionales..."></textarea>
+                    </div>
+
+                    <div style="margin-bottom:1rem;">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:.4rem;">
+                            <span style="font-size:.78rem;color:var(--text-muted);">Progreso</span>
+                            <span id="chqProgreso" style="font-size:.78rem;color:var(--accent);font-weight:600;">0 / 17</span>
+                        </div>
+                        <div style="background:var(--dark-2);border-radius:20px;height:6px;overflow:hidden;">
+                            <div id="chqBarraProgreso" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--success));border-radius:20px;transition:width .3s ease;"></div>
+                        </div>
+                    </div>
+
+                    <button onclick="guardarChequeo()" id="btnGuardarChequeo"
+                        style="background:linear-gradient(135deg,#6f42c1,#5a2d9e);border:none;color:#fff;padding:.7rem 1.5rem;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;opacity:.5;"
+                        disabled>
+                        <i class="bi bi-clipboard2-check me-1"></i> Completar Chequeo
+                    </button>
+                    <button onclick="cancelarChequeo()"
+                        style="margin-left:.5rem;background:transparent;border:1.5px solid var(--danger);color:var(--danger);padding:.7rem 1.5rem;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;">
+                        <i class="bi bi-x-circle me-1"></i> Cancelar
+                    </button>
+                </div>
+
+                <div id="tablaChequeoWrap"></div>
+            </div>
+        </div>
+    </div>
 
 </div><!-- fin container -->
 

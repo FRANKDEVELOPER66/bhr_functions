@@ -22,8 +22,12 @@ class Vehiculos extends ActiveRecord
         'fecha_ingreso',
         'observaciones',
         'foto_frente',
+        'foto_lateral',    // ← nuevo
+        'foto_trasera',    // ← nuevo
         'tarjeta_pdf',
-        'id_unidad'      // ← agrega esto
+        'cert_inventario', // ← nuevo
+        'cert_sicoin',     // ← nuevo
+        'id_unidad'
     ];
 
     public $placa;
@@ -40,6 +44,10 @@ class Vehiculos extends ActiveRecord
     public $foto_frente;
     public $tarjeta_pdf;
     public $id_unidad;
+    public $foto_lateral;
+    public $foto_trasera;
+    public $cert_inventario;
+    public $cert_sicoin;
 
     public function __construct($args = [])
     {
@@ -55,6 +63,10 @@ class Vehiculos extends ActiveRecord
         $this->fecha_ingreso = $args['fecha_ingreso'] ?? date('Y-m-d');
         $this->observaciones = $args['observaciones'] ?? '';
         $this->foto_frente   = $args['foto_frente']   ?? null;
+        $this->foto_lateral  = $args['foto_lateral']  ?? null;
+        $this->foto_trasera  = $args['foto_trasera']  ?? null;
+        $this->cert_inventario = $args['cert_inventario'] ?? null;
+        $this->cert_sicoin     = $args['cert_sicoin']     ?? null;
         $this->tarjeta_pdf   = $args['tarjeta_pdf']   ?? null;
         $this->id_unidad = !empty($args['id_unidad']) ? (int)$args['id_unidad'] : null;
     }

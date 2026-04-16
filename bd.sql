@@ -85,15 +85,47 @@ CREATE TABLE `vehiculos` (
   `fecha_ingreso` date NOT NULL,
   `observaciones` text,
   `foto_frente` varchar(255) DEFAULT NULL,
+  `foto_lateral` varchar(255) DEFAULT NULL,
+  `foto_trasera` varchar(255) DEFAULT NULL,
   `tarjeta_pdf` varchar(255) DEFAULT NULL,
   `id_unidad` int DEFAULT NULL,
+  `cert_inventario` varchar(255) DEFAULT NULL COMMENT 'PDF certificación inventario',
+  `cert_sicoin` varchar(255) DEFAULT NULL COMMENT 'PDF certificación SICOIN Web',
   PRIMARY KEY (`placa`),
   UNIQUE KEY `numero_serie` (`numero_serie`),
   KEY `fk_vehiculo_unidad` (`id_unidad`),
   CONSTRAINT `fk_vehiculo_unidad` FOREIGN KEY (`id_unidad`) REFERENCES `unidades` (`id_unidad`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE `chequeos_vehiculo` (
+  `id_chequeo`        INT NOT NULL AUTO_INCREMENT,
+  `placa`             VARCHAR(20) NOT NULL,
+  `fecha_chequeo`     DATE NOT NULL,
+  `km_al_chequeo`     INT UNSIGNED NOT NULL DEFAULT 0,
+  `realizado_por`     VARCHAR(150) DEFAULT NULL,
+  `observaciones_gen` TEXT,
+  `estado`            ENUM('Pendiente','Completado') NOT NULL DEFAULT 'Pendiente',
+  PRIMARY KEY (`id_chequeo`),
+  KEY `fk_chequeo_vehiculo` (`placa`),
+  CONSTRAINT `fk_chequeo_vehiculo`
+    FOREIGN KEY (`placa`) REFERENCES `vehiculos` (`placa`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ============================================================
+-- TABLA: chequeo_items
+-- Detalle de cada ítem del chequeo
+-- ============================================================
+CREATE TABLE `chequeo_items` (
+  `id_item`      INT NOT NULL AUTO_INCREMENT,
+  `id_chequeo`   INT NOT NULL,
+  `numero_item`  TINYINT UNSIGNED NOT NULL COMMENT '1-17',
+  `resultado`    ENUM('BE','ME','MEI','NT') DEFAULT NULL,
+  `observacion`  VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (`id_item`),
+  KEY `fk_item_chequeo` (`id_chequeo`),
+  CONSTRAINT `fk_item_chequeo`
+    FOREIGN KEY (`id_chequeo`) REFERENCES `chequeos_vehiculo` (`id_chequeo`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================================
 -- TABLA: seguros

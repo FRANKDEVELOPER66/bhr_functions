@@ -563,16 +563,6 @@ const guardar = async (e) => {
             body.append('archivo_poliza', file);
         }
     }
-
-    /* ===============================
-       DEBUG (MUY IMPORTANTE)
-    =============================== */
-
-    // ver que se esta enviando
-    for (let pair of body.entries()) {
-        console.log(pair[0], pair[1]);
-    }
-
     /* ===============================
        ENVIAR
     =============================== */
@@ -893,16 +883,20 @@ const abrirFicha = async (placa) => {
     resetFormReparacion();
     resetFormSeguro();
     resetFormAccidente();
+    cancelarChequeo();
 
     switchTab(document.querySelector('.ficha-tab[data-tab="info"]'), 'info');
 
-    document.getElementById('fichaPlaca').textContent = placa;
-    document.getElementById('fichaVehiculo').textContent = 'Cargando...';
+    const fichaPlacaEl = document.getElementById('fichaPlaca');
+    const fichaVehiculoEl = document.getElementById('fichaVehiculo');
+    if (fichaPlacaEl) fichaPlacaEl.textContent = placa;
+    if (fichaVehiculoEl) fichaVehiculoEl.textContent = 'Cargando...';
 
     await cargarTiposServicio();
     await cargarTiposReparacion();
 
-    document.getElementById('svcFecha').value = new Date().toISOString().split('T')[0];
+    const svcFechaEl = document.getElementById('svcFecha');
+    if (svcFechaEl) svcFechaEl.value = new Date().toISOString().split('T')[0];
 
     try {
         const r = await fetch(`${BASE}/API/vehiculos/ficha?placa=${placa}`);
@@ -911,90 +905,113 @@ const abrirFicha = async (placa) => {
 
         const v = d.vehiculo;
 
-        // Header
-        document.getElementById('fichaPlaca').textContent = v.placa;
-        document.getElementById('fichaVehiculo').textContent = `${v.marca} ${v.modelo} · ${v.anio}`;
+        // ── Header ────────────────────────────────────────────────────────────
+        if (fichaPlacaEl) fichaPlacaEl.textContent = v.placa;
+        if (fichaVehiculoEl) fichaVehiculoEl.textContent = `${v.marca} ${v.modelo} · ${v.anio}`;
 
-        // Foto
+        // ── Foto ──────────────────────────────────────────────────────────────
         const img = document.getElementById('fichaFoto');
         const noFoto = document.getElementById('fichaNoFoto');
-        if (v.foto_url) {
-            img.src = v.foto_url;
-            img.style.display = 'block';
-            noFoto.style.display = 'none';
-        } else {
-            img.style.display = 'none';
-            noFoto.style.display = 'flex';
+        if (img && noFoto) {
+            if (v.foto_url) {
+                img.src = v.foto_url;
+                img.style.display = 'block';
+                noFoto.style.display = 'none';
+            } else {
+                img.style.display = 'none';
+                noFoto.style.display = 'flex';
+            }
         }
 
-        // PDF
+        // ── PDF ───────────────────────────────────────────────────────────────
         const pdfBtn = document.getElementById('fichaPdfBtn');
-        if (v.pdf_url) {
-            pdfBtn.href = v.pdf_url;
-            pdfBtn.style.display = 'block';
-        } else {
-            pdfBtn.style.display = 'none';
+        if (pdfBtn) {
+            if (v.pdf_url) {
+                pdfBtn.href = v.pdf_url;
+                pdfBtn.style.display = 'block';
+            } else {
+                pdfBtn.style.display = 'none';
+            }
         }
 
-        // Datos generales
-        document.getElementById('fd-placa').textContent = v.placa;
-        document.getElementById('fd-serie').textContent = v.numero_serie;
-        document.getElementById('fd-marca').textContent = v.marca;
-        document.getElementById('fd-modelo').textContent = v.modelo;
-        document.getElementById('fd-anio').textContent = v.anio;
-        document.getElementById('fd-color').textContent = v.color;
-        document.getElementById('fd-tipo').textContent = v.tipo;
-        document.getElementById('fd-km').textContent = Number(v.km_actuales).toLocaleString() + ' km';
-        document.getElementById('fd-ingreso').textContent = v.fecha_ingreso;
-        document.getElementById('fd-obs').textContent = v.observaciones || '—';
+        // ── Datos generales ───────────────────────────────────────────────────
+        const _set = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = val;
+        };
 
-        // Unidad y Destacamento en ficha
-        document.getElementById('fd-unidad').textContent = v.unidad_nombre || '—';
-        document.getElementById('fd-destacamento').textContent = v.destacamento_nombre
+        _set('fd-placa', v.placa);
+        _set('fd-serie', v.numero_serie);
+        _set('fd-marca', v.marca);
+        _set('fd-modelo', v.modelo);
+        _set('fd-anio', v.anio);
+        _set('fd-color', v.color);
+        _set('fd-tipo', v.tipo);
+        _set('fd-km', Number(v.km_actuales).toLocaleString() + ' km');
+        _set('fd-ingreso', v.fecha_ingreso);
+        _set('fd-obs', v.observaciones || '—');
+        _set('fd-unidad', v.unidad_nombre || '—');
+        _set('fd-destacamento', v.destacamento_nombre
             ? `${v.destacamento_nombre} (${v.destacamento_depto})`
-            : '—';
+            : '—');
 
-        // Estado con color
+        // ── Estado con color ──────────────────────────────────────────────────
         const estadoEl = document.getElementById('fd-estado');
-        const colores = { Alta: '#4caf7d', Baja: '#e05252', Taller: '#e8b84b' };
-        estadoEl.textContent = v.estado;
-        estadoEl.style.color = colores[v.estado] || 'inherit';
+        if (estadoEl) {
+            const colores = { Alta: '#4caf7d', Baja: '#e05252', Taller: '#e8b84b' };
+            estadoEl.textContent = v.estado;
+            estadoEl.style.color = colores[v.estado] || 'inherit';
+        }
 
-        // Alertas de servicio
-        document.getElementById('fichaAlerta').style.display = 'none';
-        document.getElementById('fichaProximo').style.display = 'none';
+        // ── Alertas de servicio ───────────────────────────────────────────────
+        const fichaAlertaEl = document.getElementById('fichaAlerta');
+        const fichaProximoEl = document.getElementById('fichaProximo');
+        if (fichaAlertaEl) fichaAlertaEl.style.display = 'none';
+        if (fichaProximoEl) fichaProximoEl.style.display = 'none';
 
         if (d.proximo_servicio) {
             const ps = d.proximo_servicio;
             if (d.alerta_km) {
-                document.getElementById('fichaAlerta').style.display = 'flex';
-                document.getElementById('fichaAlertaTexto').textContent =
-                    `${ps.tipo_nombre} — venció a los ${Number(ps.km_proximo_servicio).toLocaleString()} km. KM actual: ${Number(v.km_actuales).toLocaleString()} km`;
+                if (fichaAlertaEl) {
+                    fichaAlertaEl.style.display = 'flex';
+                    const textoEl = document.getElementById('fichaAlertaTexto');
+                    if (textoEl) textoEl.textContent =
+                        `${ps.tipo_nombre} — venció a los ${Number(ps.km_proximo_servicio).toLocaleString()} km. KM actual: ${Number(v.km_actuales).toLocaleString()} km`;
+                }
             } else {
-                document.getElementById('fichaProximo').style.display = 'flex';
-                let texto = `${ps.tipo_nombre} a los ${Number(ps.km_proximo_servicio).toLocaleString()} km`;
-                if (ps.fecha_proximo) texto += ` · Fecha límite: ${ps.fecha_proximo}`;
-                document.getElementById('fichaProximoTexto').textContent = texto;
+                if (fichaProximoEl) {
+                    fichaProximoEl.style.display = 'flex';
+                    let texto = `${ps.tipo_nombre} a los ${Number(ps.km_proximo_servicio).toLocaleString()} km`;
+                    if (ps.fecha_proximo) texto += ` · Fecha límite: ${ps.fecha_proximo}`;
+                    const textoEl = document.getElementById('fichaProximoTexto');
+                    if (textoEl) textoEl.textContent = texto;
+                }
             }
         }
 
-        document.getElementById('svcKm').value = v.km_actuales;
+        // ── KM para form de servicio ──────────────────────────────────────────
+        const svcKmEl = document.getElementById('svcKm');
+        if (svcKmEl) svcKmEl.value = v.km_actuales;
 
-        // Badges
-        document.getElementById('badgeServicios').textContent = d.servicios.length;
-        document.getElementById('badgeReparaciones').textContent = d.reparaciones.length;
-        const elBadgeSeg = document.getElementById('badgeSeguro');
-        if (elBadgeSeg) elBadgeSeg.textContent = (d.seguros || []).length;
-        const elBadgeAcc = document.getElementById('badgeAccidentes');
-        if (elBadgeAcc) elBadgeAcc.textContent = (d.accidentes || []).length;
+        // ── Badges ────────────────────────────────────────────────────────────
+        const _badge = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = val;
+        };
+        _badge('badgeServicios', d.servicios.length);
+        _badge('badgeReparaciones', d.reparaciones.length);
+        _badge('badgeSeguro', (d.seguros || []).length);
+        _badge('badgeAccidentes', (d.accidentes || []).length);
 
+        // ── Render tabs ───────────────────────────────────────────────────────
         renderTablaServicios(d.servicios);
         renderTablaReparaciones(d.reparaciones);
         renderTablaSeguros(d.seguros || []);
         renderTablaAccidentes(d.accidentes || []);
+        await cargarChequeos();
 
     } catch (err) {
-        console.error(err);
+        console.error('Error en abrirFicha:', err);
         Toast.fire({ icon: 'error', title: 'Error al cargar la ficha' });
     }
 };
@@ -1883,6 +1900,473 @@ const eliminarAccidente = async (id) => {
     }
 };
 
+// ════════════════════════════════════════════════════════════════════════════
+// ── CHEQUEOS ──────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+
+let chequeoActualId = null;
+let chequeoItemsDef = {};
+let chequeoResultados = {};
+
+const ITEMS_CHEQUEO = {
+    1: 'Tren delantero',
+    2: 'Tapicería',
+    3: 'Carrocería',
+    4: 'Pintura en general',
+    5: 'Siglas que identifican a los vehículos pintados en color naranja fluorescente y en el lugar correspondiente',
+    6: 'Lona del camión',
+    7: 'Luces y pide vías',
+    8: 'Sistema eléctrico',
+    9: 'Herramienta extra para reparación de vehículos',
+    10: 'Herramienta básica (Tricket, llave de chuchos, palanca o tubo, trozo, cable o cadena, señalizaciones etc.)',
+    11: 'Herramienta de emergencia (llave de ½, Nos. 12, 13, 14, alicate, llave ajustable, juego de desatornilladores)',
+    12: 'Repuestos necesarios de emergencias',
+    13: 'Neumático de repuesto',
+    14: 'Acumulador o batería',
+    15: 'Neumáticos',
+    16: 'Lubricante',
+    17: 'Odómetro'
+};
+
+// ── NAVEGAR AL TAB CHEQUEO DESDE INFO GENERAL ─────────────────────────────────
+const abrirModalChequeo = async () => {
+    const modal = document.getElementById('modalChequeo');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    const subtitulo = document.getElementById('chequeoModalSubtitulo');
+    if (subtitulo) subtitulo.textContent = `${fichaPlacaActual} — Chequeo mensual`;
+
+    // NO llamar cancelarChequeo() aquí — solo ocultar el formulario visualmente
+    const formChequeo = document.getElementById('formNuevoChequeo');
+    const btnChequeo = document.getElementById('btnNuevoChequeo');
+    if (formChequeo) formChequeo.style.display = 'none';
+    if (btnChequeo) btnChequeo.style.display = 'flex';
+
+    await cargarChequeos();
+};
+
+const cerrarModalChequeo = () => {
+    document.getElementById('modalChequeo').style.display = 'none';
+    document.body.style.overflow = '';
+    cancelarChequeo();
+};
+
+// ── ACTUALIZAR BOTONES SEGÚN ESTADO DEL CHEQUEO ───────────────────────────────
+const actualizarBotonesExpediente = (tieneChequeoMes) => {
+    const btnChequeo = document.getElementById('btnIrAChequeo');
+    const btnExpediente = document.getElementById('btnGenerarExpediente');
+
+    if (!btnChequeo || !btnExpediente) return; // ← guard
+
+    if (tieneChequeoMes) {
+        btnChequeo.style.display = 'none';
+        btnExpediente.style.display = 'flex';
+    } else {
+        btnChequeo.style.display = 'flex';
+        btnExpediente.style.display = 'none';
+    }
+};
+
+// ── CARGAR TAB CHEQUEO ────────────────────────────────────────────────────────
+const cargarChequeos = async () => {
+    try {
+        const r = await fetch(`${BASE}/API/vehiculos/chequeos/listar?placa=${fichaPlacaActual}`);
+        const d = await r.json();
+        if (d.codigo !== 1) return;
+
+        const badge = document.getElementById('badgeChequeo');
+        if (badge) badge.textContent = d.datos.length;
+
+        const alerta = document.getElementById('chequeoAlertaMes');
+        if (alerta) alerta.style.display = d.tiene_chequeo_mes ? 'flex' : 'none';
+
+        actualizarBotonesExpediente(d.tiene_chequeo_mes);
+        renderTablaChequeos(d.datos);
+        actualizarBotonesExpediente(d.tiene_chequeo_mes);
+
+    } catch (err) {
+        console.error('Error cargando chequeos:', err);
+        // No relanzar — para no interrumpir abrirFicha
+    }
+};
+
+// ── RENDER HISTORIAL ──────────────────────────────────────────────────────────
+const renderTablaChequeos = (chequeos) => {
+    const wrap = document.getElementById('chequeoHistorialWrap') || document.getElementById('tablaChequeoWrap');
+    if (!wrap) return;
+
+    if (!chequeos.length) {
+        wrap.innerHTML = `
+            <div style="text-align:center;padding:3rem;color:var(--text-muted);">
+                <i class="bi bi-clipboard2-x" style="font-size:3rem;opacity:.2;display:block;margin-bottom:1rem;"></i>
+                <p>No hay chequeos registrados para este vehículo</p>
+            </div>`;
+        return;
+    }
+
+    wrap.innerHTML = chequeos.map(c => {
+        const estadoColor = c.estado === 'Completado' ? 'var(--success)' : 'var(--accent)';
+        const estadoBg = c.estado === 'Completado' ? 'rgba(76,175,125,.15)' : 'rgba(232,184,75,.15)';
+        const estadoBorder = c.estado === 'Completado' ? 'rgba(76,175,125,.3)' : 'rgba(232,184,75,.3)';
+
+        return `
+        <div class="svc-row" style="grid-template-columns:1fr 1fr 1fr 1fr auto;">
+            <div>
+                <div class="svc-label">Fecha</div>
+                <div class="svc-val">${c.fecha_chequeo}</div>
+            </div>
+            <div>
+                <div class="svc-label">KM</div>
+                <div class="svc-val">${Number(c.km_al_chequeo).toLocaleString()} km</div>
+            </div>
+            <div>
+                <div class="svc-label">Realizado por</div>
+                <div class="svc-val">${c.realizado_por || '—'}</div>
+            </div>
+            <div>
+                <div class="svc-label">Estado</div>
+                <div class="svc-val">
+                    <span style="background:${estadoBg};color:${estadoColor};border:1px solid ${estadoBorder};padding:.2rem .65rem;border-radius:20px;font-size:.72rem;font-weight:700;">
+                        ${c.estado}
+                    </span>
+                </div>
+            </div>
+            <div style="display:flex;gap:.4rem;align-items:center;">
+                ${c.estado === 'Completado' ? `
+                <button onclick="verChequeo(${c.id_chequeo})" style="
+                    background:rgba(111,66,193,.15);border:1px solid rgba(111,66,193,.3);
+                    color:#a78bfa;border-radius:6px;padding:.35rem .6rem;
+                    cursor:pointer;font-size:.8rem;" title="Ver detalle">
+                    <i class="bi bi-eye"></i>
+                </button>` : `
+                <button onclick="continuarChequeo(${c.id_chequeo})" style="
+                    background:rgba(232,184,75,.15);border:1px solid rgba(232,184,75,.3);
+                    color:var(--accent);border-radius:6px;padding:.35rem .6rem;
+                    cursor:pointer;font-size:.8rem;" title="Continuar chequeo">
+                    <i class="bi bi-pencil-square"></i>
+                </button>`}
+                <button onclick="eliminarChequeo(${c.id_chequeo})" style="
+                    background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
+                    color:var(--danger);border-radius:6px;padding:.35rem .6rem;
+                    cursor:pointer;font-size:.8rem;" title="Eliminar">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </div>
+        </div>
+        ${c.observaciones_gen ? `
+        <div style="font-size:.75rem;color:var(--text-muted);margin-top:-.4rem;margin-bottom:.6rem;padding-left:.25rem;">
+            <i class="bi bi-chat-text"></i> ${c.observaciones_gen}
+        </div>` : ''}`;
+    }).join('');
+};
+
+// ── GENERAR FILAS DE LA TABLA ─────────────────────────────────────────────────
+const generarFilasChequeo = (itemsExistentes = {}) => {
+    const tbody = document.getElementById('chequeoTablaItems');
+    if (!tbody) return;
+
+    tbody.innerHTML = Object.entries(ITEMS_CHEQUEO).map(([num, desc]) => {
+        const n = parseInt(num);
+        const res = itemsExistentes[n] || {};
+
+        const opciones = ['BE', 'ME', 'MEI', 'NT'];
+        const colores = { BE: '#4caf7d', ME: '#e8b84b', MEI: '#e05252', NT: '#7c8398' };
+
+        const radiosCols = opciones.map(op => `
+            <td style="text-align:center;padding:.5rem .25rem;">
+                <label style="cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                    <input type="radio"
+                        name="chq_item_${n}"
+                        value="${op}"
+                        ${res.resultado === op ? 'checked' : ''}
+                        onchange="onChequeoItemChange(${n}, '${op}')"
+                        style="
+                            appearance:none;
+                            width:22px;height:22px;
+                            border-radius:50%;
+                            border:2px solid ${colores[op]};
+                            background:${res.resultado === op ? colores[op] : 'transparent'};
+                            cursor:pointer;
+                            transition:all .2s;
+                            flex-shrink:0;">
+                </label>
+            </td>`
+        ).join('');
+
+        return `
+            <tr style="border-bottom:1px solid var(--border);transition:background .15s;"
+                onmouseover="this.style.background='rgba(255,255,255,.03)'"
+                onmouseout="this.style.background='transparent'">
+                <td style="padding:.6rem .75rem;color:var(--text-muted);font-size:.8rem;font-weight:600;">
+                    ${String(n).padStart(2, '0')}
+                </td>
+                <td style="padding:.6rem .75rem;color:var(--text-main);font-size:.82rem;line-height:1.4;">
+                    ${desc}
+                </td>
+                ${radiosCols}
+                <td style="padding:.5rem .75rem;">
+                    <input type="text"
+                        id="chq_obs_${n}"
+                        value="${res.observacion || ''}"
+                        placeholder="..."
+                        class="form-control"
+                        style="font-size:.75rem;padding:.3rem .5rem !important;"
+                        oninput="onChequeoObsChange(${n}, this.value)">
+                </td>
+            </tr>`;
+    }).join('');
+
+    if (Object.keys(itemsExistentes).length) {
+        chequeoResultados = {};
+        Object.entries(itemsExistentes).forEach(([num, data]) => {
+            if (data.resultado) {
+                chequeoResultados[parseInt(num)] = {
+                    resultado: data.resultado,
+                    observacion: data.observacion || ''
+                };
+            }
+        });
+        actualizarProgreso();
+    }
+};
+
+// ── EVENTOS DE CAMBIO ─────────────────────────────────────────────────────────
+const onChequeoItemChange = (num, valor) => {
+    if (!chequeoResultados[num]) chequeoResultados[num] = {};
+    chequeoResultados[num].resultado = valor;
+
+    const colores = { BE: '#4caf7d', ME: '#e8b84b', MEI: '#e05252', NT: '#7c8398' };
+    document.querySelectorAll(`input[name="chq_item_${num}"]`).forEach(radio => {
+        radio.style.background = radio.value === valor ? colores[radio.value] : 'transparent';
+    });
+
+    actualizarProgreso();
+};
+
+const onChequeoObsChange = (num, valor) => {
+    if (!chequeoResultados[num]) chequeoResultados[num] = {};
+    chequeoResultados[num].observacion = valor;
+};
+
+const actualizarProgreso = () => {
+    const total = Object.keys(ITEMS_CHEQUEO).length;
+    const completados = Object.values(chequeoResultados).filter(v => v.resultado).length;
+    const pct = Math.round((completados / total) * 100);
+
+    const textoEl = document.getElementById('chqProgreso');
+    const barraEl = document.getElementById('chqBarraProgreso');
+    const btnEl = document.getElementById('btnGuardarChequeo');
+
+    if (textoEl) textoEl.textContent = `${completados} / ${total}`;
+    if (barraEl) barraEl.style.width = `${pct}%`;
+
+    if (btnEl) {
+        const todosCompletos = completados === total;
+        btnEl.disabled = !todosCompletos;
+        btnEl.style.opacity = todosCompletos ? '1' : '.5';
+    }
+};
+
+// ── INICIAR NUEVO CHEQUEO ─────────────────────────────────────────────────────
+const iniciarNuevoChequeo = async () => {
+    // Si ya hay un chequeo activo, no crear otro
+    if (chequeoActualId !== null) {
+        document.getElementById('formNuevoChequeo').style.display = 'block';
+        document.getElementById('btnNuevoChequeo').style.display = 'none';
+        return;
+    }
+
+    chequeoResultados = {};
+
+    const body = new FormData();
+    body.append('placa', fichaPlacaActual);
+    body.append('fecha_chequeo', new Date().toISOString().split('T')[0]);
+    body.append('km_al_chequeo', document.getElementById('fd-km')?.textContent?.replace(/\D/g, '') || '0');
+
+    try {
+        const r = await fetch(`${BASE}/API/vehiculos/chequeos/crear`, { method: 'POST', body });
+        const d = await r.json();
+
+        if (d.codigo !== 1) {
+            Toast.fire({ icon: 'error', title: d.mensaje });
+            return;
+        }
+
+        chequeoActualId = d.id_chequeo;
+
+        document.getElementById('formNuevoChequeo').style.display = 'block';
+        document.getElementById('btnNuevoChequeo').style.display = 'none';
+        document.getElementById('chqFecha').value = new Date().toISOString().split('T')[0];
+        document.getElementById('chqKm').value = document.getElementById('fd-km')?.textContent?.replace(/\D/g, '') || '';
+
+        generarFilasChequeo();
+        actualizarProgreso();
+
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    }
+};
+
+// ── CONTINUAR CHEQUEO PENDIENTE ───────────────────────────────────────────────
+const continuarChequeo = async (id) => {
+    try {
+        const r = await fetch(`${BASE}/API/vehiculos/chequeos/obtener?id=${id}`);
+        const d = await r.json();
+        if (d.codigo !== 1) return;
+
+        chequeoActualId = id;
+        chequeoResultados = {};
+
+        const itemsMap = {};
+        (d.datos.items || []).forEach(item => {
+            itemsMap[item.numero_item] = {
+                resultado: item.resultado,
+                observacion: item.observacion
+            };
+        });
+
+        document.getElementById('formNuevoChequeo').style.display = 'block';
+        document.getElementById('btnNuevoChequeo').style.display = 'none';
+        document.getElementById('chqFecha').value = d.datos.fecha_chequeo;
+        document.getElementById('chqKm').value = d.datos.km_al_chequeo;
+        document.getElementById('chqResponsable').value = d.datos.realizado_por || '';
+        document.getElementById('chqObservaciones').value = d.datos.observaciones_gen || '';
+
+        generarFilasChequeo(itemsMap);
+
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    }
+};
+
+// ── VER CHEQUEO COMPLETADO ────────────────────────────────────────────────────
+const verChequeo = async (id) => {
+    try {
+        const r = await fetch(`${BASE}/API/vehiculos/chequeos/obtener?id=${id}`);
+        const d = await r.json();
+        if (d.codigo !== 1) return;
+
+        const colores = { BE: '#4caf7d', ME: '#e8b84b', MEI: '#e05252', NT: '#7c8398' };
+
+        const itemsMap = {};
+        (d.datos.items || []).forEach(item => { itemsMap[item.numero_item] = item; });
+
+        const filas = Object.entries(ITEMS_CHEQUEO).map(([num, desc]) => {
+            const item = itemsMap[parseInt(num)] || {};
+            const color = item.resultado ? colores[item.resultado] : 'var(--text-muted)';
+            return `
+                <tr style="border-bottom:1px solid var(--border);">
+                    <td style="padding:.5rem .75rem;color:var(--text-muted);font-size:.8rem;">${String(num).padStart(2, '0')}</td>
+                    <td style="padding:.5rem .75rem;color:var(--text-main);font-size:.82rem;">${desc}</td>
+                    <td style="padding:.5rem .75rem;text-align:center;">
+                        <span style="color:${color};font-weight:700;font-size:.82rem;">${item.resultado || '—'}</span>
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.78rem;color:var(--text-muted);">${item.observacion || ''}</td>
+                </tr>`;
+        }).join('');
+
+        await Swal.fire({
+            title: `Chequeo — ${d.datos.fecha_chequeo}`,
+            html: `
+                <div style="text-align:left;font-size:.82rem;color:#7c8398;margin-bottom:1rem;">
+                    <i class="bi bi-speedometer"></i> ${Number(d.datos.km_al_chequeo).toLocaleString()} km
+                    ${d.datos.realizado_por ? ' · <i class="bi bi-person"></i> ' + d.datos.realizado_por : ''}
+                </div>
+                <div style="overflow-x:auto;max-height:400px;overflow-y:auto;">
+                    <table style="width:100%;border-collapse:collapse;">
+                        <thead>
+                            <tr style="background:#1a1d27;position:sticky;top:0;">
+                                <th style="padding:.5rem;text-align:left;color:#7c8398;font-size:.7rem;">No.</th>
+                                <th style="padding:.5rem;text-align:left;color:#7c8398;font-size:.7rem;">Descripción</th>
+                                <th style="padding:.5rem;text-align:center;color:#7c8398;font-size:.7rem;">Resultado</th>
+                                <th style="padding:.5rem;text-align:left;color:#7c8398;font-size:.7rem;">Obs.</th>
+                            </tr>
+                        </thead>
+                        <tbody>${filas}</tbody>
+                    </table>
+                </div>
+                ${d.datos.observaciones_gen ? `<div style="margin-top:1rem;padding:.75rem;background:#242837;border-radius:8px;font-size:.82rem;color:#7c8398;text-align:left;"><i class="bi bi-chat-text"></i> ${d.datos.observaciones_gen}</div>` : ''}`,
+            background: '#1a1d27',
+            color: '#e8eaf0',
+            confirmButtonColor: '#6f42c1',
+            confirmButtonText: 'Cerrar',
+            width: '700px',
+            customClass: { container: 'swal-over-modal' }
+        });
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    }
+};
+
+// ── GUARDAR CHEQUEO COMPLETO ──────────────────────────────────────────────────
+const guardarChequeo = async () => {
+    const items = Object.entries(chequeoResultados).map(([num, data]) => ({
+        numero_item: parseInt(num),
+        resultado: data.resultado,
+        observacion: data.observacion || ''
+    }));
+
+    const body = new FormData();
+    body.append('id_chequeo', chequeoActualId);
+    body.append('items', JSON.stringify(items));
+    body.append('observaciones_gen', document.getElementById('chqObservaciones').value);
+
+    try {
+        const r = await fetch(`${BASE}/API/vehiculos/chequeos/completar`, { method: 'POST', body });
+        const d = await r.json();
+
+        Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
+
+        if (d.codigo === 1) {
+            cancelarChequeo();
+            await cargarChequeos();
+        }
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    }
+};
+
+// ── CANCELAR FORMULARIO ───────────────────────────────────────────────────────
+const cancelarChequeo = () => {
+    const formChequeo = document.getElementById('formNuevoChequeo');
+    const btnChequeo = document.getElementById('btnNuevoChequeo');
+    if (formChequeo) formChequeo.style.display = 'none';
+    if (btnChequeo) btnChequeo.style.display = 'flex';
+    chequeoActualId = null;
+    chequeoResultados = {};
+};
+
+// ── ELIMINAR CHEQUEO ──────────────────────────────────────────────────────────
+const eliminarChequeo = async (id) => {
+    const conf = await Swal.fire({
+        icon: 'warning',
+        title: '¿Eliminar chequeo?',
+        text: 'Esta acción no se puede deshacer.',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#e05252',
+        cancelButtonColor: '#3a7bd5',
+        background: '#1a1d27',
+        color: '#e8eaf0',
+        customClass: { container: 'swal-over-modal' }
+    });
+
+    if (!conf.isConfirmed) return;
+
+    const body = new FormData();
+    body.append('id_chequeo', id);
+
+    try {
+        const r = await fetch(`${BASE}/API/vehiculos/chequeos/eliminar`, { method: 'POST', body });
+        const d = await r.json();
+        Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
+        if (d.codigo === 1) await cargarChequeos();
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    }
+};
 
 // ── GENERAR EXPEDIENTE ────────────────────────────────────────────────────────
 const generarExpediente = (placa) => {
@@ -1903,6 +2387,7 @@ btnCancelar.addEventListener('click', cancelar);
 btnModificar.addEventListener('click', modificar);
 
 // ── EXPONER GLOBALES (type="module") ──────────────────────────────────────────
+window.irAChequeo = abrirModalChequeo;
 window.generarExpediente = generarExpediente;
 window.abrirFicha = abrirFicha;
 window.cerrarFicha = cerrarFicha;
@@ -1926,6 +2411,16 @@ window.toggleFormAccidente = toggleFormAccidente;
 window.guardarAccidente = guardarAccidente;
 window.editarAccidente = editarAccidente;
 window.eliminarAccidente = eliminarAccidente;
+window.iniciarNuevoChequeo = iniciarNuevoChequeo;
+window.continuarChequeo = continuarChequeo;
+window.verChequeo = verChequeo;
+window.guardarChequeo = guardarChequeo;
+window.cancelarChequeo = cancelarChequeo;
+window.eliminarChequeo = eliminarChequeo;
+window.onChequeoItemChange = onChequeoItemChange;
+window.onChequeoObsChange = onChequeoObsChange;
+window.abrirModalChequeo = abrirModalChequeo;
+window.cerrarModalChequeo = cerrarModalChequeo;
 // ── DATA EN MEMORIA ─────────────────────────────────────
 let segurosData = [];
 let accidentesData = [];

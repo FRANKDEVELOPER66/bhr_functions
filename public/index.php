@@ -9,6 +9,7 @@ use Controllers\UnidadesController;
 use Controllers\VehiculosController;
 use Controllers\SegurosController;
 use Controllers\AccidentesController;
+use Controllers\ChequeoController;
 
 $router = new Router();
 $router->setBaseURL('/' . $_ENV['APP_NAME']);
@@ -51,6 +52,13 @@ $router->post('/API/vehiculos/accidentes/eliminar',  [AccidentesController::clas
 // ── UNIDADES ─────────────────────────────────────────────────────────────────
 $router->get('/API/unidades/destacamentos', [UnidadesController::class, 'destacamentosAPI']);
 $router->get('/API/unidades/lista',         [UnidadesController::class, 'unidadesAPI']);
+
+// ── CHEQUEOS ──────────────────────────────────────────────────────────────────
+$router->get('/API/vehiculos/chequeos/listar',      [ChequeoController::class, 'listarAPI']);
+$router->get('/API/vehiculos/chequeos/obtener',     [ChequeoController::class, 'obtenerAPI']);
+$router->post('/API/vehiculos/chequeos/crear',      [ChequeoController::class, 'crearAPI']);
+$router->post('/API/vehiculos/chequeos/completar',  [ChequeoController::class, 'completarAPI']);
+$router->post('/API/vehiculos/chequeos/eliminar',   [ChequeoController::class, 'eliminarAPI']);
 
 // ── EXPEDIENTE PDF ───────────────────────────────────────────────────────────
 $router->get('/vehiculos/expediente', [ExpedienteController::class, 'generarPDF']);
