@@ -149,7 +149,7 @@ class FichaController
             if (empty($_POST[$campo])) {
                 http_response_code(400);
                 echo json_encode([
-                    'codigo' => 0,
+                    'codigo'  => 0,
                     'mensaje' => "El campo '{$campo}' es obligatorio"
                 ], JSON_UNESCAPED_UNICODE);
                 return;
@@ -158,9 +158,37 @@ class FichaController
 
         try {
             $kmAlServicio = (int)$_POST['km_al_servicio'];
+            $forzar       = !empty($_POST['forzar']) && $_POST['forzar'] === '1';
 
-            $tipo = TiposServicio::find($_POST['id_tipo_servicio']);
+            // ── Validación de intervalo ───────────────────────────────────────────
+            $ultimoServicio = Servicios::traerUltimoPorTipo($placa, (int)$_POST['id_tipo_servicio']);
 
+            if ($ultimoServicio && !$forzar) {
+                $diasDesdeUltimo = (int)((strtotime('now') - strtotime($ultimoServicio['fecha_realizado'])) / 86400);
+
+                if ($diasDesdeUltimo < 15) {
+                    echo json_encode([
+                        'codigo'       => 0,
+                        'mensaje'      => "Este servicio fue realizado hace {$diasDesdeUltimo} día(s). Debe esperar al menos 15 días para registrarlo nuevamente.",
+                        'bloqueo_duro' => true
+                    ], JSON_UNESCAPED_UNICODE);
+                    return;
+                }
+
+                if ($diasDesdeUltimo < 90) {
+                    echo json_encode([
+                        'codigo'       => 2,
+                        'mensaje'      => "Este servicio fue realizado hace {$diasDesdeUltimo} día(s). ¿Está seguro que desea registrarlo nuevamente?",
+                        'dias'         => $diasDesdeUltimo,
+                        'ultimo_km'    => $ultimoServicio['km_al_servicio'],
+                        'bloqueo_duro' => false
+                    ], JSON_UNESCAPED_UNICODE);
+                    return;
+                }
+            }
+
+            // ── Calcular próximo servicio ─────────────────────────────────────────
+            $tipo         = TiposServicio::find($_POST['id_tipo_servicio']);
             $kmProximo    = null;
             $fechaProximo = null;
 
@@ -176,6 +204,7 @@ class FichaController
                 }
             }
 
+            // ── Guardar ───────────────────────────────────────────────────────────
             $servicio = new Servicios([
                 'placa'               => $placa,
                 'id_tipo_servicio'    => (int)$_POST['id_tipo_servicio'],
@@ -189,6 +218,7 @@ class FichaController
 
             $servicio->crear();
 
+            // Actualizar KM del vehículo si es mayor al actual
             $vehiculo = Vehiculos::find($placa);
             if ($vehiculo && $kmAlServicio > (int)$vehiculo->km_actuales) {
                 Vehiculos::actualizarKm($placa, $kmAlServicio);
@@ -286,9 +316,41 @@ class FichaController
         }
 
         try {
+            $idTipo  = (int)$_POST['id_tipo_reparacion'];
+            $forzar  = !empty($_POST['forzar']) && $_POST['forzar'] === '1';
+
+            // ── Bloqueo duro: ya existe una en proceso del mismo tipo ─────────────
+            if (Reparaciones::existeEnProcesoPorTipo($placa, $idTipo)) {
+                echo json_encode([
+                    'codigo'       => 0,
+                    'mensaje'      => 'Ya existe una reparación del mismo tipo en proceso. Debe finalizarla antes de registrar una nueva.',
+                    'bloqueo_duro' => true
+                ], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            // ── Advertencia: última reparación finalizada hace menos de 30 días ───
+            if (!$forzar) {
+                $ultimaRep = Reparaciones::traerUltimaPorTipo($placa, $idTipo);
+                if ($ultimaRep) {
+                    $diasDesdeUltima = (int)((strtotime('now') - strtotime($ultimaRep['fecha_inicio'])) / 86400);
+                    if ($diasDesdeUltima < 30) {
+                        echo json_encode([
+                            'codigo'       => 2,
+                            'mensaje'      => "La última reparación de este tipo fue hace {$diasDesdeUltima} día(s). ¿Está seguro que desea registrar otra?",
+                            'dias'         => $diasDesdeUltima,
+                            'ultimo_km'    => $ultimaRep['km_al_momento'],
+                            'bloqueo_duro' => false
+                        ], JSON_UNESCAPED_UNICODE);
+                        return;
+                    }
+                }
+            }
+
+            // ── Guardar ───────────────────────────────────────────────────────────
             $reparacion = new Reparaciones([
                 'placa'              => $placa,
-                'id_tipo_reparacion' => (int)$_POST['id_tipo_reparacion'],
+                'id_tipo_reparacion' => $idTipo,
                 'descripcion'        => htmlspecialchars($_POST['descripcion']),
                 'fecha_inicio'       => $_POST['fecha_inicio'],
                 'fecha_fin'          => $_POST['fecha_fin']       ?? null,
@@ -315,7 +377,11 @@ class FichaController
             echo json_encode(['codigo' => 1, 'mensaje' => 'Reparación registrada exitosamente'], JSON_UNESCAPED_UNICODE);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(['codigo' => 0, 'mensaje' => 'Error al guardar reparación', 'detalle' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+            echo json_encode([
+                'codigo'  => 0,
+                'mensaje' => 'Error al guardar reparación',
+                'detalle' => $e->getMessage()
+            ], JSON_UNESCAPED_UNICODE);
         }
     }
 

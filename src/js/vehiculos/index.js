@@ -1109,9 +1109,15 @@ const abrirFicha = async (placa) => {
             }
         }
 
-        // ── KM para form de servicio ──────────────────────────────────────────
+        // KM y fecha para servicios
         const svcKmEl = document.getElementById('svcKm');
         if (svcKmEl) svcKmEl.value = v.km_actuales;
+
+        // KM y fecha para reparaciones
+        const repKmEl = document.getElementById('repKm');
+        const repFechaEl = document.getElementById('repFechaInicio');
+        if (repKmEl) repKmEl.value = v.km_actuales;
+        if (repFechaEl) repFechaEl.value = new Date().toISOString().split('T')[0];
 
         // ── Badges ────────────────────────────────────────────────────────────
         const _badge = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
@@ -1160,7 +1166,7 @@ const renderTablaServicios = (servicios) => {
     wrap.innerHTML = servicios.map(s => `
         <div class="svc-row">
             <div><div class="svc-label">Tipo</div><div class="svc-val">${s.tipo_nombre}</div></div>
-            <div><div class="svc-label">Fecha</div><div class="svc-val">${s.fecha_realizado}</div></div>
+            <div><div class="svc-val">${s.fecha_realizado.split('-').reverse().join('/')}</div></div>
             <div><div class="svc-label">KM Realizado</div><div class="svc-val">${Number(s.km_al_servicio).toLocaleString()} km</div></div>
             <div><div class="svc-label">Próximo KM</div><div class="svc-val" style="color:${s.km_proximo_servicio ? 'var(--accent)' : 'var(--text-muted)'}">${s.km_proximo_servicio ? Number(s.km_proximo_servicio).toLocaleString() + ' km' : '—'}</div></div>
             <div style="display:flex;gap:.4rem;align-items:center;">
@@ -1171,25 +1177,97 @@ const renderTablaServicios = (servicios) => {
     `).join('');
 };
 
-const guardarServicio = async () => {
+const guardarServicio = async (forzar = false) => {
     const tipo = document.getElementById('svcTipo').value;
     const fecha = document.getElementById('svcFecha').value;
     const km = document.getElementById('svcKm').value;
-    if (!tipo || !fecha || !km) {
-        Swal.fire({ icon: 'info', title: 'Tipo, fecha y KM son obligatorios', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
+    const responsable = document.getElementById('svcResponsable').value.trim();
+
+    if (!tipo) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Seleccione el tipo de servicio',
+            text: 'Debe seleccionar un tipo antes de guardar.',
+            background: '#1a1d27', color: '#e8eaf0',
+            confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
         return;
     }
+
+    if (!responsable) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Ingrese el responsable',
+            text: 'Debe indicar quién realizó el servicio.',
+            background: '#1a1d27', color: '#e8eaf0',
+            confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+
+    if (!fecha || !km) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Faltan datos obligatorios',
+            text: 'La fecha y el KM son requeridos.',
+            background: '#1a1d27', color: '#e8eaf0',
+            confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+
     const body = new FormData();
     body.append('placa', fichaPlacaActual);
     body.append('id_tipo_servicio', tipo);
     body.append('fecha_realizado', fecha);
     body.append('km_al_servicio', km);
-    body.append('responsable', document.getElementById('svcResponsable').value);
+    body.append('responsable', responsable);
     body.append('observaciones', document.getElementById('svcObs').value);
+    if (forzar) body.append('forzar', '1');
+
     try {
         const r = await fetch(`${BASE}/API/vehiculos/servicio/guardar`, { method: 'POST', body });
         const d = await r.json();
+
+        // ── Bloqueo duro — menos de 15 días ──────────────────────────────────
+        if (d.codigo === 0 && d.bloqueo_duro) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Registro bloqueado',
+                text: d.mensaje,
+                background: '#1a1d27', color: '#e8eaf0',
+                confirmButtonColor: '#e05252',
+                customClass: { container: 'swal-over-modal' }
+            });
+            return;
+        }
+
+        // ── Advertencia — entre 15 y 90 días ─────────────────────────────────
+        if (d.codigo === 2) {
+            const conf = await Swal.fire({
+                icon: 'warning',
+                title: '¿Registrar de todas formas?',
+                html: `${d.mensaje}<br><br>
+                    <small style="color:#888;">Último servicio: <strong>${d.ultimo_km ? Number(d.ultimo_km).toLocaleString() + ' km' : '—'}</strong></small>`,
+                showCancelButton: true,
+                confirmButtonText: 'Sí, registrar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#e8b84b',
+                cancelButtonColor: '#555',
+                background: '#1a1d27', color: '#e8eaf0',
+                customClass: { container: 'swal-over-modal' }
+            });
+
+            if (conf.isConfirmed) await guardarServicio(true);
+            return;
+        }
+
+        // ── Éxito ─────────────────────────────────────────────────────────────
         Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
+
         if (d.codigo === 1) {
             document.getElementById('svcTipo').value = '';
             document.getElementById('svcResponsable').value = '';
@@ -1199,7 +1277,9 @@ const guardarServicio = async () => {
             switchTab(document.querySelector('.ficha-tab[data-tab="servicios"]'), 'servicios');
             buscar();
         }
-    } catch (err) { Toast.fire({ icon: 'error', title: 'Error de conexión' }); }
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    }
 };
 
 const eliminarServicio = async (id) => {
@@ -1236,15 +1316,60 @@ const renderTablaReparaciones = (reparaciones) => {
     `).join('');
 };
 
-const guardarReparacion = async () => {
+const guardarReparacion = async (forzar = false) => {
     const tipo = document.getElementById('repTipo').value;
     const desc = document.getElementById('repDescripcion').value;
     const fecha = document.getElementById('repFechaInicio').value;
     const km = document.getElementById('repKm').value;
-    if (!tipo || !desc || !fecha || !km) {
-        Swal.fire({ icon: 'info', title: 'Tipo, descripción, fecha y KM son obligatorios', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
+
+    if (!tipo) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Seleccione el tipo de reparación',
+            text: 'Debe seleccionar un tipo antes de guardar.',
+            background: '#1a1d27', color: '#e8eaf0',
+            confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
         return;
     }
+
+    if (!desc) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Ingrese una descripción',
+            text: 'Debe describir la reparación a realizar.',
+            background: '#1a1d27', color: '#e8eaf0',
+            confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+
+    if (!km || parseInt(km) <= 0) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Ingrese el KM al momento',
+            text: 'El kilometraje al momento de la reparación es obligatorio.',
+            background: '#1a1d27', color: '#e8eaf0',
+            confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+
+    if (!fecha) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Faltan datos obligatorios',
+            text: 'La fecha de inicio es requerida.',
+            background: '#1a1d27', color: '#e8eaf0',
+            confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+
     const body = new FormData();
     body.append('placa', fichaPlacaActual);
     body.append('id_tipo_reparacion', tipo);
@@ -1257,23 +1382,71 @@ const guardarReparacion = async () => {
     body.append('responsable', document.getElementById('repResponsable').value);
     body.append('estado', document.getElementById('repEstado').value);
     body.append('observaciones', document.getElementById('repObs').value);
+
     const esEdicion = reparacionEditandoId !== null;
     if (esEdicion) body.append('id_reparacion', reparacionEditandoId);
-    const url = esEdicion ? `${BASE}/API/vehiculos/reparacion/modificar` : `${BASE}/API/vehiculos/reparacion/guardar`;
+    if (forzar) body.append('forzar', '1');
+
+    const url = esEdicion
+        ? `${BASE}/API/vehiculos/reparacion/modificar`
+        : `${BASE}/API/vehiculos/reparacion/guardar`;
+
     try {
         const r = await fetch(url, { method: 'POST', body });
         const d = await r.json();
+
+        // ── Bloqueo duro — reparación en proceso del mismo tipo ───────────────
+        if (d.codigo === 0 && d.bloqueo_duro) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Registro bloqueado',
+                text: d.mensaje,
+                background: '#1a1d27', color: '#e8eaf0',
+                confirmButtonColor: '#e05252',
+                customClass: { container: 'swal-over-modal' }
+            });
+            return;
+        }
+
+        // ── Advertencia — menos de 30 días desde la última ────────────────────
+        if (d.codigo === 2) {
+            const conf = await Swal.fire({
+                icon: 'warning',
+                title: '¿Registrar de todas formas?',
+                html: `${d.mensaje}<br><br>
+                    <small style="color:#888;">Último KM registrado: <strong>${d.ultimo_km ? Number(d.ultimo_km).toLocaleString() + ' km' : '—'}</strong></small>`,
+                showCancelButton: true,
+                confirmButtonText: 'Sí, registrar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#e8b84b',
+                cancelButtonColor: '#555',
+                background: '#1a1d27', color: '#e8eaf0',
+                customClass: { container: 'swal-over-modal' }
+            });
+
+            if (conf.isConfirmed) await guardarReparacion(true);
+            return;
+        }
+
+        // ── Éxito ─────────────────────────────────────────────────────────────
         Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
+
         if (d.codigo === 1) {
             reparacionEditandoId = null;
-            ['repTipo', 'repDescripcion', 'repFechaFin', 'repCosto', 'repProveedor', 'repResponsable', 'repObs'].forEach(id => { document.getElementById(id).value = ''; });
+            ['repTipo', 'repDescripcion', 'repFechaFin', 'repCosto',
+                'repProveedor', 'repResponsable', 'repObs'].forEach(id => {
+                    document.getElementById(id).value = '';
+                });
             document.getElementById('repEstado').value = 'En proceso';
             resetFormReparacion();
             await abrirFicha(fichaPlacaActual);
             switchTab(document.querySelector('.ficha-tab[data-tab="reparaciones"]'), 'reparaciones');
             buscar();
         }
-    } catch (err) { Toast.fire({ icon: 'error', title: 'Error de conexión' }); }
+
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    }
 };
 
 const editarReparacion = async (r) => {
@@ -1295,6 +1468,18 @@ const editarReparacion = async (r) => {
     document.getElementById('repObs').value = r.observaciones || '';
     const btnGuardarRep = document.querySelector('#formNuevaReparacion button[onclick="guardarReparacion()"]');
     if (btnGuardarRep) { btnGuardarRep.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Actualizar Reparación'; btnGuardarRep.style.background = 'linear-gradient(135deg,#3a7bd5,#2563b0)'; }
+    // Ocultar la fila que se está editando
+    document.querySelectorAll('#tablaReparacionesWrap .svc-row').forEach(fila => {
+        if (fila.innerHTML.includes(`eliminarReparacion(${r.id_reparacion})`)) {
+            fila.style.opacity = '.3';
+            fila.style.pointerEvents = 'none';
+            // También ocultar la fila de descripción que viene después
+            const siguiente = fila.nextElementSibling;
+            if (siguiente && !siguiente.classList.contains('svc-row')) {
+                siguiente.style.opacity = '.3';
+            }
+        }
+    });
     form.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 

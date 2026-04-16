@@ -1589,7 +1589,11 @@
                     <div id="formNuevoServicio" style="display:none;background:var(--dark-3);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
                         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;">
                             <div><label class="form-label"><i class="bi bi-gear"></i> Tipo *</label><select id="svcTipo" class="form-select"></select></div>
-                            <div><label class="form-label"><i class="bi bi-calendar"></i> Fecha *</label><input type="date" id="svcFecha" class="form-control"></div>
+                            <div><label class="form-label"><i class="bi bi-calendar"></i> Fecha *</label><input type="date" id="svcFecha" readonly
+                                    style="width:100%;pointer-events:none;background:var(--dark-3);
+    border:1px solid var(--border);border-radius:8px;
+    color:var(--text-muted);opacity:.7;cursor:not-allowed;
+    padding:.65rem 1rem;font-size:.95rem;"></div>
                             <div><label class="form-label"><i class="bi bi-speedometer"></i> KM al servicio *</label><input type="number" id="svcKm" class="form-control" placeholder="0" min="0"></div>
                             <div><label class="form-label"><i class="bi bi-person"></i> Responsable</label><input type="text" id="svcResponsable" class="form-control" placeholder="Nombre..."></div>
                             <div style="grid-column:2/-1;"><label class="form-label"><i class="bi bi-chat-text"></i> Observaciones</label><input type="text" id="svcObs" class="form-control" placeholder="Notas adicionales..."></div>
@@ -1609,7 +1613,11 @@
                     <div id="formNuevaReparacion" style="display:none;background:var(--dark-3);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
                         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;">
                             <div><label class="form-label"><i class="bi bi-wrench"></i> Tipo *</label><select id="repTipo" class="form-select"></select></div>
-                            <div><label class="form-label"><i class="bi bi-calendar"></i> Fecha Inicio *</label><input type="date" id="repFechaInicio" class="form-control"></div>
+                            <div><label class="form-label"><i class="bi bi-calendar"></i> Fecha Inicio *</label><input type="date" id="repFechaInicio" readonly
+                                    style="width:100%;pointer-events:none;background:var(--dark-3);
+    border:1px solid var(--border);border-radius:8px;
+    color:var(--text-muted);opacity:.7;cursor:not-allowed;
+    padding:.65rem 1rem;font-size:.95rem;"></div>
                             <div><label class="form-label"><i class="bi bi-calendar-check"></i> Fecha Fin</label><input type="date" id="repFechaFin" class="form-control"></div>
                             <div style="grid-column:1/-1;"><label class="form-label"><i class="bi bi-card-text"></i> Descripción *</label><input type="text" id="repDescripcion" class="form-control" placeholder="Detalle de la reparación..."></div>
                             <div><label class="form-label"><i class="bi bi-speedometer"></i> KM al momento *</label><input type="number" id="repKm" class="form-control" placeholder="0" min="0"></div>

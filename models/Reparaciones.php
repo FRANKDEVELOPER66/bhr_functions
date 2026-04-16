@@ -71,4 +71,31 @@ class Reparaciones extends ActiveRecord
         );
         return (int)($resultado[0]['total'] ?? 0);
     }
+    // Verificar si ya existe una reparación en proceso del mismo tipo
+    public static function existeEnProcesoPorTipo(string $placa, int $idTipoReparacion): bool
+    {
+        $sql = "SELECT COUNT(*) AS total
+            FROM reparaciones
+            WHERE placa = ?
+              AND id_tipo_reparacion = ?
+              AND estado = 'En proceso'";
+
+        $resultado = self::fetchArray($sql, [$placa, $idTipoReparacion]);
+        return (int)($resultado[0]['total'] ?? 0) > 0;
+    }
+
+    // Traer la última reparación finalizada del mismo tipo
+    public static function traerUltimaPorTipo(string $placa, int $idTipoReparacion): ?array
+    {
+        $sql = "SELECT fecha_inicio, km_al_momento
+            FROM reparaciones
+            WHERE placa = ?
+              AND id_tipo_reparacion = ?
+              AND estado = 'Finalizada'
+            ORDER BY fecha_inicio DESC
+            LIMIT 1";
+
+        $resultado = self::fetchArray($sql, [$placa, $idTipoReparacion]);
+        return $resultado[0] ?? null;
+    }
 }

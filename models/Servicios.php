@@ -71,4 +71,31 @@ class Servicios extends ActiveRecord
 
         return self::fetchArray($sql, [$placa, $kmActual]);
     }
+
+    // Verificar si ya existe el mismo tipo de servicio hoy para este vehículo
+    public static function existeServicioHoy(string $placa, int $idTipoServicio): bool
+    {
+        $sql = "SELECT COUNT(*) AS total 
+            FROM servicios 
+            WHERE placa = ? 
+              AND id_tipo_servicio = ? 
+              AND fecha_realizado = CURDATE()";
+
+        $resultado = self::fetchArray($sql, [$placa, $idTipoServicio]);
+        return (int)($resultado[0]['total'] ?? 0) > 0;
+    }
+
+    // Traer el último servicio del mismo tipo para un vehículo
+    public static function traerUltimoPorTipo(string $placa, int $idTipoServicio): ?array
+    {
+        $sql = "SELECT fecha_realizado, km_al_servicio
+            FROM servicios
+            WHERE placa = ?
+              AND id_tipo_servicio = ?
+            ORDER BY fecha_realizado DESC, id_servicio DESC
+            LIMIT 1";
+
+        $resultado = self::fetchArray($sql, [$placa, $idTipoServicio]);
+        return $resultado[0] ?? null;
+    }
 }
