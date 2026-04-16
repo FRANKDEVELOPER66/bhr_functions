@@ -38,17 +38,21 @@ class ExpedienteController
                 return;
             }
 
+            // ── Normalizar todos los campos del vehículo a string ─────────────
+            array_walk($vehiculo, function (&$val) {
+                if (is_array($val)) {
+                    $val = implode(', ', $val);
+                }
+                $val = (string)($val ?? '');
+            });
+
             // ── 2. Bajar foto desde SFTP como base64 ──────────────────────────
             $fotoBase64 = '';
             if (!empty($vehiculo['foto_frente'])) {
                 $fotoBase64 = self::obtenerFotoBase64($vehiculo['foto_frente']);
             }
 
-            // ── 3. Separar servicios por tipo para las hojas especializadas ───
-            $cambiosAceite  = array_filter(
-                $servicios,
-                fn($s) => stripos($s['tipo_nombre'], 'aceite') !== false
-            );
+            // ── 3. Separar servicios por tipo ─────────────────────────────────
             $cambiosLlantas = array_filter(
                 $servicios,
                 fn($s) => stripos($s['tipo_nombre'], 'llanta') !== false
@@ -61,7 +65,10 @@ class ExpedienteController
                     stripos($s['tipo_nombre'], 'bateria')    !== false
             );
 
-            // ── 4. Configurar mPDF ────────────────────────────────────────────
+            // ── 4. Traer último chequeo completado ────────────────────────────
+            $chequeo = \Model\Chequeos::traerUltimoCompletado($placa);
+
+            // ── 5. Configurar mPDF ────────────────────────────────────────────
             $mpdf = new Mpdf([
                 'mode'              => 'utf-8',
                 'format'            => 'Letter',
@@ -78,59 +85,59 @@ class ExpedienteController
             $mpdf->SetTitle("Expediente Vehículo {$placa}");
             $mpdf->SetAuthor('Brigada Humanitaria y de Rescate – Ejército de Guatemala');
 
-            // ── 5. Estilos globales ───────────────────────────────────────────
+            // ── 6. Estilos globales ───────────────────────────────────────────
             $css = self::estilosGlobales();
             $mpdf->WriteHTML($css, \Mpdf\HTMLParserMode::HEADER_CSS);
 
-            // ═══════════════════════════════════════════════════════════════════
+            // ═════════════════════════════════════════════════════════════════
             //  SECCIÓN 1 – CARÁTULA
-            // ═══════════════════════════════════════════════════════════════════
+            // ═════════════════════════════════════════════════════════════════
             $mpdf->AddPage();
             $mpdf->WriteHTML(self::paginaCaratula($vehiculo, $fotoBase64));
 
-            // ═══════════════════════════════════════════════════════════════════
+            // ═════════════════════════════════════════════════════════════════
             //  SECCIÓN 2 – ÍNDICE
-            // ═══════════════════════════════════════════════════════════════════
+            // ═════════════════════════════════════════════════════════════════
             $mpdf->AddPage();
             $mpdf->WriteHTML(self::paginaIndice($vehiculo));
 
-            // ═══════════════════════════════════════════════════════════════════
+            // ═════════════════════════════════════════════════════════════════
             //  SECCIÓN 3 – FOTOGRAFÍA DEL VEHÍCULO
-            // ═══════════════════════════════════════════════════════════════════
+            // ═════════════════════════════════════════════════════════════════
             $mpdf->AddPage();
-            $mpdf->WriteHTML(self::separador('03', 'FOTOGRAFÍA DEL VEHÍCULO'));
+            $mpdf->WriteHTML(self::separador('', 'FOTOGRAFÍA DEL VEHÍCULO'));
             $mpdf->AddPage();
             $mpdf->WriteHTML(self::paginaFoto($vehiculo, $fotoBase64));
 
-            // ═══════════════════════════════════════════════════════════════════
+            // ═════════════════════════════════════════════════════════════════
             //  SECCIÓN 4 – INFORMACIÓN DEL VEHÍCULO
-            // ═══════════════════════════════════════════════════════════════════
+            // ═════════════════════════════════════════════════════════════════
             $mpdf->AddPage();
-            $mpdf->WriteHTML(self::separador('04', 'INFORMACIÓN DEL VEHÍCULO'));
+            $mpdf->WriteHTML(self::separador('', 'INFORMACIÓN DEL VEHÍCULO'));
             $mpdf->AddPage();
             $mpdf->WriteHTML(self::paginaInfoVehiculo($vehiculo));
 
-            // ═══════════════════════════════════════════════════════════════════
+            // ═════════════════════════════════════════════════════════════════
             //  SECCIÓN 5 – TARJETA DE CIRCULACIÓN
-            // ═══════════════════════════════════════════════════════════════════
+            // ═════════════════════════════════════════════════════════════════
             $mpdf->AddPage();
-            $mpdf->WriteHTML(self::separador('05', 'COPIA DE TARJETA DE CIRCULACIÓN'));
+            $mpdf->WriteHTML(self::separador('', 'COPIA DE TARJETA DE CIRCULACIÓN'));
             $mpdf->AddPage();
             $mpdf->WriteHTML(self::paginaTarjeta($vehiculo));
 
-            // ═══════════════════════════════════════════════════════════════════
-            //  SECCIÓN 8 – HISTORIAL DE SERVICIOS (todos)
-            // ═══════════════════════════════════════════════════════════════════
+            // ═════════════════════════════════════════════════════════════════
+            //  SECCIÓN 8 – HISTORIAL DE SERVICIOS
+            // ═════════════════════════════════════════════════════════════════
             $mpdf->AddPage();
-            $mpdf->WriteHTML(self::separador('08', 'HISTORIAL DE SERVICIOS'));
+            $mpdf->WriteHTML(self::separador('', 'HISTORIAL DE SERVICIOS'));
             $mpdf->AddPage();
             $mpdf->WriteHTML(self::paginaHistorialServicios($vehiculo, $servicios));
 
-            // ═══════════════════════════════════════════════════════════════════
+            // ═════════════════════════════════════════════════════════════════
             //  SECCIÓN 9 – HISTORIAL CAMBIO DE LLANTAS
-            // ═══════════════════════════════════════════════════════════════════
+            // ═════════════════════════════════════════════════════════════════
             $mpdf->AddPage();
-            $mpdf->WriteHTML(self::separador('09', 'HISTORIAL DE CAMBIO DE LLANTAS'));
+            $mpdf->WriteHTML(self::separador('', 'HISTORIAL DE CAMBIO DE LLANTAS'));
             $mpdf->AddPage();
             $mpdf->WriteHTML(self::paginaHistorialFiltrado(
                 $vehiculo,
@@ -139,11 +146,11 @@ class ExpedienteController
                 'llantas'
             ));
 
-            // ═══════════════════════════════════════════════════════════════════
+            // ═════════════════════════════════════════════════════════════════
             //  SECCIÓN 10 – HISTORIAL CAMBIO DE ACUMULADOR
-            // ═══════════════════════════════════════════════════════════════════
+            // ═════════════════════════════════════════════════════════════════
             $mpdf->AddPage();
-            $mpdf->WriteHTML(self::separador('10', 'HISTORIAL DE CAMBIO DE ACUMULADOR'));
+            $mpdf->WriteHTML(self::separador('', 'HISTORIAL DE CAMBIO DE ACUMULADOR'));
             $mpdf->AddPage();
             $mpdf->WriteHTML(self::paginaHistorialFiltrado(
                 $vehiculo,
@@ -152,23 +159,23 @@ class ExpedienteController
                 'acumulador'
             ));
 
-            // ═══════════════════════════════════════════════════════════════════
+            // ═════════════════════════════════════════════════════════════════
             //  SECCIÓN 11 – REPARACIONES
-            // ═══════════════════════════════════════════════════════════════════
+            // ═════════════════════════════════════════════════════════════════
             $mpdf->AddPage();
-            $mpdf->WriteHTML(self::separador('11', 'REPARACIONES'));
+            $mpdf->WriteHTML(self::separador('', 'REPARACIONES'));
             $mpdf->AddPage();
             $mpdf->WriteHTML(self::paginaReparaciones($vehiculo, $reparaciones));
 
-            // ═══════════════════════════════════════════════════════════════════
-            //  SECCIÓN 16 – HOJA DE CHEQUEO DIARIO
-            // ═══════════════════════════════════════════════════════════════════
+            // ═════════════════════════════════════════════════════════════════
+            //  SECCIÓN 16 – HOJA DE CHEQUEO
+            // ═════════════════════════════════════════════════════════════════
             $mpdf->AddPage();
-            $mpdf->WriteHTML(self::separador('16', 'HOJA INDIVIDUAL DE CHEQUEO DE VEHÍCULOS'));
+            $mpdf->WriteHTML(self::separador('', 'HOJA INDIVIDUAL DE CHEQUEO DE VEHÍCULOS'));
             $mpdf->AddPage();
-            $mpdf->WriteHTML(self::paginaHojaChequeo($vehiculo));
+            $mpdf->WriteHTML(self::paginaHojaChequeo($vehiculo, $chequeo));
 
-            // ── 6. Enviar al navegador ────────────────────────────────────────
+            // ── 7. Enviar al navegador ────────────────────────────────────────
             $nombreArchivo = "Expediente_{$placa}_" . date('Ymd') . '.pdf';
             $mpdf->Output($nombreArchivo, \Mpdf\Output\Destination::INLINE);
             exit;
@@ -190,15 +197,13 @@ class ExpedienteController
     private static function obtenerFotoBase64(string $nombreArchivo): string
     {
         try {
-            $sftp = new \phpseclib3\Net\SFTP(
-                $_ENV['SFTP_HOST'],
-                (int)($_ENV['SFTP_PORT'] ?? 22)
-            );
-            $sftp->login($_ENV['SFTP_USER'], $_ENV['SFTP_PASS']);
+            $baseUrl   = rtrim((string)getenv('SFTP_PUBLIC_URL'), '=');
+            $url       = $baseUrl . '=' . urlencode('/' . $nombreArchivo);
 
-            $rutaBase  = rtrim($_ENV['SFTP_PATH'] ?? '/vehiculos', '/');
-            $contenido = $sftp->get("{$rutaBase}/fotos/{$nombreArchivo}");
+            // Usar la URL interna del servidor (localhost dentro del contenedor)
+            $url = 'http://localhost/bhr_functions/API/vehiculos/foto?archivo=/' . urlencode($nombreArchivo);
 
+            $contenido = @file_get_contents($url);
             if (!$contenido) return '';
 
             $ext  = strtolower(pathinfo($nombreArchivo, PATHINFO_EXTENSION));
@@ -213,6 +218,28 @@ class ExpedienteController
         } catch (\Throwable $e) {
             return '';
         }
+    }
+
+
+
+
+    private static function crearSFTP(): \phpseclib3\Net\SFTP
+    {
+        $host = (string)getenv('SFTP_HOST');
+        $port = (int)getenv('SFTP_PORT') ?: 22;
+        $user = (string)getenv('SFTP_USER');
+        $pass = (string)getenv('SFTP_PASS');
+
+        $sftp = new \phpseclib3\Net\SFTP($host, $port);
+        if (!$sftp->login($user, $pass)) {
+            throw new \RuntimeException('SFTP login failed');
+        }
+        return $sftp;
+    }
+
+    private static function rutaSFTP(): string
+    {
+        return rtrim((string)getenv('SFTP_PATH') ?: '/upload', '/');
     }
 
     /** Encabezado de página con línea institucional */
@@ -267,7 +294,6 @@ class ExpedienteController
 
         return '
         <div class="separador-pagina">
-            <div class="sep-numero">' . $numero . '</div>
             <div class="sep-titulo">' . $titulo . '</div>
             <div class="sep-linea"></div>
             ' . $logoTag . '
@@ -589,88 +615,105 @@ class ExpedienteController
     private static function paginaCaratula(array $v, string $foto): string
     {
         $fotoTag = $foto
-            ? '<img src="' . $foto . '" style="max-width:260px;max-height:190px;border:1pt solid #ccc;">'
-            : '<div style="border:1pt dashed #ccc;padding:30px;color:#aaa;font-size:9pt;display:inline-block;">Sin fotografía</div>';
+            ? '<img src="' . $foto . '" style="max-width:420px;max-height:320px;border:1.5pt solid #ccc;display:block;margin:0 auto;">'
+            : '<div style="border:1.5pt dashed #ccc;padding:60px 40px;color:#aaa;font-size:10pt;text-align:center;display:inline-block;width:300px;">Sin fotografía registrada</div>';
 
         $estadoBadge = match ($v['estado'] ?? '') {
-            'Alta'   => '<span class="badge-alta">OPERATIVO – ALTA</span>',
-            'Baja'   => '<span class="badge-baja">FUERA DE SERVICIO – BAJA</span>',
-            'Taller' => '<span class="badge-taller">EN TALLER</span>',
+            'Alta'   => '<span class="badge-alta" style="font-size:11pt;padding:4px 16px;">● OPERATIVO – ALTA</span>',
+            'Baja'   => '<span class="badge-baja" style="font-size:11pt;padding:4px 16px;">● FUERA DE SERVICIO – BAJA</span>',
+            'Taller' => '<span class="badge-taller" style="font-size:11pt;padding:4px 16px;">● EN TALLER</span>',
             default  => ''
         };
 
-        $unidad     = $v['unidad_nombre']      ?? '—';
+        $unidad     = $v['unidad_nombre']       ?? '—';
         $dest       = $v['destacamento_nombre'] ?? '';
         $depto      = $v['destacamento_depto']  ?? '';
         $asignacion = $dest ? "{$unidad} · {$dest}, {$depto}" : $unidad;
 
         return '
-        ' . self::encabezado() . '
-        <div class="caratula-box">
-            <div class="caratula-institucion">
-                BRIGADA HUMANITARIA Y DE RESCATE
-            </div>
-            <div style="text-align:center;font-size:10pt;font-weight:bold;letter-spacing:1pt;margin-bottom:18px;">
-                EXPEDIENTE DE VEHÍCULO
-            </div>
+    ' . self::encabezado() . '
 
-            <div style="text-align:center;margin-bottom:14px;">
-                ' . $fotoTag . '
-            </div>
-
-            <div style="text-align:center;margin-bottom:16px;">
-                <div style="font-size:8pt;color:#888;text-transform:uppercase;letter-spacing:1pt;">Catálogo / Placa</div>
-                <div style="font-size:28pt;font-weight:bold;letter-spacing:4pt;border:1.5pt solid #1a1a1a;padding:6px 24px;display:inline-block;">
-                    ' . htmlspecialchars($v['placa']) . '
-                </div>
-            </div>
-
-            <table width="100%" style="border-collapse:collapse;margin-bottom:14px;">
-                <tr>
-                    <td style="padding:4px;border:0.5pt solid #ddd;background:#f9f9f9;">
-                        <div style="font-size:7.5pt;color:#888;text-transform:uppercase;">Marca / Modelo</div>
-                        <div style="font-size:11pt;font-weight:bold;">' . htmlspecialchars($v['marca'] . ' ' . $v['modelo']) . '</div>
-                    </td>
-                    <td style="padding:4px;border:0.5pt solid #ddd;background:#f9f9f9;">
-                        <div style="font-size:7.5pt;color:#888;text-transform:uppercase;">Año</div>
-                        <div style="font-size:11pt;font-weight:bold;">' . htmlspecialchars($v['anio']) . '</div>
-                    </td>
-                    <td style="padding:4px;border:0.5pt solid #ddd;background:#f9f9f9;">
-                        <div style="font-size:7.5pt;color:#888;text-transform:uppercase;">Color</div>
-                        <div style="font-size:11pt;font-weight:bold;">' . htmlspecialchars($v['color']) . '</div>
-                    </td>
-                    <td style="padding:4px;border:0.5pt solid #ddd;background:#f9f9f9;">
-                        <div style="font-size:7.5pt;color:#888;text-transform:uppercase;">Estado</div>
-                        <div style="margin-top:3px;">' . $estadoBadge . '</div>
-                    </td>
-                </tr>
-            </table>
-
-            <table width="100%" style="border-collapse:collapse;">
-                <tr>
-                    <td style="padding:4px;border:0.5pt solid #ddd;">
-                        <span style="font-size:7.5pt;color:#888;text-transform:uppercase;">Número de Serie / Chasis</span><br>
-                        <strong>' . htmlspecialchars($v['numero_serie']) . '</strong>
-                    </td>
-                    <td style="padding:4px;border:0.5pt solid #ddd;">
-                        <span style="font-size:7.5pt;color:#888;text-transform:uppercase;">Tipo</span><br>
-                        <strong>' . htmlspecialchars($v['tipo']) . '</strong>
-                    </td>
-                </tr>
-                <tr>
-                    <td colspan="2" style="padding:4px;border:0.5pt solid #ddd;">
-                        <span style="font-size:7.5pt;color:#888;text-transform:uppercase;">Unidad Asignada</span><br>
-                        <strong>' . htmlspecialchars($asignacion) . '</strong>
-                    </td>
-                </tr>
-            </table>
-
-            <div style="text-align:center;margin-top:20px;font-size:8pt;color:#888;">
-                Generado el ' . date('d \d\e F \d\e Y') . ' &nbsp;·&nbsp;
-                KM actuales: <strong>' . number_format((int)$v['km_actuales']) . ' km</strong>
-            </div>
+    <div style="text-align:center;margin:6px 0 18px 0;">
+        <div style="font-size:13pt;font-weight:bold;color:#C75B00;letter-spacing:3pt;text-transform:uppercase;">
+            BRIGADA HUMANITARIA Y DE RESCATE
         </div>
-        ' . self::pie($v['placa'], '01 – CARÁTULA');
+        <div style="font-size:10pt;letter-spacing:2pt;color:#555;margin-top:4px;">
+            EJÉRCITO DE GUATEMALA
+        </div>
+    </div>
+
+    <div style="text-align:center;margin-bottom:20px;">
+        ' . $fotoTag . '
+    </div>
+
+    <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:9pt;color:#888;text-transform:uppercase;letter-spacing:2pt;margin-bottom:6px;">
+            EXPEDIENTE DE VEHÍCULO — CATÁLOGO / PLACA
+        </div>
+        <div style="display:inline-block;border:3pt solid #1a1a1a;padding:10px 40px;">
+            <span style="font-size:36pt;font-weight:bold;letter-spacing:6pt;">
+                ' . htmlspecialchars($v['placa']) . '
+            </span>
+        </div>
+    </div>
+
+    <div style="text-align:center;margin-bottom:20px;">
+        ' . $estadoBadge . '
+    </div>
+
+    <table width="100%" style="border-collapse:collapse;margin-bottom:16px;">
+        <tr>
+            <td style="padding:8px 10px;border:0.5pt solid #ddd;background:#f9f9f9;width:25%;">
+                <div style="font-size:7.5pt;color:#888;text-transform:uppercase;letter-spacing:.5pt;">Marca</div>
+                <div style="font-size:13pt;font-weight:bold;">' . htmlspecialchars($v['marca']) . '</div>
+            </td>
+            <td style="padding:8px 10px;border:0.5pt solid #ddd;background:#f9f9f9;width:25%;">
+                <div style="font-size:7.5pt;color:#888;text-transform:uppercase;letter-spacing:.5pt;">Modelo</div>
+                <div style="font-size:13pt;font-weight:bold;">' . htmlspecialchars($v['modelo']) . '</div>
+            </td>
+            <td style="padding:8px 10px;border:0.5pt solid #ddd;background:#f9f9f9;width:15%;">
+                <div style="font-size:7.5pt;color:#888;text-transform:uppercase;letter-spacing:.5pt;">Año</div>
+                <div style="font-size:13pt;font-weight:bold;">' . htmlspecialchars($v['anio']) . '</div>
+            </td>
+            <td style="padding:8px 10px;border:0.5pt solid #ddd;background:#f9f9f9;width:15%;">
+                <div style="font-size:7.5pt;color:#888;text-transform:uppercase;letter-spacing:.5pt;">Color</div>
+                <div style="font-size:13pt;font-weight:bold;">' . htmlspecialchars($v['color']) . '</div>
+            </td>
+            <td style="padding:8px 10px;border:0.5pt solid #ddd;background:#f9f9f9;width:20%;">
+                <div style="font-size:7.5pt;color:#888;text-transform:uppercase;letter-spacing:.5pt;">Tipo</div>
+                <div style="font-size:13pt;font-weight:bold;">' . htmlspecialchars($v['tipo']) . '</div>
+            </td>
+        </tr>
+    </table>
+
+    <table width="100%" style="border-collapse:collapse;margin-bottom:16px;">
+        <tr>
+            <td style="padding:8px 10px;border:0.5pt solid #ddd;width:40%;">
+                <div style="font-size:7.5pt;color:#888;text-transform:uppercase;letter-spacing:.5pt;">Número de Serie / Chasis</div>
+                <div style="font-size:12pt;font-weight:bold;">' . htmlspecialchars($v['numero_serie']) . '</div>
+            </td>
+            <td style="padding:8px 10px;border:0.5pt solid #ddd;width:60%;">
+                <div style="font-size:7.5pt;color:#888;text-transform:uppercase;letter-spacing:.5pt;">Unidad Asignada</div>
+                <div style="font-size:11pt;font-weight:bold;">' . htmlspecialchars($asignacion) . '</div>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding:8px 10px;border:0.5pt solid #ddd;">
+                <div style="font-size:7.5pt;color:#888;text-transform:uppercase;letter-spacing:.5pt;">Kilometraje Actual</div>
+                <div style="font-size:12pt;font-weight:bold;">' . number_format((int)$v['km_actuales']) . ' km</div>
+            </td>
+            <td style="padding:8px 10px;border:0.5pt solid #ddd;">
+                <div style="font-size:7.5pt;color:#888;text-transform:uppercase;letter-spacing:.5pt;">Fecha de Ingreso</div>
+                <div style="font-size:12pt;font-weight:bold;">' . htmlspecialchars($v['fecha_ingreso']) . '</div>
+            </td>
+        </tr>
+    </table>
+
+    <div style="text-align:center;font-size:8pt;color:#aaa;border-top:0.5pt solid #eee;padding-top:8px;">
+        Generado el ' . date('d \d\e F \d\e Y \a \l\a\s H:i') . ' · MDN-BHR-SAGE
+    </div>
+
+    ' . self::pie($v['placa'], '01 – CARÁTULA');
     }
 
     /** 2 – ÍNDICE */
@@ -717,12 +760,12 @@ class ExpedienteController
     private static function paginaFoto(array $v, string $foto): string
     {
         $contenido = $foto
-            ? '<div style="text-align:center;margin-top:30px;">
-                 <img src="' . $foto . '" style="max-width:450px;max-height:350px;border:1.5pt solid #ccc;">
-                 <div style="font-size:8pt;color:#888;margin-top:8px;text-transform:uppercase;letter-spacing:1pt;">
-                   Vista frontal – ' . htmlspecialchars($v['placa']) . '
-                 </div>
-               </div>'
+            ? '<div style="text-align:center;margin-top:20px;">
+         <img src="' . $foto . '" style="max-width:500px;max-height:480px;border:1.5pt solid #ccc;">
+         <div style="font-size:8pt;color:#888;margin-top:8px;text-transform:uppercase;letter-spacing:1pt;">
+           Vista frontal – ' . htmlspecialchars($v['placa']) . '
+         </div>
+       </div>'
             : '<div class="caja-vacia">Sin fotografía registrada en el sistema</div>';
 
         return '
@@ -825,50 +868,73 @@ class ExpedienteController
     /** 5 – TARJETA DE CIRCULACIÓN */
     private static function paginaTarjeta(array $v): string
     {
-        $nota = !empty($v['tarjeta_pdf'])
-            ? '<div style="text-align:center;padding:20px;font-size:9pt;">
-                 <div style="font-size:11pt;font-weight:bold;color:#C75B00;margin-bottom:8px;">
-                   ✓ Tarjeta de Circulación digitalizada
-                 </div>
-                 Archivo: <strong>' . htmlspecialchars(basename($v['tarjeta_pdf'])) . '</strong><br>
-                 <span style="font-size:8pt;color:#888;">
-                   Disponible en el sistema. Imprimir por separado desde el módulo de vehículos.
-                 </span>
-               </div>'
-            : '<div class="caja-vacia">
-                 No se ha digitalizado la tarjeta de circulación.<br>
-                 Adjuntar copia física en esta sección.
-               </div>';
+        $tarjetaPdf = is_array($v['tarjeta_pdf'] ?? null)
+            ? (string)($v['tarjeta_pdf'][0] ?? '')
+            : (string)($v['tarjeta_pdf'] ?? '');
+
+        if (empty($tarjetaPdf)) {
+            $contenido = '
+        <div class="caja-vacia" style="min-height:300px;padding:60px;">
+            <div style="font-size:14pt;margin-bottom:12px;">📄</div>
+            No se ha digitalizado la tarjeta de circulación.<br>
+            <strong>Adjuntar copia física en esta sección.</strong>
+        </div>';
+        } else {
+            $urlPublica = 'http://localhost:9002/bhr_functions/API/vehiculos/foto?archivo=/' . $tarjetaPdf;
+            $contenido  = '
+        <div style="text-align:center;padding:40px 30px;">
+            <div style="font-size:40pt;margin-bottom:16px;">📄</div>
+            <div style="font-size:13pt;font-weight:bold;color:#C75B00;margin-bottom:12px;">
+                Tarjeta de Circulación Digitalizada
+            </div>
+            <div style="font-size:10pt;color:#555;margin-bottom:20px;">
+                Archivo: <strong>' . htmlspecialchars(basename($tarjetaPdf)) . '</strong>
+            </div>
+            <div style="background:#f9f9f9;border:1pt solid #ddd;border-radius:6px;padding:16px;font-size:9pt;color:#666;margin-bottom:20px;">
+                El archivo PDF de la tarjeta de circulación está disponible en el sistema.<br>
+                Para ver o imprimir la tarjeta, acceder al módulo de vehículos y<br>
+                seleccionar <strong>"Ver Tarjeta PDF"</strong> desde la ficha del vehículo.
+            </div>
+            <div style="border:2pt dashed #C75B00;padding:20px;margin:0 60px;">
+                <div style="font-size:9pt;color:#888;margin-bottom:8px;text-transform:uppercase;letter-spacing:1pt;">
+                    Espacio para adjuntar copia impresa
+                </div>
+                <div style="height:200px;"></div>
+            </div>
+        </div>';
+        }
 
         return '
-        ' . self::encabezado('05', 'COPIA DE TARJETA DE CIRCULACIÓN') . '
-        <table class="tabla-datos" style="margin-bottom:16px;">
+    ' . self::encabezado('05', 'COPIA DE TARJETA DE CIRCULACIÓN') . '
+    <table class="tabla-datos" style="margin-bottom:16px;">
+        <tr>
+            <td class="td-label">Placa</td>
+            <td class="td-valor">' . htmlspecialchars($v['placa']) . '</td>
+            <td class="td-label">Marca / Modelo</td>
+            <td class="td-valor">' . htmlspecialchars($v['marca'] . ' ' . $v['modelo']) . '</td>
+        </tr>
+    </table>
+    ' . $contenido . '
+    <div style="margin-top:20px;border-top:1pt dashed #ccc;padding-top:14px;">
+        <table width="100%">
             <tr>
-                <td class="td-label">Placa</td>
-                <td class="td-valor">' . htmlspecialchars($v['placa']) . '</td>
-                <td class="td-label">Marca / Modelo</td>
-                <td class="td-valor">' . htmlspecialchars($v['marca'] . ' ' . $v['modelo']) . '</td>
+                <td style="text-align:center;padding:10px;">
+                    <div style="border-top:0.5pt solid #333;margin:0 20px;padding-top:4px;font-size:8pt;color:#555;">
+                        FIRMA Y SELLO DEL RESPONSABLE
+                    </div>
+                </td>
+                <td style="text-align:center;padding:10px;">
+                    <div style="border-top:0.5pt solid #333;margin:0 20px;padding-top:4px;font-size:8pt;color:#555;">
+                        FECHA DE VERIFICACIÓN
+                    </div>
+                </td>
             </tr>
         </table>
-        ' . $nota . '
-        <div style="margin-top:30px;border-top:1pt dashed #ccc;padding-top:14px;">
-            <table width="100%">
-                <tr>
-                    <td style="text-align:center;padding:10px;">
-                        <div style="border-top:0.5pt solid #333;margin:0 20px;padding-top:4px;font-size:8pt;color:#555;">
-                            FIRMA Y SELLO DEL RESPONSABLE
-                        </div>
-                    </td>
-                    <td style="text-align:center;padding:10px;">
-                        <div style="border-top:0.5pt solid #333;margin:0 20px;padding-top:4px;font-size:8pt;color:#555;">
-                            FECHA DE VERIFICACIÓN
-                        </div>
-                    </td>
-                </tr>
-            </table>
-        </div>
-        ' . self::pie($v['placa'], '05 – TARJETA DE CIRCULACIÓN');
+    </div>
+    ' . self::pie($v['placa'], '05 – TARJETA DE CIRCULACIÓN');
     }
+
+
 
     /** 8 – HISTORIAL COMPLETO DE SERVICIOS */
     private static function paginaHistorialServicios(array $v, array $servicios): string
@@ -1084,93 +1150,162 @@ class ExpedienteController
     }
 
     /** 16 – HOJA DE CHEQUEO DIARIO */
-    private static function paginaHojaChequeo(array $v): string
+    private static function paginaHojaChequeo(array $v, ?array $chequeo = null): string
     {
         $items = [
-            'Motor'                => ['Aceite de motor', 'Temperatura', 'Correas', 'Mangueras', 'Filtro de aire', 'Nivel de combustible'],
-            'Sistema de frenos'    => ['Líquido de frenos', 'Freno de mano', 'Pedal de freno'],
-            'Sistema eléctrico'    => ['Luces delanteras', 'Luces traseras', 'Direccionales', 'Batería/Acumulador', 'Bocina'],
-            'Neumáticos'           => ['Llanta delantera izquierda', 'Llanta delantera derecha', 'Llanta trasera izquierda', 'Llanta trasera derecha', 'Llanta de refacción'],
-            'Exterior / Carrocería' => ['Espejos laterales', 'Espejo retrovisor', 'Limpiaparabrisas', 'Cinturones de seguridad'],
-            'Documentación'        => ['Tarjeta de circulación', 'Licencia del conductor', 'Sticker de revisión'],
+            1  => 'Tren delantero',
+            2  => 'Tapicería',
+            3  => 'Carrocería',
+            4  => 'Pintura en general',
+            5  => 'Siglas que identifican a los vehículos pintados en color naranja fluorescente y en el lugar correspondiente',
+            6  => 'Lona del camión',
+            7  => 'Luces y pide vías',
+            8  => 'Sistema eléctrico',
+            9  => 'Herramienta extra para reparación de vehículos',
+            10 => 'Herramienta básica (Tricket, llave de chuchos, palanca o tubo, trozo, cable o cadena, señalizaciones etc.)',
+            11 => 'Herramienta de emergencia (llave de ½, Nos. 12, 13, 14, alicate, llave ajustable, juego de desatornilladores)',
+            12 => 'Repuestos necesarios de emergencias',
+            13 => 'Neumático de repuesto',
+            14 => 'Acumulador o batería',
+            15 => 'Neumáticos',
+            16 => 'Lubricante',
+            17 => 'Odómetro',
         ];
 
-        $filas = '';
-        foreach ($items as $categoria => $subitems) {
-            $filas .= '<tr>
-                <td colspan="5" style="background:#C75B00;color:#fff;font-weight:bold;
-                    font-size:8pt;text-transform:uppercase;padding:4px 8px;letter-spacing:0.5pt;">
-                    ' . $categoria . '
-                </td>
-            </tr>';
-            foreach ($subitems as $item) {
-                $filas .= '
-                <tr>
-                    <td class="item">' . $item . '</td>
-                    <td style="text-align:center;color:#2e7d32;font-weight:bold;">✓&nbsp;BIEN</td>
-                    <td style="text-align:center;color:#e65100;font-weight:bold;">✗&nbsp;MAL</td>
-                    <td style="text-align:center;color:#999;">N/A</td>
-                    <td style="min-width:100px;">&nbsp;</td>
-                </tr>';
+        $resultados = [];
+        if ($chequeo && !empty($chequeo['items'])) {
+            foreach ($chequeo['items'] as $item) {
+                $resultados[(int)($item['numero_item'] ?? 0)] = [
+                    'resultado'   => $item['resultado']   ?? '',
+                    'observacion' => $item['observacion'] ?? '',
+                ];
             }
         }
 
+        $colores = [
+            'BE'  => '#2e7d32',
+            'ME'  => '#e05252',
+            'MEI' => '#e8b84b',
+            'NT'  => '#7c8398',
+        ];
+
+        $filas = '';
+        foreach ($items as $num => $desc) {
+            $res = $resultados[$num]['resultado']   ?? '';
+            $obs = $resultados[$num]['observacion'] ?? '';
+
+            $celdas = '';
+            foreach (['BE', 'ME', 'MEI', 'NT'] as $op) {
+                $relleno = ($res === $op);
+                $color   = $colores[$op];
+                if ($relleno) {
+                    $circulo = '<svg width="14" height="14" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="7" cy="7" r="6" fill="' . $color . '" stroke="' . $color . '" stroke-width="1"/>
+        </svg>';
+                } else {
+                    $circulo = '<svg width="14" height="14" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="7" cy="7" r="6" fill="none" stroke="#cccccc" stroke-width="1.5"/>
+        </svg>';
+                }
+                $celdas .= '<td style="text-align:center;padding:3px 4px;width:40px;">' . $circulo . '</td>';
+            }   
+
+            $bg = ($num % 2 === 0) ? 'background:#fafafa;' : 'background:#ffffff;';
+
+            $filas .= '
+        <tr style="' . $bg . 'border-bottom:0.5pt solid #e0e0e0;">
+            <td style="text-align:center;font-weight:bold;color:#999;font-size:7.5pt;padding:4px 5px;width:28px;">'
+                . str_pad($num, 2, '0', STR_PAD_LEFT) . '</td>
+            <td style="text-align:left;font-size:8pt;padding:4px 6px;">' . htmlspecialchars($desc) . '</td>
+            ' . $celdas . '
+            <td style="font-size:7.5pt;color:#555;padding:4px 6px;">' . htmlspecialchars($obs) . '</td>
+        </tr>';
+        }
+
+        $fecha       = $chequeo ? $chequeo['fecha_chequeo']  : '___/___/______';
+        $km          = $chequeo ? number_format((int)$chequeo['km_al_chequeo']) . ' km' : '_______________';
+        $responsable = $chequeo ? ($chequeo['realizado_por'] ?: '—') : '_____________________________';
+        $obsGen      = $chequeo ? ($chequeo['observaciones_gen'] ?? '') : '';
+
+        $notaChequeo = $chequeo
+            ? '<div style="font-size:7.5pt;color:#888;margin-bottom:8px;">Chequeo del <strong>' . $fecha . '</strong> registrado en el sistema.</div>'
+            : '<div style="font-size:7.5pt;color:#e05252;margin-bottom:8px;">⚠ No hay chequeo completado registrado.</div>';
+
+        $estadoBadge = $chequeo
+            ? '<span style="background:#e6f4ea;color:#2e7d32;border:0.5pt solid #2e7d32;padding:1px 6px;border-radius:3px;font-size:7pt;font-weight:bold;">✓ COMPLETADO</span>'
+            : '';
+
         return '
-        ' . self::encabezado('16', 'HOJA INDIVIDUAL DE CHEQUEO DE VEHÍCULOS') . '
+    ' . self::encabezado('16', 'HOJA INDIVIDUAL DE CHEQUEO DE VEHÍCULOS') . '
+    ' . $notaChequeo . '
 
-        <table class="tabla-datos" style="margin-bottom:10px;">
-            <tr>
-                <td class="td-label">Catálogo / Placa</td>
-                <td class="td-valor">' . htmlspecialchars($v['placa']) . '</td>
-                <td class="td-label">Marca / Modelo</td>
-                <td class="td-valor">' . htmlspecialchars($v['marca'] . ' ' . $v['modelo']) . '</td>
-                <td class="td-label">Fecha</td>
-                <td class="td-valor">___/___/______</td>
+    <table width="100%" style="border-collapse:collapse;margin-bottom:10px;border:0.5pt solid #ddd;">
+        <tr>
+            <td style="background:#f5f5f5;font-size:7.5pt;font-weight:bold;color:#888;text-transform:uppercase;padding:3px 8px;width:18%;">Catálogo / Placa</td>
+            <td style="font-size:10pt;font-weight:bold;padding:3px 8px;width:12%;">' . htmlspecialchars($v['placa']) . '</td>
+            <td style="background:#f5f5f5;font-size:7.5pt;font-weight:bold;color:#888;text-transform:uppercase;padding:3px 8px;width:16%;">Marca / Modelo</td>
+            <td style="font-size:10pt;font-weight:bold;padding:3px 8px;width:22%;">' . htmlspecialchars($v['marca'] . ' ' . $v['modelo']) . '</td>
+            <td style="background:#f5f5f5;font-size:7.5pt;font-weight:bold;color:#888;text-transform:uppercase;padding:3px 8px;width:14%;">Fecha</td>
+            <td style="font-size:9pt;font-weight:bold;padding:3px 8px;width:18%;">' . $fecha . ' ' . $estadoBadge . '</td>
+        </tr>
+        <tr>
+            <td style="background:#f5f5f5;font-size:7.5pt;font-weight:bold;color:#888;text-transform:uppercase;padding:3px 8px;">KM al momento</td>
+            <td style="font-size:9pt;font-weight:bold;padding:3px 8px;">' . $km . '</td>
+            <td style="background:#f5f5f5;font-size:7.5pt;font-weight:bold;color:#888;text-transform:uppercase;padding:3px 8px;">Realizado por</td>
+            <td colspan="3" style="font-size:9pt;font-weight:bold;padding:3px 8px;">' . htmlspecialchars($responsable) . '</td>
+        </tr>
+    </table>
+
+    <table width="100%" style="border-collapse:collapse;font-size:8.5pt;">
+        <thead>
+            <tr style="background:#1a1a1a;color:#ffffff;">
+                <th style="padding:5px;text-align:center;width:28px;font-size:7.5pt;">No.</th>
+                <th style="padding:5px;text-align:left;font-size:7.5pt;">Descripción del Ítem</th>
+                <th style="padding:5px;text-align:center;width:40px;color:#4caf7d;font-size:7.5pt;">BE</th>
+                <th style="padding:5px;text-align:center;width:40px;color:#e05252;font-size:7.5pt;">ME</th>
+                <th style="padding:5px;text-align:center;width:40px;color:#e8b84b;font-size:7.5pt;">MEI</th>
+                <th style="padding:5px;text-align:center;width:40px;color:#aaaaaa;font-size:7.5pt;">NT</th>
+                <th style="padding:5px;text-align:left;font-size:7.5pt;">Observación</th>
             </tr>
+        </thead>
+        <tbody>
+            ' . $filas . '
+        </tbody>
+    </table>
+
+    <div style="margin-top:5px;font-size:7pt;color:#888;">
+        <strong>BE</strong> = Buen Estado &nbsp;·&nbsp;
+        <strong>ME</strong> = Mal Estado &nbsp;·&nbsp;
+        <strong>MEI</strong> = Mal Estado Irreparable &nbsp;·&nbsp;
+        <strong>NT</strong> = No Tiene
+    </div>
+
+    ' . (!empty($obsGen) ? '
+    <div style="margin-top:8px;border:0.5pt solid #ddd;padding:6px 8px;font-size:8pt;">
+        <strong>Observaciones:</strong> ' . htmlspecialchars($obsGen) . '
+    </div>' : '') . '
+
+    <div style="margin-top:14px;">
+        <table width="100%" style="border-collapse:collapse;">
             <tr>
-                <td class="td-label">KM al momento</td>
-                <td class="td-valor">_______________</td>
-                <td class="td-label">Conductor</td>
-                <td class="td-valor" colspan="3">_____________________________</td>
+                <td style="text-align:center;padding:8px 16px;">
+                    <div style="border-top:0.5pt solid #333;margin:0 20px;padding-top:4px;font-size:8pt;color:#555;">
+                        FIRMA DEL RESPONSABLE
+                    </div>
+                </td>
+                <td style="text-align:center;padding:8px 16px;">
+                    <div style="border-top:0.5pt solid #333;margin:0 20px;padding-top:4px;font-size:8pt;color:#555;">
+                        FIRMA DEL OFICIAL DE TURNO
+                    </div>
+                </td>
+                <td style="text-align:center;padding:8px 16px;">
+                    <div style="border-top:0.5pt solid #333;margin:0 20px;padding-top:4px;font-size:8pt;color:#555;">
+                        SELLO UNIDAD
+                    </div>
+                </td>
             </tr>
         </table>
-
-        <table class="chequeo-tabla">
-            <thead>
-                <tr>
-                    <th style="text-align:left;width:35%;">Ítem de Revisión</th>
-                    <th style="width:15%;">BIEN</th>
-                    <th style="width:15%;">MAL</th>
-                    <th style="width:12%;">N/A</th>
-                    <th style="width:23%;text-align:left;">Observación</th>
-                </tr>
-            </thead>
-            <tbody>
-                ' . $filas . '
-            </tbody>
-        </table>
-
-        <div style="margin-top:18px;">
-            <table width="100%" style="border-collapse:collapse;">
-                <tr>
-                    <td style="text-align:center;padding:8px 16px;">
-                        <div style="border-top:0.5pt solid #333;margin:0 20px;padding-top:4px;font-size:8pt;color:#555;">
-                            FIRMA DEL CONDUCTOR
-                        </div>
-                    </td>
-                    <td style="text-align:center;padding:8px 16px;">
-                        <div style="border-top:0.5pt solid #333;margin:0 20px;padding-top:4px;font-size:8pt;color:#555;">
-                            FIRMA DEL OFICIAL RESPONSABLE
-                        </div>
-                    </td>
-                    <td style="text-align:center;padding:8px 16px;">
-                        <div style="border-top:0.5pt solid #333;margin:0 20px;padding-top:4px;font-size:8pt;color:#555;">
-                            SELLO UNIDAD
-                        </div>
-                    </td>
-                </tr>
-            </table>
-        </div>
-        ' . self::pie($v['placa'], '16 – HOJA DE CHEQUEO');
+    </div>
+    ' . self::pie($v['placa'], '16 – HOJA DE CHEQUEO');
     }
 }

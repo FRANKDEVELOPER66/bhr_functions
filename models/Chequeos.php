@@ -140,4 +140,29 @@ class Chequeos extends ActiveRecord
             ]);
         }
     }
+
+    public static function traerUltimoCompletado(string $placa): ?array
+    {
+        $db = self::$db;
+
+        $chequeo = self::fetchFirst(
+            "SELECT * FROM chequeos_vehiculo 
+         WHERE placa = :placa AND estado = 'Completado' 
+         ORDER BY fecha_chequeo DESC 
+         LIMIT 1",
+            [':placa' => $placa]
+        );
+
+        if (!$chequeo) return null;
+
+        $items = self::fetchArray(
+            "SELECT * FROM chequeo_items 
+         WHERE id_chequeo = :id 
+         ORDER BY numero_item ASC",
+            [':id' => $chequeo['id_chequeo']]
+        );
+
+        $chequeo['items'] = $items;
+        return $chequeo;
+    }
 }
