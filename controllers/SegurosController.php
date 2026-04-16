@@ -31,7 +31,7 @@ class SegurosController
             // Agregar flags útiles para el frontend
             $urlBase = rtrim($_ENV['SFTP_PUBLIC_URL'] ?? '', '/');
             foreach ($seguros as &$s) {
-                $s['poliza_url']       = $s['archivo_poliza']
+                $s['poliza_url'] = $s['archivo_poliza']
                     ? "{$urlBase}/{$s['archivo_poliza']}"
                     : null;
                 $s['proximo_vencer']   = false;
@@ -125,7 +125,7 @@ class SegurosController
                 $nombreArchivo = Vehiculos::subirArchivoSFTP(
                     $_FILES['archivo_poliza'],
                     'polizas',
-                    $placa . '_POL_' . time()
+                    $placa . '_POL'
                 );
                 if (!$nombreArchivo) {
                     http_response_code(500);
@@ -257,11 +257,11 @@ class SegurosController
                 'tipo_cobertura'    => $_POST['tipo_cobertura']    ?? $seguro->tipo_cobertura,
                 'fecha_inicio'      => $_POST['fecha_inicio']      ?? $seguro->fecha_inicio,
                 'fecha_vencimiento' => $_POST['fecha_vencimiento'] ?? $seguro->fecha_vencimiento,
-                'prima_anual'       => !empty($_POST['prima_anual'])
+                'prima_anual'     => !empty($_POST['prima_anual']) && $_POST['prima_anual'] !== ''
                     ? (float)$_POST['prima_anual']
-                    : $seguro->prima_anual,
-                'agente_contacto'   => htmlspecialchars($_POST['agente_contacto']  ?? $seguro->agente_contacto  ?? ''),
-                'telefono_agente'   => htmlspecialchars($_POST['telefono_agente']  ?? $seguro->telefono_agente  ?? ''),
+                    : null,
+                'agente_contacto' => htmlspecialchars(trim($_POST['agente_contacto'] ?? $seguro->agente_contacto ?? '')),
+                'telefono_agente' => htmlspecialchars(trim($_POST['telefono_agente'] ?? $seguro->telefono_agente ?? '')),
                 'archivo_poliza'    => $_POST['archivo_poliza']    ?? $seguro->archivo_poliza,
                 'estado'            => $_POST['estado']            ?? $seguro->estado,
                 'observaciones'     => htmlspecialchars($_POST['observaciones']    ?? $seguro->observaciones    ?? '')

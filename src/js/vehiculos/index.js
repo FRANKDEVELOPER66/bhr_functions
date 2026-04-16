@@ -164,6 +164,63 @@ inputPdf.addEventListener('change', async () => {
     pdfNombre.querySelector('span').textContent = file.name;
 });
 
+// ── PDF PÓLIZA (formulario nuevo vehículo) ────────────────────────────────────
+const inputPoliza = document.getElementById('archivo_poliza');
+const areaPoliza = document.getElementById('areaPoliza');
+
+if (inputPoliza && areaPoliza) {
+    inputPoliza.addEventListener('change', () => {
+        const file = inputPoliza.files[0];
+        if (!file) return;
+
+        areaPoliza.classList.add('has-file');
+        areaPoliza.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
+        areaPoliza.querySelector('.upload-label').innerHTML = `
+            <span style="color:var(--success)">${file.name}</span><br>
+            <small>PDF seleccionado</small>`;
+    });
+}
+
+inputPdf.addEventListener('change', async () => {
+    const file = inputPdf.files[0];
+    if (!file) return;
+
+    const pdfPreview = document.getElementById('pdfPreviewIframe');
+    const hayPdfActual = modoEdicion && pdfPreview && pdfPreview.style.display !== 'none';
+
+    if (hayPdfActual) {
+        const confirm = await Swal.fire({
+            icon: 'question',
+            title: '¿Reemplazar PDF?',
+            html: `Se reemplazará la tarjeta actual por <strong>${file.name}</strong>.<br>
+                   <small style="color:var(--text-muted)">El cambio se aplicará al guardar.</small>`,
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-arrow-repeat"></i> Sí, reemplazar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#3a7bd5',
+            cancelButtonColor: '#e05252',
+            background: '#1a1d27',
+            color: '#e8eaf0'
+        });
+
+        if (!confirm.isConfirmed) {
+            inputPdf.value = '';
+            return;
+        }
+
+        pdfPreview.style.display = 'none';
+        pdfPreview.src = '';
+    }
+
+    areaPdf.classList.add('has-file');
+    areaPdf.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
+    areaPdf.querySelector('.upload-label').innerHTML = `
+        <span style="color:var(--success)">${file.name}</span><br>
+        <small>Nuevo PDF seleccionado</small>`;
+    pdfNombre.style.display = 'block';
+    pdfNombre.querySelector('span').textContent = file.name;
+});
+
 // ── HELPERS UI ────────────────────────────────────────────────────────────────
 const resetArchivos = () => {
     areaFoto.classList.remove('has-file');
@@ -188,6 +245,18 @@ const resetArchivos = () => {
         pdfPreview.style.display = 'none';
         pdfPreview.src = '';
     }
+
+    // ── Reset área póliza seguro ──────────────────────────────────────────────
+    const areaPoliza = document.getElementById('areaPoliza');
+    const inputPoliza = document.getElementById('archivo_poliza');
+    if (areaPoliza) {
+        areaPoliza.classList.remove('has-file');
+        areaPoliza.querySelector('.upload-icon i').className = 'bi bi-file-pdf';
+        areaPoliza.querySelector('.upload-label').innerHTML = `
+            <span>Haz clic</span> para subir la póliza<br>
+            <small>Solo PDF — máx. 10 MB</small>`;
+    }
+    if (inputPoliza) inputPoliza.value = '';
 };
 
 const resetAsignacion = () => {
@@ -408,8 +477,8 @@ const guardar = async (e) => {
        VEHICULO
     =============================== */
 
-    body.append('placa', document.getElementById('placa').value);
-    body.append('numero_serie', document.getElementById('numero_serie').value);
+    body.append('placa', document.getElementById('placa').value.trim());
+    body.append('numero_serie', document.getElementById('numero_serie').value.trim());
     body.append('marca', document.getElementById('marca').value);
     body.append('modelo', document.getElementById('modelo').value);
     body.append('anio', document.getElementById('anio').value);
@@ -426,22 +495,27 @@ const guardar = async (e) => {
     =============================== */
 
     const foto = document.getElementById('foto_frente');
-    if (foto.files[0]) body.append('foto_frente', foto.files[0]);
+    if (foto && foto.files.length > 0) {
+        body.append('foto_frente', foto.files[0]);
+    }
 
     const tarjeta = document.getElementById('tarjeta_pdf');
-    if (tarjeta.files[0]) body.append('tarjeta_pdf', tarjeta.files[0]);
+    if (tarjeta && tarjeta.files.length > 0) {
+        body.append('tarjeta_pdf', tarjeta.files[0]);
+    }
 
     /* ===============================
        ¿TIENE SEGURO?
     =============================== */
 
-    const tieneSeguro = document.getElementById('btnSeguroSi')
+    const tieneSeguro = document
+        .getElementById('btnSeguroSi')
         .classList.contains('sel-si');
 
     if (tieneSeguro) {
 
-        const aseguradora = document.getElementById('seg_aseguradora').value;
-        const poliza = document.getElementById('seg_numero_poliza').value;
+        const aseguradora = document.getElementById('seg_aseguradora').value.trim();
+        const poliza = document.getElementById('seg_numero_poliza').value.trim();
         const inicio = document.getElementById('seg_fecha_inicio').value;
         const venc = document.getElementById('seg_fecha_vencimiento').value;
 
@@ -466,11 +540,37 @@ const guardar = async (e) => {
         body.append('seg_telefono_agente', document.getElementById('seg_telefono_agente').value);
         body.append('seg_observaciones', document.getElementById('seg_observaciones').value);
 
+        /* ===============================
+           PDF POLIZA
+        =============================== */
+
         const pdfPoliza = document.getElementById('archivo_poliza');
 
-        if (pdfPoliza && pdfPoliza.files.length > 0) {
-            body.append('archivo_poliza', pdfPoliza.files[0]);
+        if (pdfPoliza && pdfPoliza.files && pdfPoliza.files.length > 0) {
+
+            const file = pdfPoliza.files[0];
+
+            // validar tipo
+            if (file.type !== "application/pdf") {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Archivo inválido',
+                    text: 'La póliza debe ser PDF'
+                });
+                return;
+            }
+
+            body.append('archivo_poliza', file);
         }
+    }
+
+    /* ===============================
+       DEBUG (MUY IMPORTANTE)
+    =============================== */
+
+    // ver que se esta enviando
+    for (let pair of body.entries()) {
+        console.log(pair[0], pair[1]);
     }
 
     /* ===============================
@@ -590,14 +690,35 @@ const cancelar = () => {
     ocultarFormulario();
     btnGuardar.parentElement.style.display = '';
     btnModificar.parentElement.style.display = 'none';
+    // Reset seguro toggle
+    document.getElementById('btnSeguroSi').classList.remove('sel-si');
+    document.getElementById('btnSeguroNo').classList.remove('sel-no');
+    document.getElementById('panelFormSeguro').style.display = 'none';
+    document.getElementById('avisoSinSeguro').style.display = 'none';
+    vehiculoTieneSeguro = false;
 };
 
 // ── MODIFICAR ─────────────────────────────────────────────────────────────────
 const modificar = async () => {
-    if (!validarFormulario(formulario, ['observaciones', 'foto_frente', 'tarjeta_pdf', 'id_unidad'])) {
+    // Validar solo campos del vehículo
+    const camposRequeridos = ['placa', 'numero_serie', 'marca', 'modelo',
+        'anio', 'color', 'tipo', 'estado', 'fecha_ingreso'];
+
+    let campoVacio = false;
+    for (const campo of camposRequeridos) {
+        const el = document.getElementById(campo);
+        if (!el || !el.value.trim()) {
+            campoVacio = true;
+            if (el) el.style.borderColor = 'var(--danger)';
+        } else {
+            if (el) el.style.borderColor = '';
+        }
+    }
+
+    if (campoVacio) {
         Swal.fire({
             title: 'Campos vacíos',
-            text: 'Debe llenar todos los campos obligatorios',
+            text: 'Debe llenar todos los campos obligatorios marcados en rojo',
             icon: 'info',
             background: '#1a1d27',
             color: '#e8eaf0',
@@ -627,7 +748,6 @@ const modificar = async () => {
         Toast.fire({ icon: 'error', title: 'Error de conexión al modificar' });
     }
 };
-
 // ── ELIMINAR ──────────────────────────────────────────────────────────────────
 const eliminar = async (e) => {
     const placa = e.currentTarget.dataset.placa;
@@ -1250,7 +1370,7 @@ const limpiarCamposSeguros = () => {
     }
     if (nombreSeg) nombreSeg.style.display = 'none';
     // Reset botón guardar
-    const btnSave = document.querySelector('#formNuevoSeguro button[onclick="guardarSeguro()"]');
+    const btnSave = document.querySelector('#formNuevoSeguroFicha button[onclick="guardarSeguroFicha()"]');
     if (btnSave) {
         btnSave.innerHTML = '<i class="bi bi-save me-1"></i> Guardar Seguro';
         btnSave.style.background = 'linear-gradient(135deg,var(--success),#2e7d52)';
@@ -1294,7 +1414,7 @@ const renderTablaSeguros = (seguros) => {
             </div>
             <div>
                 <div class="svc-label">Costo Anual</div>
-                <div class="svc-val">${s.costo_anual ? 'Q ' + Number(s.costo_anual).toLocaleString() : '—'}</div>
+                <div class="svc-val">${s.prima_anual ? 'Q ' + Number(s.prima_anual).toLocaleString() : '—'}</div>
             </div>
             <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
                 ${s.pdf_poliza_url ? `
@@ -1331,11 +1451,13 @@ const guardarSeguro = async () => {
     const poliza = document.getElementById('fsNumeroPoliza').value.trim();
     const aseguradora = document.getElementById('fsAseguradora').value.trim();
     const fechaInicio = document.getElementById('fsFechaInicio').value;
+    const fechaVenc = document.getElementById('fsFechaVenc').value;
 
-    if (!poliza || !aseguradora || !fechaInicio) {
+    if (!poliza || !aseguradora || !fechaInicio || !fechaVenc) {
         Swal.fire({
             icon: 'info',
-            title: 'Nº de póliza, aseguradora y fecha de inicio son obligatorios',
+            title: 'Faltan campos obligatorios',
+            text: 'Póliza, aseguradora, fecha inicio y fecha vencimiento son requeridos',
             background: '#1a1d27',
             color: '#e8eaf0',
             confirmButtonColor: '#e8b84b',
@@ -1350,12 +1472,12 @@ const guardarSeguro = async () => {
     body.append('aseguradora', aseguradora);
     body.append('tipo_cobertura', document.getElementById('fsTipoCobertura').value);
     body.append('fecha_inicio', fechaInicio);
-    body.append('fecha_vencimiento', document.getElementById('fsFechaVenc').value);
-    body.append('costo_anual', document.getElementById('fsPrima').value);
-    body.append('contacto_agente', document.getElementById('fsAgente').value);
+    body.append('fecha_vencimiento', fechaVenc);
+    body.append('prima_anual', document.getElementById('fsPrima').value);        // ← fix
+    body.append('agente_contacto', document.getElementById('fsAgente').value);       // ← fix
+    body.append('telefono_agente', document.getElementById('fsTelefono').value);     // ← fix (bug 6)
     body.append('observaciones', document.getElementById('fsObs').value);
 
-    // PDF de póliza (opcional)
     const inputPdfSeg = document.getElementById('fsArchivo');
     if (inputPdfSeg && inputPdfSeg.files[0]) {
         body.append('archivo_poliza', inputPdfSeg.files[0]);
@@ -1364,7 +1486,6 @@ const guardarSeguro = async () => {
     const esEdicion = seguroEditandoId !== null;
     if (esEdicion) body.append('id_seguro', seguroEditandoId);
 
-    // ── FIX: rutas corregidas a plural /seguros/ ──────────────────────────────
     const url = esEdicion
         ? `${BASE}/API/vehiculos/seguros/modificar`
         : `${BASE}/API/vehiculos/seguros/guardar`;
@@ -1378,7 +1499,7 @@ const guardarSeguro = async () => {
         if (d.codigo === 1) {
             resetFormSeguro();
             await abrirFicha(fichaPlacaActual);
-            switchTab(document.querySelector('.ficha-tab[data-tab="seguros"]'), 'seguros');
+            switchTab(document.querySelector('.ficha-tab[data-tab="seguro"]'), 'seguro'); // ← fix bug 4
             buscar();
         }
     } catch (err) {
@@ -1404,8 +1525,9 @@ const editarSeguro = (id) => {
     document.getElementById('fsTipoCobertura').value = s.tipo_cobertura || '';
     document.getElementById('fsFechaInicio').value = s.fecha_inicio || '';
     document.getElementById('fsFechaVenc').value = s.fecha_vencimiento || '';
-    document.getElementById('fsPrima').value = s.costo_anual || '';
-    document.getElementById('fsAgente').value = s.contacto_agente || '';
+    document.getElementById('fsPrima').value = s.prima_anual || '';
+    document.getElementById('fsAgente').value = s.agente_contacto || '';
+    document.getElementById('fsTelefono').value = s.telefono_agente || '';
     document.getElementById('fsObs').value = s.observaciones || '';
 
     const btnSave = document.querySelector('#formNuevoSeguro button[onclick="guardarSeguro()"]');
@@ -1446,7 +1568,7 @@ const eliminarSeguro = async (id) => {
         Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
         if (d.codigo === 1) {
             await abrirFicha(fichaPlacaActual);
-            switchTab(document.querySelector('.ficha-tab[data-tab="seguros"]'), 'seguros');
+            switchTab(document.querySelector('.ficha-tab[data-tab="seguro"]'), 'seguro');
             buscar();
         }
     } catch (err) {
@@ -1460,18 +1582,14 @@ if (inputSeguroPdf) {
     inputSeguroPdf.addEventListener('change', () => {
         const file = inputSeguroPdf.files[0];
         if (!file) return;
+
         const area = document.getElementById('areaPolizaFicha');
-        const nombre = document.getElementById('seguroPdfNombre');
         if (area) {
             area.classList.add('has-file');
             area.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
             area.querySelector('.upload-label').innerHTML = `
                 <span style="color:var(--success)">${file.name}</span><br>
                 <small>PDF seleccionado</small>`;
-        }
-        if (nombre) {
-            nombre.style.display = 'block';
-            nombre.querySelector('span').textContent = file.name;
         }
     });
 }

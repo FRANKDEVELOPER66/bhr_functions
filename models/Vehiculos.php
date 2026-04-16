@@ -70,13 +70,29 @@ class Vehiculos extends ActiveRecord
                 d.departamento     AS destacamento_depto,
                 COUNT(DISTINCT s.id_servicio)   AS total_servicios,
                 COUNT(DISTINCT r.id_reparacion) AS total_reparaciones,
-                MAX(s.fecha_realizado)           AS ultimo_servicio
+                MAX(s.fecha_realizado)           AS ultimo_servicio,
+                CASE
+                    WHEN seg.placa IS NULL        THEN 'ninguno'
+                    WHEN seg.max_venc < CURDATE() THEN 'vencido'
+                    ELSE 'vigente'
+                END AS seguro_estado
             FROM vehiculos v
-            LEFT JOIN unidades     u ON v.id_unidad         = u.id_unidad
-            LEFT JOIN destacamentos d ON u.id_destacamento  = d.id_destacamento
-            LEFT JOIN servicios    s ON v.placa = s.placa
-            LEFT JOIN reparaciones r ON v.placa = r.placa
-            GROUP BY v.placa
+            LEFT JOIN unidades      u  ON v.id_unidad       = u.id_unidad
+            LEFT JOIN destacamentos d  ON u.id_destacamento = d.id_destacamento
+            LEFT JOIN servicios     s  ON v.placa = s.placa
+            LEFT JOIN reparaciones  r  ON v.placa = r.placa
+            LEFT JOIN (
+                SELECT placa, MAX(fecha_vencimiento) AS max_venc
+                FROM seguros
+                WHERE estado = 'Vigente'
+                GROUP BY placa
+            ) seg ON v.placa = seg.placa
+            GROUP BY 
+                v.placa, v.numero_serie, v.marca, v.modelo, v.anio,
+                v.color, v.tipo, v.km_actuales, v.estado, v.fecha_ingreso,
+                v.observaciones, v.foto_frente, v.tarjeta_pdf, v.id_unidad,
+                u.nombre, d.nombre, d.departamento,
+                seg.placa, seg.max_venc
             ORDER BY v.marca, v.modelo";
 
         return self::fetchArray($sql);
@@ -187,7 +203,7 @@ class Vehiculos extends ActiveRecord
             }
 
             $extension    = strtolower(pathinfo($archivo['name'], PATHINFO_EXTENSION));
-            $nombreRemoto = strtoupper($placa) . '_' . $carpeta . '_' . time() . '.' . $extension;
+            $nombreRemoto = strtoupper($placa) . '_' . time() . '.' . $extension;
             $rutaRemota   = "{$rutaBase}/{$carpeta}/{$nombreRemoto}";
 
             // Crear carpeta remota si no existe

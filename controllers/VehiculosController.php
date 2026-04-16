@@ -27,201 +27,186 @@ class VehiculosController
 
         try {
 
-            /* =============================
-           LIMPIAR DATOS VEHICULO
-        ============================= */
+            $db = \Model\ActiveRecord::getDB();
+            $db->beginTransaction();
 
-            $_POST['placa']         = strtoupper(trim($_POST['placa'] ?? ''));
-            $_POST['numero_serie']  = strtoupper(trim($_POST['numero_serie'] ?? ''));
-            $_POST['marca']         = trim($_POST['marca'] ?? '');
-            $_POST['modelo']        = trim($_POST['modelo'] ?? '');
-            $_POST['color']         = trim($_POST['color'] ?? '');
-            $_POST['tipo']          = trim($_POST['tipo'] ?? '');
-            $_POST['observaciones'] = trim($_POST['observaciones'] ?? '');
-            $_POST['km_actuales']   = (int)($_POST['km_actuales'] ?? 0);
+            /* ================================
+           SANITIZAR
+        ================================= */
 
-            /* =============================
+            $_POST['placa']        = strtoupper(trim($_POST['placa'] ?? ''));
+            $_POST['numero_serie'] = strtoupper(trim($_POST['numero_serie'] ?? ''));
+
+            /* ================================
            VALIDAR VEHICULO
-        ============================= */
+        ================================= */
 
-            $obligatorios = [
-                'placa',
-                'numero_serie',
-                'marca',
-                'modelo',
-                'anio',
-                'color',
-                'tipo',
-                'estado',
-                'fecha_ingreso'
-            ];
+            foreach (
+                [
+                    'placa',
+                    'numero_serie',
+                    'marca',
+                    'modelo',
+                    'anio',
+                    'color',
+                    'tipo',
+                    'estado',
+                    'fecha_ingreso'
+                ] as $campo
+            ) {
 
-            foreach ($obligatorios as $campo) {
                 if (empty($_POST[$campo])) {
-                    http_response_code(400);
-                    echo json_encode([
-                        'codigo' => 0,
-                        'mensaje' => "El campo {$campo} es obligatorio"
-                    ]);
-                    return;
+                    throw new \Exception("El campo {$campo} es obligatorio");
                 }
             }
 
             if (Vehiculos::existePlaca($_POST['placa'])) {
-                echo json_encode([
-                    'codigo' => 0,
-                    'mensaje' => 'Ya existe un vehículo con ese catálogo'
-                ]);
-                return;
+                throw new \Exception("Ya existe un vehículo con ese catálogo");
             }
 
             if (Vehiculos::existeNumeroSerie($_POST['numero_serie'])) {
-                echo json_encode([
-                    'codigo' => 0,
-                    'mensaje' => 'Ya existe un vehículo con ese número de serie'
-                ]);
-                return;
+                throw new \Exception("Ya existe un vehículo con ese número de serie");
             }
 
-            /* =============================
+            /* ================================
            FOTO
-        ============================= */
+        ================================= */
 
             $nombreFoto = null;
 
             if (!empty($_FILES['foto_frente']['name'])) {
-
-                $ext = strtolower(pathinfo($_FILES['foto_frente']['name'], PATHINFO_EXTENSION));
-
-                if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
-                    echo json_encode([
-                        'codigo' => 0,
-                        'mensaje' => 'Foto debe ser JPG PNG o WEBP'
-                    ]);
-                    return;
-                }
 
                 $nombreFoto = Vehiculos::subirArchivoSFTP(
                     $_FILES['foto_frente'],
                     'fotos',
                     $_POST['placa']
                 );
+
+                if (!$nombreFoto) {
+                    throw new \Exception("Error al subir la foto");
+                }
             }
 
-            /* =============================
+            /* ================================
            TARJETA PDF
-        ============================= */
+        ================================= */
 
-            $nombrePdf = null;
+            $nombreTarjeta = null;
 
             if (!empty($_FILES['tarjeta_pdf']['name'])) {
 
                 $ext = strtolower(pathinfo($_FILES['tarjeta_pdf']['name'], PATHINFO_EXTENSION));
 
-                if ($ext != 'pdf') {
-                    echo json_encode([
-                        'codigo' => 0,
-                        'mensaje' => 'Tarjeta debe ser PDF'
-                    ]);
-                    return;
+                if ($ext !== 'pdf') {
+                    throw new \Exception("La tarjeta debe ser PDF");
                 }
 
-                $nombrePdf = Vehiculos::subirArchivoSFTP(
+                $nombreTarjeta = Vehiculos::subirArchivoSFTP(
                     $_FILES['tarjeta_pdf'],
                     'tarjetas',
                     $_POST['placa']
                 );
+
+                if (!$nombreTarjeta) {
+                    throw new \Exception("Error al subir tarjeta PDF");
+                }
             }
 
             $_POST['foto_frente'] = $nombreFoto;
-            $_POST['tarjeta_pdf'] = $nombrePdf;
+            $_POST['tarjeta_pdf'] = $nombreTarjeta;
 
-            /* =============================
+            /* ================================
            GUARDAR VEHICULO
-        ============================= */
+        ================================= */
 
             $vehiculo = new Vehiculos($_POST);
             $vehiculo->crear();
 
 
-            /* =====================================================
-           VALIDAR SI TIENE SEGURO
-        ===================================================== */
+            /* ================================
+           ¿TIENE SEGURO?
+        ================================= */
 
-            $tieneSeguro = !empty($_POST['seg_aseguradora']) ||
-                !empty($_POST['seg_numero_poliza']) ||
-                !empty($_POST['seg_fecha_inicio']);
+            if (!empty($_POST['seg_aseguradora'])) {
 
-
-            if ($tieneSeguro) {
-
-                /* VALIDAR CAMPOS OBLIGATORIOS SEGURO */
-
-                if (
-                    empty($_POST['seg_aseguradora']) ||
-                    empty($_POST['seg_numero_poliza']) ||
-                    empty($_POST['seg_fecha_inicio']) ||
-                    empty($_POST['seg_fecha_vencimiento'])
+                foreach (
+                    [
+                        'seg_aseguradora',
+                        'seg_numero_poliza',
+                        'seg_fecha_inicio',
+                        'seg_fecha_vencimiento'
+                    ] as $campo
                 ) {
-                    echo json_encode([
-                        'codigo' => 0,
-                        'mensaje' => 'Debe completar todos los campos del seguro'
-                    ]);
-                    return;
+
+                    if (empty($_POST[$campo])) {
+                        throw new \Exception("Faltan campos obligatorios del seguro");
+                    }
                 }
 
-                /* =============================
-               PDF POLIZA
-            ============================= */
+                if (\Model\Seguros::existePoliza($_POST['seg_numero_poliza'])) {
+                    throw new \Exception("Ya existe esa póliza");
+                }
 
-                $nombrePoliza = null;
+                /* ================================
+               PDF POLIZA
+            ================================= */
+
+                $nombrePolizaPdf = null;
 
                 if (!empty($_FILES['archivo_poliza']['name'])) {
 
                     $ext = strtolower(pathinfo($_FILES['archivo_poliza']['name'], PATHINFO_EXTENSION));
 
-                    if ($ext != 'pdf') {
-                        echo json_encode([
-                            'codigo' => 0,
-                            'mensaje' => 'La póliza debe ser PDF'
-                        ]);
-                        return;
+                    if ($ext !== 'pdf') {
+                        throw new \Exception("La póliza debe ser PDF");
                     }
 
-                    $nombrePoliza = Vehiculos::subirArchivoSFTP(
+                    $nombrePolizaPdf = Vehiculos::subirArchivoSFTP(
                         $_FILES['archivo_poliza'],
                         'polizas',
                         $_POST['placa'] . '_POL'
                     );
+
+                    if (!$nombrePolizaPdf) {
+                        throw new \Exception("Error al subir póliza");
+                    }
                 }
 
-                /* =============================
+                /* ================================
                GUARDAR SEGURO
-            ============================= */
+            ================================= */
 
                 $seguro = new \Model\Seguros([
-                    'placa' => $_POST['placa'],
-                    'aseguradora' => $_POST['seg_aseguradora'],
-                    'numero_poliza' => $_POST['seg_numero_poliza'],
-                    'tipo_cobertura' => $_POST['seg_tipo_cobertura'] ?? 'Básico',
-                    'fecha_inicio' => $_POST['seg_fecha_inicio'],
+                    'placa'             => $_POST['placa'],
+                    'aseguradora'       => $_POST['seg_aseguradora'],
+                    'numero_poliza'     => $_POST['seg_numero_poliza'],
+                    'tipo_cobertura'    => $_POST['seg_tipo_cobertura'] ?? 'Básico',
+                    'fecha_inicio'      => $_POST['seg_fecha_inicio'],
                     'fecha_vencimiento' => $_POST['seg_fecha_vencimiento'],
-                    'prima_anual' => $_POST['seg_prima_anual'] ?? null,
-                    'agente_contacto' => $_POST['seg_agente_contacto'] ?? null,
-                    'telefono_agente' => $_POST['seg_telefono_agente'] ?? null,
-                    'archivo_poliza' => $nombrePoliza,
-                    'estado' => 'Vigente',
-                    'observaciones' => $_POST['seg_observaciones'] ?? null
+                    'prima_anual'       => $_POST['seg_prima_anual'] ?? null,
+                    'agente_contacto'   => $_POST['seg_agente_contacto'] ?? null,
+                    'telefono_agente'   => $_POST['seg_telefono_agente'] ?? null,
+                    'archivo_poliza'    => $nombrePolizaPdf,
+                    'estado'            => 'Vigente',
+                    'observaciones'     => $_POST['seg_observaciones'] ?? null
                 ]);
 
                 $seguro->crear();
             }
 
+            /* ================================
+           COMMIT
+        ================================= */
+
+            $db->commit();
+
             echo json_encode([
                 'codigo' => 1,
                 'mensaje' => 'Vehículo registrado correctamente'
             ]);
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
+
+            $db->rollBack();
 
             http_response_code(500);
 
@@ -385,7 +370,6 @@ class VehiculosController
 
     public static function servirFoto(Router $router)
     {
-        // Limpiar cualquier output buffer del router
         if (ob_get_level()) ob_end_clean();
 
         $archivo = basename($_GET['archivo'] ?? '');
@@ -395,7 +379,17 @@ class VehiculosController
             exit;
         }
 
-        $carpeta  = strpos($archivo, '_fotos_') !== false ? 'fotos' : 'tarjetas';
+        // ── Detectar carpeta según nombre del archivo ─────────────────────────
+        if (strpos($archivo, '_fotos_') !== false) {
+            $carpeta = 'fotos';
+        } elseif (strpos($archivo, '_tarjetas_') !== false) {
+            $carpeta = 'tarjetas';
+        } elseif (strpos($archivo, '_POL_') !== false) {
+            $carpeta = 'polizas';
+        } else {
+            $carpeta = 'fotos'; // fallback
+        }
+
         $rutaBase = rtrim($_ENV['SFTP_PATH'] ?? '/vehiculos', '/');
 
         $sftp = new \phpseclib3\Net\SFTP($_ENV['SFTP_HOST'], (int)$_ENV['SFTP_PORT']);
