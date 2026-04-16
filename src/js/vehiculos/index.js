@@ -1661,11 +1661,33 @@ const resetFormAccidente = () => {
 };
 
 const limpiarCamposAccidente = () => {
-    ['acFecha', 'acTipo', 'acLugar', 'acDescripcion', 'acConductor', 'acCostoEst', 'acCostoReal', 'acExpediente', 'acObs'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['acFecha', 'acLugar', 'acDescripcion', 'acConductor',
+        'acCostoEst', 'acCostoReal', 'acExpediente', 'acObs'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
     const selEstado = document.getElementById('acEstado');
     if (selEstado) selEstado.value = 'Reportado';
+
+    // Reset informe policial
+    const areaInformeR = document.getElementById('areaInformeAcc');
+    const inputInformeR = document.getElementById('acInforme');
+    if (areaInformeR) {
+        areaInformeR.classList.remove('has-file');
+        areaInformeR.querySelector('.upload-icon i').className = 'bi bi-file-pdf';
+        areaInformeR.querySelector('.upload-label').innerHTML = `<span>Subir informe PDF</span>`;
+    }
+    if (inputInformeR) inputInformeR.value = '';
+
+    // Reset fotos dinámicas
+    resetFotosAcc();
+
+    // Reset botón guardar
     const btnSave = document.querySelector('#formNuevoAccidente button[onclick="guardarAccidente()"]');
-    if (btnSave) { btnSave.innerHTML = '<i class="bi bi-save me-1"></i> Guardar Accidente'; btnSave.style.background = 'linear-gradient(135deg,var(--danger),#c93030)'; }
+    if (btnSave) {
+        btnSave.innerHTML = '<i class="bi bi-save me-1"></i> Guardar Accidente';
+        btnSave.style.background = 'linear-gradient(135deg,var(--danger),#c93030)';
+    }
 };
 
 const renderTablaAccidentes = (accidentes) => {
@@ -1685,6 +1707,11 @@ const renderTablaAccidentes = (accidentes) => {
             <div><div class="svc-label">Costo Daños</div><div class="svc-val">${a.costo_danos ? 'Q ' + Number(a.costo_danos).toLocaleString() : '—'}</div></div>
             <div><div class="svc-label">Costo Reparación</div><div class="svc-val">${a.costo_reparacion ? 'Q ' + Number(a.costo_reparacion).toLocaleString() : '—'}</div></div>
             <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
+            <button onclick="verAccidente(${a.id_accidente})" style="
+                background:rgba(111,66,193,.15);border:1px solid rgba(111,66,193,.3);
+                color:#a78bfa;border-radius:6px;padding:.35rem .6rem;
+                cursor:pointer;font-size:.8rem;" title="Ver detalle">
+                <i class="bi bi-eye"></i></button>
                 <button onclick="editarAccidente(${a.id_accidente})" style="background:rgba(58,123,213,.15);border:1px solid rgba(58,123,213,.3);color:#5b9bd5;border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;" title="Editar"><i class="bi bi-pencil-square"></i></button>
                 <button onclick="eliminarAccidente(${a.id_accidente})" style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);color:var(--danger);border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;" title="Eliminar"><i class="bi bi-trash3"></i></button>
             </div>
@@ -1698,10 +1725,18 @@ const guardarAccidente = async () => {
     const fecha = document.getElementById('acFecha').value;
     const tipo = document.getElementById('acTipo').value.trim();
     const desc = document.getElementById('acDescripcion').value.trim();
+
     if (!fecha || !tipo || !desc) {
-        Swal.fire({ icon: 'info', title: 'Fecha, tipo y descripción son obligatorios', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
+        Swal.fire({
+            icon: 'info',
+            title: 'Fecha, tipo y descripción son obligatorios',
+            background: '#1a1d27', color: '#e8eaf0',
+            confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
         return;
     }
+
     const body = new FormData();
     body.append('placa', fichaPlacaActual);
     body.append('fecha_accidente', fecha);
@@ -1714,19 +1749,36 @@ const guardarAccidente = async () => {
     body.append('estado_caso', (document.getElementById('acEstado') || { value: 'Reportado' }).value);
     body.append('numero_expediente', (document.getElementById('acExpediente') || { value: '' }).value);
     body.append('observaciones', (document.getElementById('acObs') || { value: '' }).value);
-    const acFotosEl = document.getElementById('acFotos');
+
+    // ── Fotos dinámicas (hasta 4) ─────────────────────────────────────────────
+    document.querySelectorAll('#fotosAccContainer input[type="file"]').forEach((input, i) => {
+        if (input.files[0]) body.append(`archivo_foto_${i + 1}`, input.files[0]);
+    });
+
+    // ── Informe policial ──────────────────────────────────────────────────────
     const acInformeEl = document.getElementById('acInforme');
-    if (acFotosEl && acFotosEl.files[0]) body.append('archivo_fotos', acFotosEl.files[0]);
     if (acInformeEl && acInformeEl.files[0]) body.append('archivo_informe', acInformeEl.files[0]);
+
     const esEdicion = accidenteEditandoId !== null;
     if (esEdicion) body.append('id_accidente', accidenteEditandoId);
-    const url = esEdicion ? `${BASE}/API/vehiculos/accidentes/modificar` : `${BASE}/API/vehiculos/accidentes/guardar`;
+
+    const url = esEdicion
+        ? `${BASE}/API/vehiculos/accidentes/modificar`
+        : `${BASE}/API/vehiculos/accidentes/guardar`;
+
     try {
         const r = await fetch(url, { method: 'POST', body });
         const d = await r.json();
         Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
-        if (d.codigo === 1) { resetFormAccidente(); await abrirFicha(fichaPlacaActual); switchTab(document.querySelector('.ficha-tab[data-tab="accidentes"]'), 'accidentes'); buscar(); }
-    } catch (err) { Toast.fire({ icon: 'error', title: 'Error de conexión' }); }
+        if (d.codigo === 1) {
+            resetFormAccidente();
+            await abrirFicha(fichaPlacaActual);
+            switchTab(document.querySelector('.ficha-tab[data-tab="accidentes"]'), 'accidentes');
+            buscar();
+        }
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    }
 };
 
 const editarAccidente = (id) => {
@@ -1766,6 +1818,140 @@ const eliminarAccidente = async (id) => {
         if (d.codigo === 1) { await abrirFicha(fichaPlacaActual); switchTab(document.querySelector('.ficha-tab[data-tab="accidentes"]'), 'accidentes'); }
     } catch (err) { Toast.fire({ icon: 'error', title: 'Error de conexión' }); }
 };
+
+const verAccidente = (id) => {
+    const a = accidentesData.find(x => x.id_accidente == id);
+    if (!a) return;
+
+    const estadoColor = {
+        'Cerrado': '#4caf7d',
+        'En trámite': '#e8b84b',
+        'Reportado': '#5b9bd5',
+        'Sin seguro': '#e05252'
+    };
+
+    // ── Construir botones de fotos ────────────────────────────────────────────
+    const fotosURLs = [
+        a.foto_1_url, a.foto_2_url, a.foto_3_url, a.foto_4_url
+    ].filter(Boolean);
+
+    const fotosHTML = fotosURLs.length
+        ? fotosURLs.map((url, i) => `
+            <a href="${url}" target="_blank"
+                style="display:inline-flex;align-items:center;gap:.4rem;
+                background:rgba(58,123,213,.1);border:1px solid rgba(58,123,213,.25);
+                color:#5b9bd5;padding:.35rem .75rem;border-radius:6px;
+                font-size:.78rem;text-decoration:none;margin:.2rem;">
+                <i class="bi bi-image"></i> Foto ${i + 1}
+            </a>`).join('')
+        : '<span style="color:#555;font-size:.78rem;">Sin fotos adjuntas</span>';
+
+    const informeHTML = a.informe_url
+        ? `<a href="${a.informe_url}" target="_blank"
+                style="display:inline-flex;align-items:center;gap:.4rem;
+                background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.25);
+                color:var(--accent);padding:.35rem .75rem;border-radius:6px;
+                font-size:.78rem;text-decoration:none;margin:.2rem;">
+                <i class="bi bi-file-earmark-pdf"></i> Informe Policial
+            </a>`
+        : '<span style="color:#555;font-size:.78rem;">Sin informe adjunto</span>';
+
+    Swal.fire({
+        title: `<span style="font-family:Rajdhani,sans-serif;font-size:1.1rem;">
+            <i class="bi bi-cone-striped" style="color:#e05252;"></i>
+            Accidente — ${a.tipo_accidente}
+        </span>`,
+        html: `
+        <div style="text-align:left;font-size:.82rem;">
+
+            <!-- Estado y fecha -->
+            <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;">
+                <span style="background:${estadoColor[a.estado] || '#888'}22;
+                    color:${estadoColor[a.estado] || '#888'};
+                    border:1px solid ${estadoColor[a.estado] || '#888'}44;
+                    padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:700;">
+                    ${a.estado}
+                </span>
+                <span style="color:#888;font-size:.78rem;">
+                    <i class="bi bi-calendar3"></i> ${a.fecha_accidente}
+                </span>
+                ${a.no_expediente ? `<span style="color:#888;font-size:.78rem;">
+                    <i class="bi bi-journal-text"></i> Exp. ${a.no_expediente}
+                </span>` : ''}
+            </div>
+
+            <!-- Descripción -->
+            <div style="background:#1e2130;border-left:3px solid #e05252;
+                padding:.75rem 1rem;border-radius:0 8px 8px 0;margin-bottom:1rem;
+                color:#c8cfe0;line-height:1.5;">
+                ${a.descripcion}
+            </div>
+
+            <!-- Grid de datos -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem;">
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
+                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Lugar</div>
+                    <div style="color:#c8cfe0;">${a.lugar || '—'}</div>
+                </div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
+                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Conductor</div>
+                    <div style="color:#c8cfe0;">${a.conductor_responsable || '—'}</div>
+                </div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
+                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Costo Daños</div>
+                    <div style="color:#e05252;font-weight:700;">${a.costo_danos ? 'Q ' + Number(a.costo_danos).toLocaleString() : '—'}</div>
+                </div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
+                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Costo Reparación</div>
+                    <div style="color:#e05252;font-weight:700;">${a.costo_reparacion ? 'Q ' + Number(a.costo_reparacion).toLocaleString() : '—'}</div>
+                </div>
+            </div>
+
+            <!-- Total -->
+            ${(a.costo_danos || a.costo_reparacion) ? `
+            <div style="background:rgba(224,82,82,.08);border:1px solid rgba(224,82,82,.2);
+                border-radius:8px;padding:.6rem 1rem;margin-bottom:1rem;
+                display:flex;justify-content:space-between;align-items:center;">
+                <span style="color:#888;font-size:.78rem;">Costo total del accidente</span>
+                <span style="color:#e05252;font-weight:700;font-size:1rem;font-family:Rajdhani,sans-serif;">
+                    Q ${Number((parseFloat(a.costo_danos) || 0) + (parseFloat(a.costo_reparacion) || 0)).toLocaleString()}
+                </span>
+            </div>` : ''}
+
+            <!-- Observaciones -->
+            ${a.observaciones ? `
+            <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;margin-bottom:1rem;">
+                <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Observaciones</div>
+                <div style="color:#888;">${a.observaciones}</div>
+            </div>` : ''}
+
+            <!-- Fotos -->
+            <div style="margin-bottom:.75rem;">
+                <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.5rem;">
+                    <i class="bi bi-images"></i> Fotografías / Evidencia
+                </div>
+                <div>${fotosHTML}</div>
+            </div>
+
+            <!-- Informe -->
+            <div>
+                <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.5rem;">
+                    <i class="bi bi-file-earmark-text"></i> Informe Policial
+                </div>
+                <div>${informeHTML}</div>
+            </div>
+
+        </div>`,
+        background: '#1a1d27',
+        color: '#e8eaf0',
+        confirmButtonColor: '#6f42c1',
+        confirmButtonText: '<i class="bi bi-x"></i> Cerrar',
+        width: '600px',
+        customClass: { container: 'swal-over-modal' }
+    });
+};
+
+window.verAccidente = verAccidente;
 
 // ════════════════════════════════════════════════════════════════════════════
 // ── CHEQUEOS ──────────────────────────────────────────────────────────────────
@@ -2012,6 +2198,120 @@ const eliminarChequeo = async (id) => {
         if (d.codigo === 1) await cargarChequeos();
     } catch (err) { Toast.fire({ icon: 'error', title: 'Error de conexión' }); }
 };
+
+// ── FOTOS ACCIDENTE ───────────────────────────────────────────────────────────
+const inputFotosAcc = document.getElementById('acFotos');
+const areaFotosAcc = document.getElementById('areaFotosAcc');
+
+if (inputFotosAcc && areaFotosAcc) {
+    inputFotosAcc.addEventListener('change', () => {
+        const file = inputFotosAcc.files[0];
+        if (!file) return;
+        areaFotosAcc.classList.add('has-file');
+        areaFotosAcc.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
+        areaFotosAcc.querySelector('.upload-label').innerHTML = `
+            <span style="color:var(--success)">${file.name}</span>`;
+    });
+}
+
+// ── INFORME POLICIAL ──────────────────────────────────────────────────────────
+const inputInformeAcc = document.getElementById('acInforme');
+const areaInformeAcc = document.getElementById('areaInformeAcc');
+
+if (inputInformeAcc && areaInformeAcc) {
+    inputInformeAcc.addEventListener('change', () => {
+        const file = inputInformeAcc.files[0];
+        if (!file) return;
+        areaInformeAcc.classList.add('has-file');
+        areaInformeAcc.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
+        areaInformeAcc.querySelector('.upload-label').innerHTML = `
+            <span style="color:var(--success)">${file.name}</span>`;
+    });
+}
+
+// ── FOTOS DINÁMICAS ACCIDENTE ─────────────────────────────────────────────────
+let fotosAccCount = 0;
+const MAX_FOTOS_ACC = 4;
+
+const agregarFotoAcc = () => {
+    if (fotosAccCount >= MAX_FOTOS_ACC) {
+        Toast.fire({ icon: 'warning', title: `Máximo ${MAX_FOTOS_ACC} archivos permitidos` });
+        return;
+    }
+
+    fotosAccCount++;
+    const id = `acFoto_${fotosAccCount}`;
+    const container = document.getElementById('fotosAccContainer');
+
+    const div = document.createElement('div');
+    div.id = `fotoAccItem_${fotosAccCount}`;
+    div.style.cssText = 'display:flex;align-items:center;gap:.5rem;background:var(--dark-2);border:1px solid var(--border);border-radius:8px;padding:.5rem .75rem;';
+
+    div.innerHTML = `
+        <i class="bi bi-paperclip" style="color:var(--text-muted);flex-shrink:0;"></i>
+        <div class="file-upload-area" id="area_${id}"
+            style="flex:1;padding:.4rem .75rem;margin:0;min-height:unset;
+            display:flex;align-items:center;gap:.5rem;cursor:pointer;"
+            onclick="document.getElementById('${id}').click()">
+            <input type="file" id="${id}" name="fotos_acc[]"
+                accept=".pdf,.jpg,.jpeg,.png"
+                style="display:none;"
+                onchange="onFotoAccChange('${id}', ${fotosAccCount})">
+            <span id="label_${id}" style="font-size:.78rem;color:var(--text-muted);">
+                Seleccionar archivo...
+            </span>
+        </div>
+        <button type="button" onclick="quitarFotoAcc(${fotosAccCount})"
+            style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
+            color:var(--danger);border-radius:6px;padding:.3rem .5rem;
+            cursor:pointer;flex-shrink:0;">
+            <i class="bi bi-x"></i>
+        </button>`;
+
+    container.appendChild(div);
+    actualizarContadorFotos();
+
+    // Ocultar botón si llegamos al máximo
+    if (fotosAccCount >= MAX_FOTOS_ACC) {
+        document.getElementById('btnAgregarFotoAcc').style.display = 'none';
+    }
+};
+
+const onFotoAccChange = (id, num) => {
+    const input = document.getElementById(id);
+    const label = document.getElementById(`label_${id}`);
+    if (!input || !input.files[0]) return;
+    const file = input.files[0];
+    label.innerHTML = `<i class="bi bi-check-circle-fill" style="color:var(--success);"></i>
+        <span style="color:var(--success);font-size:.78rem;">${file.name}</span>`;
+};
+
+const quitarFotoAcc = (num) => {
+    const item = document.getElementById(`fotoAccItem_${num}`);
+    if (item) item.remove();
+    fotosAccCount = document.querySelectorAll('#fotosAccContainer > div').length;
+    actualizarContadorFotos();
+    document.getElementById('btnAgregarFotoAcc').style.display = 'flex';
+};
+
+const actualizarContadorFotos = () => {
+    const count = document.querySelectorAll('#fotosAccContainer > div').length;
+    const counter = document.getElementById('fotosAccContador');
+    if (counter) counter.textContent = `${count} / ${MAX_FOTOS_ACC} archivos`;
+};
+
+const resetFotosAcc = () => {
+    const container = document.getElementById('fotosAccContainer');
+    if (container) container.innerHTML = '';
+    fotosAccCount = 0;
+    actualizarContadorFotos();
+    const btn = document.getElementById('btnAgregarFotoAcc');
+    if (btn) btn.style.display = 'flex';
+};
+
+window.agregarFotoAcc = agregarFotoAcc;
+window.onFotoAccChange = onFotoAccChange;
+window.quitarFotoAcc = quitarFotoAcc;
 
 // ── GENERAR EXPEDIENTE ────────────────────────────────────────────────────────
 const generarExpediente = (placa) => {

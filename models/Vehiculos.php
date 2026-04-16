@@ -220,6 +220,7 @@ class Vehiculos extends ActiveRecord
                 'tarjetas'        => '_tarjetas_',
                 'polizas'         => '_POL_',
                 'certificaciones' => '_CERT_',
+                'accidentes'      => '_ACC_',
                 default           => '_'
             };
             $nombreRemoto = strtoupper($placa) . $sufijoCarpeta . time() . '.' . $extension;

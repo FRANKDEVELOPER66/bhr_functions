@@ -368,6 +368,8 @@ class VehiculosController
             $carpeta = 'polizas';
         } elseif (strpos($archivo, '_INV_') !== false || strpos($archivo, '_SIC_') !== false || strpos($archivo, '_CERT_') !== false) {
             $carpeta = 'certificaciones';
+        } elseif (strpos($archivo, '_ACC_') !== false || strpos($archivo, '_FOTO_') !== false || strpos($archivo, '_INF_') !== false) {
+            $carpeta = 'accidentes';
         } else {
             $carpeta = 'fotos';
         }

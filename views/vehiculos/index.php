@@ -1758,13 +1758,25 @@
                                 <label class="form-label"><i class="bi bi-currency-dollar"></i> Costo Real (Q)</label>
                                 <input type="number" id="acCostoReal" class="form-control" placeholder="0.00" step="0.01" min="0">
                             </div>
-                            <div>
-                                <label class="form-label"><i class="bi bi-camera"></i> Fotos / Evidencia <small style="font-size:.7rem;color:var(--text-muted);text-transform:none;">(PDF, ZIP, JPG)</small></label>
-                                <div class="file-upload-area" id="areaFotosAcc" style="padding:.75rem;">
-                                    <input type="file" id="acFotos" accept=".pdf,.zip,.jpg,.jpeg,.png">
-                                    <div class="upload-icon" style="font-size:1.3rem;"><i class="bi bi-images"></i></div>
-                                    <div class="upload-label" style="font-size:.75rem;"><span>Subir evidencia</span></div>
+                            <div style="grid-column:1/-1;">
+                                <label class="form-label">
+                                    <i class="bi bi-camera"></i> Fotos / Evidencia
+                                    <small style="font-size:.7rem;color:var(--text-muted);text-transform:none;">(JPG, PNG, PDF — máx. 4)</small>
+                                </label>
+                                <div id="fotosAccContainer" style="display:flex;flex-direction:column;gap:.5rem;">
+                                    <!-- Se generan dinámicamente -->
                                 </div>
+                                <button type="button" id="btnAgregarFotoAcc"
+                                    onclick="agregarFotoAcc()"
+                                    style="margin-top:.5rem;background:transparent;border:1px dashed var(--border);
+                                        color:var(--text-muted);padding:.5rem 1rem;border-radius:8px;
+                                        cursor:pointer;font-size:.82rem;display:flex;align-items:center;gap:.5rem;
+                                        transition:all .2s;">
+                                    <i class="bi bi-plus-circle"></i> Agregar foto / archivo
+                                </button>
+                                <small id="fotosAccContador" style="color:var(--text-muted);font-size:.72rem;margin-top:.25rem;display:block;">
+                                    0 / 4 archivos
+                                </small>
                             </div>
                             <div>
                                 <label class="form-label"><i class="bi bi-file-earmark-text"></i> Informe Policial <small style="font-size:.7rem;color:var(--text-muted);text-transform:none;">(PDF)</small></label>

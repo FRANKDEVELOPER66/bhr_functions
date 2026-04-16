@@ -63,12 +63,12 @@ class FichaController
             // ── ACCIDENTES ────────────────────────────────────────────────────
             $accidentes = Accidentes::traerPorPlaca($placa);
             foreach ($accidentes as &$a) {
-                $a['fotos_url']   = $a['archivo_fotos']
-                    ? "{$urlBase}/{$a['archivo_fotos']}"
-                    : null;
-                $a['informe_url'] = $a['archivo_informe']
-                    ? "{$urlBase}/{$a['archivo_informe']}"
-                    : null;
+                $a['fotos_url']   = $a['archivo_fotos']   ? "{$urlBase}/{$a['archivo_fotos']}"   : null;
+                $a['foto_1_url']  = $a['archivo_foto_1']  ? "{$urlBase}/{$a['archivo_foto_1']}"  : null;
+                $a['foto_2_url']  = $a['archivo_foto_2']  ? "{$urlBase}/{$a['archivo_foto_2']}"  : null;
+                $a['foto_3_url']  = $a['archivo_foto_3']  ? "{$urlBase}/{$a['archivo_foto_3']}"  : null;
+                $a['foto_4_url']  = $a['archivo_foto_4']  ? "{$urlBase}/{$a['archivo_foto_4']}"  : null;
+                $a['informe_url'] = $a['archivo_informe'] ? "{$urlBase}/{$a['archivo_informe']}" : null;
                 // Alias para que el JS pueda leer costo_danos y costo_reparacion
                 // (el JS renderTablaAccidentes usa esos nombres)
                 $a['costo_danos']      = $a['costo_estimado'] ?? null;

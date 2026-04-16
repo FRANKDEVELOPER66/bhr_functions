@@ -19,6 +19,10 @@ class Accidentes extends ActiveRecord
         'estado_caso',
         'numero_expediente',
         'archivo_fotos',
+        'archivo_foto_1',   // ← nuevo
+        'archivo_foto_2',   // ← nuevo
+        'archivo_foto_3',   // ← nuevo
+        'archivo_foto_4',   // ← nuevo
         'archivo_informe',
         'observaciones'
     ];
@@ -36,6 +40,10 @@ class Accidentes extends ActiveRecord
     public $estado_caso;
     public $numero_expediente;
     public $archivo_fotos;
+    public $archivo_foto_1;
+    public $archivo_foto_2;
+    public $archivo_foto_3;
+    public $archivo_foto_4;
     public $archivo_informe;
     public $observaciones;
 
@@ -54,6 +62,10 @@ class Accidentes extends ActiveRecord
         $this->estado_caso           = $args['estado_caso']           ?? 'Reportado';
         $this->numero_expediente     = $args['numero_expediente']     ?? null;
         $this->archivo_fotos         = $args['archivo_fotos']         ?? null;
+        $this->archivo_foto_1       = $args['archivo_foto_1']       ?? null;
+        $this->archivo_foto_2       = $args['archivo_foto_2']       ?? null;
+        $this->archivo_foto_3       = $args['archivo_foto_3']       ?? null;
+        $this->archivo_foto_4       = $args['archivo_foto_4']       ?? null;
         $this->archivo_informe       = $args['archivo_informe']       ?? null;
         $this->observaciones         = $args['observaciones']         ?? null;
     }
