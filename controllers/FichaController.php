@@ -39,10 +39,12 @@ class FichaController
 
             // URLs de archivos
             $urlBase = rtrim($_ENV['SFTP_PUBLIC_URL'] ?? '', '/');
-            $vehiculo['foto_url'] = $vehiculo['foto_frente']
-                ? "{$urlBase}/{$vehiculo['foto_frente']}" : null;
-            $vehiculo['pdf_url'] = $vehiculo['tarjeta_pdf']
-                ? "{$urlBase}/{$vehiculo['tarjeta_pdf']}" : null;
+            $vehiculo['foto_url']            = $vehiculo['foto_frente']     ? "{$urlBase}/{$vehiculo['foto_frente']}"     : null;
+            $vehiculo['foto_lateral_url']    = $vehiculo['foto_lateral']    ? "{$urlBase}/{$vehiculo['foto_lateral']}"    : null;
+            $vehiculo['foto_trasera_url']    = $vehiculo['foto_trasera']    ? "{$urlBase}/{$vehiculo['foto_trasera']}"    : null;
+            $vehiculo['pdf_url']             = $vehiculo['tarjeta_pdf']     ? "{$urlBase}/{$vehiculo['tarjeta_pdf']}"     : null;
+            $vehiculo['cert_inventario_url'] = $vehiculo['cert_inventario'] ? "{$urlBase}/{$vehiculo['cert_inventario']}" : null;
+            $vehiculo['cert_sicoin_url']     = $vehiculo['cert_sicoin']     ? "{$urlBase}/{$vehiculo['cert_sicoin']}"     : null;
 
             // Historial servicios y reparaciones
             $servicios    = Servicios::traerPorPlaca($placa);

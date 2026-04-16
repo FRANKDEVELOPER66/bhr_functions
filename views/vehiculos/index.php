@@ -1185,28 +1185,83 @@
 
                     <!-- Archivos -->
                     <div class="section-divider"><i class="bi bi-paperclip"></i> Archivos</div>
-                    <div class="row mb-4">
-                        <div class="col-md-5">
-                            <label class="form-label"><i class="bi bi-camera"></i> Foto de Frente</label>
+                    <div class="row mb-3">
+                        <!-- FOTO FRENTE -->
+                        <div class="col-md-4">
+                            <label class="form-label"><i class="bi bi-camera"></i> Foto Frente</label>
                             <div class="file-upload-area" id="areaFoto">
                                 <input type="file" name="foto_frente" id="foto_frente" accept="image/jpeg,image/png,image/webp">
                                 <div class="upload-icon"><i class="bi bi-image"></i></div>
-                                <div class="upload-label"><span>Haz clic</span> o arrastra la foto aquí<br><small>JPG, PNG, WEBP — máx. 5 MB</small></div>
+                                <div class="upload-label"><span>Haz clic</span> o arrastra<br><small>JPG, PNG, WEBP — máx. 5 MB</small></div>
                             </div>
                             <img id="fotoPreview" class="foto-preview" src="" alt="Preview">
                         </div>
-                        <div class="col-md-5">
-                            <label class="form-label"><i class="bi bi-file-earmark-pdf"></i> Tarjeta de Circulación (PDF)</label>
+
+                        <!-- FOTO LATERAL -->
+                        <div class="col-md-4">
+                            <label class="form-label"><i class="bi bi-camera"></i> Foto Lateral</label>
+                            <div class="file-upload-area" id="areaFotoLateral">
+                                <input type="file" name="foto_lateral" id="foto_lateral" accept="image/jpeg,image/png,image/webp">
+                                <div class="upload-icon"><i class="bi bi-image"></i></div>
+                                <div class="upload-label"><span>Haz clic</span> o arrastra<br><small>JPG, PNG, WEBP — máx. 5 MB</small></div>
+                            </div>
+                            <img id="fotoLateralPreview" class="foto-preview" src="" alt="Preview Lateral">
+                        </div>
+
+                        <!-- FOTO TRASERA -->
+                        <div class="col-md-4">
+                            <label class="form-label"><i class="bi bi-camera"></i> Foto Trasera</label>
+                            <div class="file-upload-area" id="areaFotoTrasera">
+                                <input type="file" name="foto_trasera" id="foto_trasera" accept="image/jpeg,image/png,image/webp">
+                                <div class="upload-icon"><i class="bi bi-image"></i></div>
+                                <div class="upload-label"><span>Haz clic</span> o arrastra<br><small>JPG, PNG, WEBP — máx. 5 MB</small></div>
+                            </div>
+                            <img id="fotoTraseraPreview" class="foto-preview" src="" alt="Preview Trasera">
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <!-- TARJETA PDF -->
+                        <div class="col-md-3">
+                            <label class="form-label"><i class="bi bi-file-earmark-pdf"></i> Tarjeta de Circulación</label>
                             <div class="file-upload-area" id="areaPdf">
                                 <input type="file" name="tarjeta_pdf" id="tarjeta_pdf" accept="application/pdf">
                                 <div class="upload-icon"><i class="bi bi-file-pdf"></i></div>
-                                <div class="upload-label"><span>Haz clic</span> o arrastra el PDF aquí<br><small>Solo PDF — máx. 10 MB</small></div>
+                                <div class="upload-label"><span>Haz clic</span> o arrastra<br><small>Solo PDF — máx. 10 MB</small></div>
                             </div>
                             <div id="pdfNombre" style="margin-top:.5rem;font-size:.8rem;color:var(--success);display:none;">
                                 <i class="bi bi-check-circle-fill"></i> <span></span>
                             </div>
                         </div>
-                        <div class="col-md-2 d-flex align-items-end">
+
+                        <!-- CERT INVENTARIO -->
+                        <div class="col-md-3">
+                            <label class="form-label"><i class="bi bi-file-earmark-pdf"></i> Certificación Inventario</label>
+                            <div class="file-upload-area" id="areaCertInventario">
+                                <input type="file" name="cert_inventario" id="cert_inventario" accept="application/pdf">
+                                <div class="upload-icon"><i class="bi bi-file-pdf"></i></div>
+                                <div class="upload-label"><span>Haz clic</span> o arrastra<br><small>Solo PDF — máx. 10 MB</small></div>
+                            </div>
+                            <div id="certInventarioNombre" style="margin-top:.5rem;font-size:.8rem;color:var(--success);display:none;">
+                                <i class="bi bi-check-circle-fill"></i> <span></span>
+                            </div>
+                        </div>
+
+                        <!-- CERT SICOIN -->
+                        <div class="col-md-3">
+                            <label class="form-label"><i class="bi bi-file-earmark-pdf"></i> Certificación SICOIN</label>
+                            <div class="file-upload-area" id="areaCertSicoin">
+                                <input type="file" name="cert_sicoin" id="cert_sicoin" accept="application/pdf">
+                                <div class="upload-icon"><i class="bi bi-file-pdf"></i></div>
+                                <div class="upload-label"><span>Haz clic</span> o arrastra<br><small>Solo PDF — máx. 10 MB</small></div>
+                            </div>
+                            <div id="certSicoinNombre" style="margin-top:.5rem;font-size:.8rem;color:var(--success);display:none;">
+                                <i class="bi bi-check-circle-fill"></i> <span></span>
+                            </div>
+                        </div>
+
+                        <!-- ESPACIO PARA FOTO ACTUAL (edición) -->
+                        <div class="col-md-3 d-flex align-items-end">
                             <div id="fotoActualContainer" style="display:none;width:100%">
                                 <label class="form-label"><i class="bi bi-image-fill"></i> Foto actual</label>
                                 <img id="fotoActual" src="" alt="Foto actual"
@@ -1416,6 +1471,7 @@
 
                         <!-- Columna izquierda: foto y botones -->
                         <div>
+                            <!-- Foto frente -->
                             <div style="width:100%;aspect-ratio:1/1;border-radius:12px;overflow:hidden;background:var(--dark-3);border:2px solid var(--border);position:relative;">
                                 <img id="fichaFoto" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
                                 <div id="fichaNoFoto" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-muted);gap:.5rem;">
@@ -1424,27 +1480,69 @@
                                 </div>
                             </div>
 
-                            <a id="fichaPdfBtn" href="#" target="_blank" style="display:none;margin-top:.75rem;width:100%;padding:.6rem;border-radius:8px;text-align:center;background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);color:#e05252;font-size:.8rem;font-weight:600;text-decoration:none;">
-                                <i class="bi bi-file-earmark-pdf-fill me-1"></i> Ver Tarjeta PDF
-                            </a>
+                            <!-- Fotos lateral y trasera -->
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.5rem;">
+                                <div style="aspect-ratio:1/1;border-radius:8px;overflow:hidden;background:var(--dark-3);border:1px solid var(--border);">
+                                    <img id="fichaFotoLateral" src="" alt="Lateral"
+                                        style="width:100%;height:100%;object-fit:cover;display:none;">
+                                    <div id="fichaNoFotoLateral" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-muted);gap:.25rem;padding:.5rem;">
+                                        <i class="bi bi-truck" style="font-size:1.5rem;opacity:.2;"></i>
+                                        <span style="font-size:.65rem;opacity:.4;text-align:center;">Sin foto lateral</span>
+                                    </div>
+                                </div>
+                                <div style="aspect-ratio:1/1;border-radius:8px;overflow:hidden;background:var(--dark-3);border:1px solid var(--border);">
+                                    <img id="fichaFotoTrasera" src="" alt="Trasera"
+                                        style="width:100%;height:100%;object-fit:cover;display:none;">
+                                    <div id="fichaNoFotoTrasera" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-muted);gap:.25rem;padding:.5rem;">
+                                        <i class="bi bi-truck" style="font-size:1.5rem;opacity:.2;"></i>
+                                        <span style="font-size:.65rem;opacity:.4;text-align:center;">Sin foto trasera</span>
+                                    </div>
+                                </div>
+                            </div>
 
-                            <button id="btnIrAChequeo" onclick="abrirModalChequeo()"
-                                style="margin-top:.5rem;width:100%;padding:.75rem;border-radius:8px;
-                                background:linear-gradient(135deg,#6f42c1,#5a2d9e);
-                                border:none;color:#fff;font-size:.85rem;font-weight:700;
-                                cursor:pointer;font-family:'Rajdhani',sans-serif;
-                                display:flex;align-items:center;justify-content:center;gap:.5rem;
-                                box-shadow:0 4px 15px rgba(111,66,193,.3);">
-                                <i class="bi bi-clipboard2-check-fill"></i> Realizar Chequeo Mensual
-                            </button>
+                            <!-- Botones PDF -->
+                            <div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.75rem;">
+                                <a id="fichaPdfBtn" href="#" target="_blank"
+                                    style="display:none;padding:.6rem 1rem;border-radius:8px;text-align:center;
+        background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
+        color:#e05252;font-size:.78rem;font-weight:600;text-decoration:none;">
+                                    <i class="bi bi-file-earmark-pdf-fill me-1"></i> Tarjeta de Circulación
+                                </a>
 
-                            <button id="btnGenerarExpediente" onclick="generarExpediente(document.getElementById('fichaPlaca').textContent.trim())"
-                                style="display:none;margin-top:.5rem;width:100%;padding:.75rem;border-radius:8px;
-                                background:linear-gradient(135deg,#C75B00,#a34900);
-                                border:none;color:#fff;font-size:.85rem;font-weight:700;
-                                cursor:pointer;font-family:'Rajdhani',sans-serif;">
-                                <i class="bi bi-printer-fill"> </i> Generar Expediente
-                            </button>
+                                <a id="fichaCertInventarioBtn" href="#" target="_blank"
+                                    style="display:none;padding:.6rem 1rem;border-radius:8px;text-align:center;
+        background:rgba(58,123,213,.15);border:1px solid rgba(58,123,213,.3);
+        color:#5b9bd5;font-size:.78rem;font-weight:600;text-decoration:none;">
+                                    <i class="bi bi-file-earmark-pdf-fill me-1"></i> Cert. Inventario
+                                </a>
+
+                                <a id="fichaCertSicoinBtn" href="#" target="_blank"
+                                    style="display:none;padding:.6rem 1rem;border-radius:8px;text-align:center;
+        background:rgba(76,175,125,.15);border:1px solid rgba(76,175,125,.3);
+        color:var(--success);font-size:.78rem;font-weight:600;text-decoration:none;">
+                                    <i class="bi bi-file-earmark-pdf-fill me-1"></i> Cert. SICOIN
+                                </a>
+
+                                <button id="btnIrAChequeo" onclick="abrirModalChequeo()"
+                                    style="padding:.75rem;border-radius:8px;
+        background:linear-gradient(135deg,#6f42c1,#5a2d9e);
+        border:none;color:#fff;font-size:.85rem;font-weight:700;
+        cursor:pointer;font-family:'Rajdhani',sans-serif;
+        display:flex;align-items:center;justify-content:center;gap:.5rem;
+        box-shadow:0 4px 15px rgba(111,66,193,.3);">
+                                    <i class="bi bi-clipboard2-check-fill"></i> Realizar Chequeo Mensual
+                                </button>
+
+                                <button id="btnGenerarExpediente"
+                                    onclick="generarExpediente(document.getElementById('fichaPlaca').textContent.trim())"
+                                    style="display:none;padding:.75rem;border-radius:8px;
+        background:linear-gradient(135deg,#C75B00,#a34900);
+        border:none;color:#fff;font-size:.85rem;font-weight:700;
+        cursor:pointer;font-family:'Rajdhani',sans-serif;
+        display:flex;align-items:center;justify-content:center;gap:.5rem;">
+                                    <i class="bi bi-printer-fill"></i> Generar Expediente
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Columna derecha: datos del vehículo -->

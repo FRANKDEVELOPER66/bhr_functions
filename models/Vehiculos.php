@@ -215,7 +215,14 @@ class Vehiculos extends ActiveRecord
             }
 
             $extension    = strtolower(pathinfo($archivo['name'], PATHINFO_EXTENSION));
-            $nombreRemoto = strtoupper($placa) . '_' . time() . '.' . $extension;
+            $sufijoCarpeta = match ($carpeta) {
+                'fotos'           => '_fotos_',
+                'tarjetas'        => '_tarjetas_',
+                'polizas'         => '_POL_',
+                'certificaciones' => '_CERT_',
+                default           => '_'
+            };
+            $nombreRemoto = strtoupper($placa) . $sufijoCarpeta . time() . '.' . $extension;
             $rutaRemota   = "{$rutaBase}/{$carpeta}/{$nombreRemoto}";
 
             // Crear carpeta remota si no existe
