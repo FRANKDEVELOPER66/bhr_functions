@@ -1159,24 +1159,63 @@ const abrirFicha = async (placa) => {
         const img = document.getElementById('fichaFoto');
         const noFoto = document.getElementById('fichaNoFoto');
         if (img && noFoto) {
-            if (v.foto_url) { img.src = v.foto_url; img.style.display = 'block'; noFoto.style.display = 'none'; }
-            else { img.style.display = 'none'; noFoto.style.display = 'flex'; }
+            if (v.foto_url) {
+                img.src = v.foto_url;
+                img.style.display = 'block';
+                noFoto.style.display = 'none';
+            } else {
+                img.style.display = 'none';
+                noFoto.style.display = 'flex';
+            }
         }
 
         // ── Foto lateral ──────────────────────────────────────────────────────
         const imgLateral = document.getElementById('fichaFotoLateral');
         const noImgLateral = document.getElementById('fichaNoFotoLateral');
         if (imgLateral && noImgLateral) {
-            if (v.foto_lateral_url) { imgLateral.src = v.foto_lateral_url; imgLateral.style.display = 'block'; noImgLateral.style.display = 'none'; }
-            else { imgLateral.style.display = 'none'; noImgLateral.style.display = 'flex'; }
+            if (v.foto_lateral_url) {
+                imgLateral.src = v.foto_lateral_url;
+                imgLateral.style.display = 'block';
+                noImgLateral.style.display = 'none';
+            } else {
+                imgLateral.style.display = 'none';
+                noImgLateral.style.display = 'flex';
+            }
         }
 
         // ── Foto trasera ──────────────────────────────────────────────────────
         const imgTrasera = document.getElementById('fichaFotoTrasera');
         const noImgTrasera = document.getElementById('fichaNoFotoTrasera');
         if (imgTrasera && noImgTrasera) {
-            if (v.foto_trasera_url) { imgTrasera.src = v.foto_trasera_url; imgTrasera.style.display = 'block'; noImgTrasera.style.display = 'none'; }
-            else { imgTrasera.style.display = 'none'; noImgTrasera.style.display = 'flex'; }
+            if (v.foto_trasera_url) {
+                imgTrasera.src = v.foto_trasera_url;
+                imgTrasera.style.display = 'block';
+                noImgTrasera.style.display = 'none';
+            } else {
+                imgTrasera.style.display = 'none';
+                noImgTrasera.style.display = 'flex';
+            }
+        }
+
+        // ── Lightbox fotos vehículo ───────────────────────────────────────────
+        const fotosVehiculo = [];
+        if (v.foto_url) fotosVehiculo.push({ url: v.foto_url, caption: 'Vista Frontal — ' + v.placa });
+        if (v.foto_lateral_url) fotosVehiculo.push({ url: v.foto_lateral_url, caption: 'Vista Lateral — ' + v.placa });
+        if (v.foto_trasera_url) fotosVehiculo.push({ url: v.foto_trasera_url, caption: 'Vista Trasera — ' + v.placa });
+
+        if (img && v.foto_url) {
+            img.style.cursor = 'zoom-in';
+            img.onclick = () => abrirLightbox(fotosVehiculo, 0);
+        }
+        if (imgLateral && v.foto_lateral_url) {
+            imgLateral.style.cursor = 'zoom-in';
+            imgLateral.onclick = () => abrirLightbox(fotosVehiculo,
+                fotosVehiculo.findIndex(f => f.url === v.foto_lateral_url));
+        }
+        if (imgTrasera && v.foto_trasera_url) {
+            imgTrasera.style.cursor = 'zoom-in';
+            imgTrasera.onclick = () => abrirLightbox(fotosVehiculo,
+                fotosVehiculo.findIndex(f => f.url === v.foto_trasera_url));
         }
 
         // ── Tarjeta PDF ───────────────────────────────────────────────────────
@@ -1971,18 +2010,24 @@ const verAccidente = (id) => {
         'Sin seguro': '#e05252'
     };
 
-    // ── Construir botones de fotos ────────────────────────────────────────────
     const fotosURLs = [
         a.foto_1_url, a.foto_2_url, a.foto_3_url, a.foto_4_url
     ].filter(Boolean);
 
+    // Fotos con lightbox
+    const fotosLightbox = fotosURLs.map((url, j) => ({
+        url,
+        caption: `Foto ${j + 1} — Accidente ${a.tipo_accidente}`
+    }));
+
     const fotosHTML = fotosURLs.length
         ? fotosURLs.map((url, i) => `
-            <a href="${url}" target="_blank"
+            <a href="#" onclick="event.preventDefault();event.stopPropagation();
+                abrirLightbox(${JSON.stringify(fotosLightbox).replace(/"/g, '&quot;')}, ${i})"
                 style="display:inline-flex;align-items:center;gap:.4rem;
                 background:rgba(58,123,213,.1);border:1px solid rgba(58,123,213,.25);
                 color:#5b9bd5;padding:.35rem .75rem;border-radius:6px;
-                font-size:.78rem;text-decoration:none;margin:.2rem;">
+                font-size:.78rem;text-decoration:none;margin:.2rem;cursor:zoom-in;">
                 <i class="bi bi-image"></i> Foto ${i + 1}
             </a>`).join('')
         : '<span style="color:#555;font-size:.78rem;">Sin fotos adjuntas</span>';
@@ -2005,7 +2050,6 @@ const verAccidente = (id) => {
         html: `
         <div style="text-align:left;font-size:.82rem;">
 
-            <!-- Estado y fecha -->
             <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;">
                 <span style="background:${estadoColor[a.estado] || '#888'}22;
                     color:${estadoColor[a.estado] || '#888'};
@@ -2021,14 +2065,12 @@ const verAccidente = (id) => {
                 </span>` : ''}
             </div>
 
-            <!-- Descripción -->
             <div style="background:#1e2130;border-left:3px solid #e05252;
                 padding:.75rem 1rem;border-radius:0 8px 8px 0;margin-bottom:1rem;
                 color:#c8cfe0;line-height:1.5;">
                 ${a.descripcion}
             </div>
 
-            <!-- Grid de datos -->
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem;">
                 <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
                     <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Lugar</div>
@@ -2048,7 +2090,6 @@ const verAccidente = (id) => {
                 </div>
             </div>
 
-            <!-- Total -->
             ${(a.costo_danos || a.costo_reparacion) ? `
             <div style="background:rgba(224,82,82,.08);border:1px solid rgba(224,82,82,.2);
                 border-radius:8px;padding:.6rem 1rem;margin-bottom:1rem;
@@ -2059,14 +2100,12 @@ const verAccidente = (id) => {
                 </span>
             </div>` : ''}
 
-            <!-- Observaciones -->
             ${a.observaciones ? `
             <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;margin-bottom:1rem;">
                 <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Observaciones</div>
                 <div style="color:#888;">${a.observaciones}</div>
             </div>` : ''}
 
-            <!-- Fotos -->
             <div style="margin-bottom:.75rem;">
                 <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.5rem;">
                     <i class="bi bi-images"></i> Fotografías / Evidencia
@@ -2074,7 +2113,6 @@ const verAccidente = (id) => {
                 <div>${fotosHTML}</div>
             </div>
 
-            <!-- Informe -->
             <div>
                 <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.5rem;">
                     <i class="bi bi-file-earmark-text"></i> Informe Policial
@@ -2564,6 +2602,59 @@ const agregarFotoAcc = () => {
         document.getElementById('btnAgregarFotoAcc').style.display = 'none';
     }
 };
+
+
+
+// ── LIGHTBOX ──────────────────────────────────────────────────────────────────
+let lbImagenes = [];
+let lbIndice = 0;
+
+const abrirLightbox = (imagenes, indice = 0) => {
+    lbImagenes = imagenes; // [{ url, caption }]
+    lbIndice = indice;
+    _renderLightbox();
+    document.getElementById('bhr-lightbox').classList.add('visible');
+    document.body.style.overflow = 'hidden';
+};
+
+const cerrarLightbox = () => {
+    document.getElementById('bhr-lightbox').classList.remove('visible');
+    document.body.style.overflow = '';
+};
+
+const navLightbox = (dir) => {
+    lbIndice = Math.max(0, Math.min(lbImagenes.length - 1, lbIndice + dir));
+    _renderLightbox();
+};
+
+const _renderLightbox = () => {
+    const item = lbImagenes[lbIndice];
+    const img = document.getElementById('lbImagen');
+    const caption = document.getElementById('lbCaption');
+    const prev = document.getElementById('lbPrev');
+    const next = document.getElementById('lbNext');
+
+    img.src = item.url;
+    caption.textContent = item.caption || '';
+    prev.classList.toggle('hidden', lbIndice === 0);
+    next.classList.toggle('hidden', lbIndice === lbImagenes.length - 1);
+};
+
+// Cerrar con ESC o click fuera
+document.getElementById('bhr-lightbox').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('bhr-lightbox')) cerrarLightbox();
+});
+document.addEventListener('keydown', (e) => {
+    const lb = document.getElementById('bhr-lightbox');
+    if (!lb.classList.contains('visible')) return;
+    if (e.key === 'Escape') cerrarLightbox();
+    if (e.key === 'ArrowLeft') navLightbox(-1);
+    if (e.key === 'ArrowRight') navLightbox(1);
+});
+
+window.abrirLightbox = abrirLightbox;
+window.cerrarLightbox = cerrarLightbox;
+window.navLightbox = navLightbox;
 
 const onFotoAccChange = (id, num) => {
     const input = document.getElementById(id);

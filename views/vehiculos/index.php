@@ -1569,6 +1569,115 @@
         margin-top: .4rem;
         text-align: center;
     }
+
+    /* ── LIGHTBOX ── */
+    #bhr-lightbox {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, .92);
+        backdrop-filter: blur(12px);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .3s ease;
+    }
+
+    #bhr-lightbox.visible {
+        opacity: 1;
+        pointer-events: all;
+    }
+
+    #bhr-lightbox img {
+        max-width: 90vw;
+        max-height: 88vh;
+        object-fit: contain;
+        border-radius: 12px;
+        border: 2px solid var(--border);
+        box-shadow: 0 30px 80px rgba(0, 0, 0, .8);
+        transform: scale(.92);
+        transition: transform .3s ease;
+    }
+
+    #bhr-lightbox.visible img {
+        transform: scale(1);
+    }
+
+    .lightbox-close {
+        position: absolute;
+        top: 20px;
+        right: 24px;
+        background: rgba(224, 82, 82, .15);
+        border: 1px solid rgba(224, 82, 82, .3);
+        color: var(--danger);
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all .2s;
+    }
+
+    .lightbox-close:hover {
+        background: var(--danger);
+        color: #fff;
+    }
+
+    .lightbox-caption {
+        position: absolute;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(15, 17, 23, .85);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: .4rem 1.2rem;
+        font-size: .78rem;
+        color: var(--text-muted);
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .lightbox-nav {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(232, 184, 75, .1);
+        border: 1px solid rgba(232, 184, 75, .25);
+        color: var(--accent);
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all .2s;
+    }
+
+    .lightbox-nav:hover {
+        background: rgba(232, 184, 75, .25);
+    }
+
+    .lightbox-nav.prev {
+        left: 20px;
+    }
+
+    .lightbox-nav.next {
+        right: 20px;
+    }
+
+    .lightbox-nav.hidden {
+        opacity: 0;
+        pointer-events: none;
+    }
 </style>
 
 <div class="container-fluid mt-4">
@@ -2520,6 +2629,20 @@
                 <div id="tablaChequeoWrap"></div>
             </div>
         </div>
+    </div>
+    <!-- LIGHTBOX -->
+    <div id="bhr-lightbox">
+        <button class="lightbox-close" onclick="cerrarLightbox()">
+            <i class="bi bi-x-lg"></i>
+        </button>
+        <button class="lightbox-nav prev" id="lbPrev" onclick="navLightbox(-1)">
+            <i class="bi bi-chevron-left"></i>
+        </button>
+        <img id="lbImagen" src="" alt="">
+        <button class="lightbox-nav next" id="lbNext" onclick="navLightbox(1)">
+            <i class="bi bi-chevron-right"></i>
+        </button>
+        <div class="lightbox-caption" id="lbCaption"></div>
     </div>
 
 </div><!-- fin container -->
