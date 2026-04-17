@@ -570,82 +570,212 @@ const buscar = async () => {
 const guardar = async (e) => {
     e.preventDefault();
 
-    const body = new FormData();
+    // ── VALIDACIONES ──────────────────────────────────────────────────────────
+    const placa = document.getElementById('placa').value.trim().toUpperCase();
+    const serie = document.getElementById('numero_serie').value.trim().toUpperCase();
+    const marca = document.getElementById('marca').value.trim();
+    const modelo = document.getElementById('modelo').value.trim();
+    const anio = document.getElementById('anio').value.trim();
+    const color = document.getElementById('color').value.trim();
+    const tipo = document.getElementById('tipo').value;
+    const estado = document.getElementById('estado').value;
+    const fechaIngreso = document.getElementById('fecha_ingreso').value;
+    const km = document.getElementById('km_actuales').value;
 
-    // Datos del vehículo
-    body.append('placa', document.getElementById('placa').value.trim());
-    body.append('numero_serie', document.getElementById('numero_serie').value.trim());
-    body.append('marca', document.getElementById('marca').value);
-    body.append('modelo', document.getElementById('modelo').value);
-    body.append('anio', document.getElementById('anio').value);
-    body.append('color', document.getElementById('color').value);
-    body.append('tipo', document.getElementById('tipo').value);
-    body.append('estado', document.getElementById('estado').value);
-    body.append('fecha_ingreso', document.getElementById('fecha_ingreso').value);
-    body.append('km_actuales', document.getElementById('km_actuales').value);
-    body.append('observaciones', document.getElementById('observaciones').value);
-    body.append('id_unidad', document.getElementById('id_unidad').value);
+    // Catálogo — solo números, mínimo 1 carácter
+    if (!placa) {
+        Swal.fire({ icon: 'warning', title: 'Catálogo requerido', text: 'El campo catálogo no puede estar vacío.', background: '#1a1d27', color: '#e8eaf0' });
+        document.getElementById('placa').focus();
+        return;
+    }
+    if (!/^[0-9]+$/.test(placa)) {
+        Swal.fire({ icon: 'warning', title: 'Catálogo inválido', text: 'El catálogo solo puede contener números.', background: '#1a1d27', color: '#e8eaf0' });
+        document.getElementById('placa').focus();
+        return;
+    }
 
-    // Archivos
-    const foto = document.getElementById('foto_frente');
-    if (foto && foto.files.length > 0) body.append('foto_frente', foto.files[0]);
+    // Número de serie
+    if (!serie) {
+        Swal.fire({ icon: 'warning', title: 'Número de serie requerido', text: 'El número de serie / VIN no puede estar vacío.', background: '#1a1d27', color: '#e8eaf0' });
+        document.getElementById('numero_serie').focus();
+        return;
+    }
 
-    const fotoLateral = document.getElementById('foto_lateral');
-    if (fotoLateral && fotoLateral.files.length > 0) body.append('foto_lateral', fotoLateral.files[0]);
+    // Marca
+    if (!marca) {
+        Swal.fire({ icon: 'warning', title: 'Marca requerida', text: 'Ingresa la marca del vehículo.', background: '#1a1d27', color: '#e8eaf0' });
+        document.getElementById('marca').focus();
+        return;
+    }
 
-    const fotoTrasera = document.getElementById('foto_trasera');
-    if (fotoTrasera && fotoTrasera.files.length > 0) body.append('foto_trasera', fotoTrasera.files[0]);
+    // Modelo
+    if (!modelo) {
+        Swal.fire({ icon: 'warning', title: 'Modelo requerido', text: 'Ingresa el modelo del vehículo.', background: '#1a1d27', color: '#e8eaf0' });
+        document.getElementById('modelo').focus();
+        return;
+    }
 
-    const tarjeta = document.getElementById('tarjeta_pdf');
-    if (tarjeta && tarjeta.files.length > 0) body.append('tarjeta_pdf', tarjeta.files[0]);
+    // Año
+    if (!anio) {
+        Swal.fire({ icon: 'warning', title: 'Año requerido', text: 'Ingresa el año del vehículo.', background: '#1a1d27', color: '#e8eaf0' });
+        document.getElementById('anio').focus();
+        return;
+    }
+    const anioNum = parseInt(anio);
+    const anioActual = new Date().getFullYear();
+    if (isNaN(anioNum) || anioNum < 1900 || anioNum > anioActual + 1) {
+        Swal.fire({ icon: 'warning', title: 'Año inválido', text: `El año debe estar entre 1900 y ${anioActual + 1}.`, background: '#1a1d27', color: '#e8eaf0' });
+        document.getElementById('anio').focus();
+        return;
+    }
 
-    const certInventario = document.getElementById('cert_inventario');
-    if (certInventario && certInventario.files.length > 0) body.append('cert_inventario', certInventario.files[0]);
+    // Color
+    if (!color) {
+        Swal.fire({ icon: 'warning', title: 'Color requerido', text: 'Ingresa el color del vehículo.', background: '#1a1d27', color: '#e8eaf0' });
+        document.getElementById('color').focus();
+        return;
+    }
 
-    const certSicoin = document.getElementById('cert_sicoin');
-    if (certSicoin && certSicoin.files.length > 0) body.append('cert_sicoin', certSicoin.files[0]);
+    // Tipo
+    if (!tipo) {
+        Swal.fire({ icon: 'warning', title: 'Tipo requerido', text: 'Selecciona el tipo de vehículo.', background: '#1a1d27', color: '#e8eaf0' });
+        document.getElementById('tipo').focus();
+        return;
+    }
 
-    // ¿Tiene seguro?
+    // Fecha de ingreso
+    if (!fechaIngreso) {
+        Swal.fire({ icon: 'warning', title: 'Fecha requerida', text: 'Selecciona la fecha de ingreso.', background: '#1a1d27', color: '#e8eaf0' });
+        document.getElementById('fecha_ingreso').focus();
+        return;
+    }
+
+    // KM — mínimo 0
+    if (km === '' || isNaN(parseInt(km)) || parseInt(km) < 0) {
+        Swal.fire({ icon: 'warning', title: 'Kilometraje inválido', text: 'El kilometraje no puede ser negativo.', background: '#1a1d27', color: '#e8eaf0' });
+        document.getElementById('km_actuales').focus();
+        return;
+    }
+
+    // Seguro — validar si eligió "Sí tiene seguro"
     const tieneSeguro = document.getElementById('btnSeguroSi').classList.contains('sel-si');
+    const noTieneSeguro = document.getElementById('btnSeguroNo').classList.contains('sel-no');
+
+    if (!tieneSeguro && !noTieneSeguro) {
+        Swal.fire({ icon: 'warning', title: 'Seguro requerido', text: 'Indica si el vehículo tiene o no seguro.', background: '#1a1d27', color: '#e8eaf0' });
+        return;
+    }
 
     if (tieneSeguro) {
         const aseguradora = document.getElementById('seg_aseguradora').value.trim();
         const poliza = document.getElementById('seg_numero_poliza').value.trim();
+        const cobertura = document.getElementById('seg_tipo_cobertura').value;
         const inicio = document.getElementById('seg_fecha_inicio').value;
         const venc = document.getElementById('seg_fecha_vencimiento').value;
+        const prima = document.getElementById('seg_prima_anual').value;
+        const agente = document.getElementById('seg_agente_contacto').value.trim();
+        const telefono = document.getElementById('seg_telefono_agente').value.trim();
 
-        if (!aseguradora || !poliza || !inicio || !venc) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Complete los datos del seguro',
-                text: 'Faltan campos obligatorios del seguro',
-                background: '#1a1d27',
-                color: '#e8eaf0'
-            });
+        if (!aseguradora) {
+            Swal.fire({ icon: 'warning', title: 'Aseguradora requerida', text: 'Ingresa el nombre de la aseguradora.', background: '#1a1d27', color: '#e8eaf0' });
+            document.getElementById('seg_aseguradora').focus();
             return;
         }
-
-        body.append('seg_aseguradora', aseguradora);
-        body.append('seg_numero_poliza', poliza);
-        body.append('seg_tipo_cobertura', document.getElementById('seg_tipo_cobertura').value);
-        body.append('seg_fecha_inicio', inicio);
-        body.append('seg_fecha_vencimiento', venc);
-        body.append('seg_prima_anual', document.getElementById('seg_prima_anual').value);
-        body.append('seg_agente_contacto', document.getElementById('seg_agente_contacto').value);
-        body.append('seg_telefono_agente', document.getElementById('seg_telefono_agente').value);
-        body.append('seg_observaciones', document.getElementById('seg_observaciones').value);
-
-        const pdfPoliza = document.getElementById('archivo_poliza');
-        if (pdfPoliza && pdfPoliza.files && pdfPoliza.files.length > 0) {
-            const file = pdfPoliza.files[0];
-            if (file.type !== 'application/pdf') {
-                Swal.fire({ icon: 'warning', title: 'Archivo inválido', text: 'La póliza debe ser PDF' });
-                return;
-            }
-            body.append('archivo_poliza', file);
+        if (!poliza) {
+            Swal.fire({ icon: 'warning', title: 'Póliza requerida', text: 'Ingresa el número de póliza.', background: '#1a1d27', color: '#e8eaf0' });
+            document.getElementById('seg_numero_poliza').focus();
+            return;
+        }
+        if (!inicio) {
+            Swal.fire({ icon: 'warning', title: 'Fecha inicio requerida', text: 'Selecciona la fecha de inicio del seguro.', background: '#1a1d27', color: '#e8eaf0' });
+            document.getElementById('seg_fecha_inicio').focus();
+            return;
+        }
+        if (!venc) {
+            Swal.fire({ icon: 'warning', title: 'Fecha vencimiento requerida', text: 'Selecciona la fecha de vencimiento del seguro.', background: '#1a1d27', color: '#e8eaf0' });
+            document.getElementById('seg_fecha_vencimiento').focus();
+            return;
+        }
+        if (venc <= inicio) {
+            Swal.fire({ icon: 'warning', title: 'Fechas inválidas', text: 'La fecha de vencimiento debe ser posterior a la fecha de inicio.', background: '#1a1d27', color: '#e8eaf0' });
+            document.getElementById('seg_fecha_vencimiento').focus();
+            return;
+        }
+        if (!prima || isNaN(parseFloat(prima)) || parseFloat(prima) < 0) {
+            Swal.fire({ icon: 'warning', title: 'Prima requerida', text: 'Ingresa la prima anual del seguro (puede ser 0).', background: '#1a1d27', color: '#e8eaf0' });
+            document.getElementById('seg_prima_anual').focus();
+            return;
+        }
+        if (!agente) {
+            Swal.fire({ icon: 'warning', title: 'Agente requerido', text: 'Ingresa el nombre del agente de contacto.', background: '#1a1d27', color: '#e8eaf0' });
+            document.getElementById('seg_agente_contacto').focus();
+            return;
+        }
+        if (!telefono) {
+            Swal.fire({ icon: 'warning', title: 'Teléfono requerido', text: 'Ingresa el teléfono del agente.', background: '#1a1d27', color: '#e8eaf0' });
+            document.getElementById('seg_telefono_agente').focus();
+            return;
         }
     }
 
+    // ── CONSTRUIR FORM DATA ───────────────────────────────────────────────────
+    const body = new FormData();
+
+    body.append('placa', placa);
+    body.append('numero_serie', serie);
+    body.append('marca', marca);
+    body.append('modelo', modelo);
+    body.append('anio', anio);
+    body.append('color', color);
+    body.append('tipo', tipo);
+    body.append('estado', estado);
+    body.append('fecha_ingreso', fechaIngreso);
+    body.append('km_actuales', km);
+    body.append('observaciones', document.getElementById('observaciones').value);
+    body.append('id_unidad', document.getElementById('id_unidad').value);
+
+    // Archivos opcionales
+    const foto = document.getElementById('foto_frente');
+    if (foto?.files.length > 0) body.append('foto_frente', foto.files[0]);
+
+    const fotoLateral = document.getElementById('foto_lateral');
+    if (fotoLateral?.files.length > 0) body.append('foto_lateral', fotoLateral.files[0]);
+
+    const fotoTrasera = document.getElementById('foto_trasera');
+    if (fotoTrasera?.files.length > 0) body.append('foto_trasera', fotoTrasera.files[0]);
+
+    const tarjeta = document.getElementById('tarjeta_pdf');
+    if (tarjeta?.files.length > 0) body.append('tarjeta_pdf', tarjeta.files[0]);
+
+    const certInventario = document.getElementById('cert_inventario');
+    if (certInventario?.files.length > 0) body.append('cert_inventario', certInventario.files[0]);
+
+    const certSicoin = document.getElementById('cert_sicoin');
+    if (certSicoin?.files.length > 0) body.append('cert_sicoin', certSicoin.files[0]);
+
+    // Seguro
+    if (tieneSeguro) {
+        body.append('seg_aseguradora', document.getElementById('seg_aseguradora').value.trim());
+        body.append('seg_numero_poliza', document.getElementById('seg_numero_poliza').value.trim());
+        body.append('seg_tipo_cobertura', document.getElementById('seg_tipo_cobertura').value);
+        body.append('seg_fecha_inicio', document.getElementById('seg_fecha_inicio').value);
+        body.append('seg_fecha_vencimiento', document.getElementById('seg_fecha_vencimiento').value);
+        body.append('seg_prima_anual', document.getElementById('seg_prima_anual').value);
+        body.append('seg_agente_contacto', document.getElementById('seg_agente_contacto').value.trim());
+        body.append('seg_telefono_agente', document.getElementById('seg_telefono_agente').value.trim());
+        body.append('seg_observaciones', document.getElementById('seg_observaciones').value);
+
+        const pdfPoliza = document.getElementById('archivo_poliza');
+        if (pdfPoliza?.files.length > 0) {
+            if (pdfPoliza.files[0].type !== 'application/pdf') {
+                Swal.fire({ icon: 'warning', title: 'Archivo inválido', text: 'La póliza debe ser PDF.', background: '#1a1d27', color: '#e8eaf0' });
+                return;
+            }
+            body.append('archivo_poliza', pdfPoliza.files[0]);
+        }
+    }
+
+    // ── ENVIAR ────────────────────────────────────────────────────────────────
     try {
         const r = await fetch(`${BASE}/API/vehiculos/guardar`, { method: 'POST', body });
         const d = await r.json();

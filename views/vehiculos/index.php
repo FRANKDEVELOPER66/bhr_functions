@@ -1128,8 +1128,10 @@
                                 <option value="Pickup">Pickup</option>
                                 <option value="Camión">Camión</option>
                                 <option value="Motocicleta">Motocicleta</option>
-                                <option value="Furgoneta">Furgoneta</option>
+                                <option value="Cuatrimoto">Cuatrimoto</option>
+                                <option value="Microbús">Microbús</option>
                                 <option value="Blindado">Blindado</option>
+                                <option value="Camioneta">Camioneta</option>
                                 <option value="Otro">Otro</option>
                             </select>
                         </div>
