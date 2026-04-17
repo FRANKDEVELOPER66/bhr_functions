@@ -447,6 +447,7 @@ class ExpedienteController
             .indice-tabla tr { border-bottom: 0.5pt solid #f0e0cc; }
             .indice-tabla tr:nth-child(even) td { background: #fff8f2; }
             .indice-num    { width: 44px; text-align: center; font-weight: bold; color: #ffffff; background: #C75B00; font-size: 11pt; padding: 7px 10px; }
+            .indice-tabla tr:nth-child(even) .indice-num { background: #ffffff; color: #C75B00; border: 1pt solid #e8c89a; }
             .indice-titulo { font-weight: bold; color: #1a1a1a; padding: 7px 10px; }
             .indice-puntos { color: #ddd; text-align: right; font-size: 8pt; padding: 7px 10px; }
 
@@ -755,25 +756,85 @@ class ExpedienteController
 
     private static function paginaHojaChequeo(array $v, ?array $chequeo = null): string
     {
-        $items = [
-            1 => 'Tren delantero',
-            2 => 'Tapicería',
-            3 => 'Carrocería',
-            4 => 'Pintura en general',
-            5 => 'Siglas que identifican a los vehículos pintados en color naranja fluorescente y en el lugar correspondiente',
-            6 => 'Lona del camión',
-            7 => 'Luces y pide vías',
-            8 => 'Sistema eléctrico',
-            9 => 'Herramienta extra para reparación de vehículos',
-            10 => 'Herramienta básica (Tricket, llave de chuchos, palanca o tubo, trozo, cable o cadena, señalizaciones etc.)',
-            11 => 'Herramienta de emergencia (llave de ½, Nos. 12, 13, 14, alicate, llave ajustable, juego de desatornilladores)',
-            12 => 'Repuestos necesarios de emergencias',
-            13 => 'Neumático de repuesto',
-            14 => 'Acumulador o batería',
-            15 => 'Neumáticos',
-            16 => 'Lubricante',
-            17 => 'Odómetro',
+        $tipoVehiculo = strtolower(trim($v['tipo'] ?? ''));
+
+        // ── Definición con exclusiones por tipo ───────────────────────────────────
+        $itemsDef = [
+            1  => [
+                'desc' => 'Tren delantero',
+                'tipos' => null
+            ],
+            2  => [
+                'desc' => 'Tapicería',
+                'tipos' => ['automóvil', 'pickup', 'camión', 'microbús', 'blindado', 'camioneta', 'otro']
+            ],
+            3  => [
+                'desc' => 'Carrocería',
+                'tipos' => ['automóvil', 'pickup', 'camión', 'microbús', 'blindado', 'camioneta', 'otro']
+            ],
+            4  => [
+                'desc' => 'Pintura en general',
+                'tipos' => null
+            ],
+            5  => [
+                'desc' => 'Siglas que identifican a los vehículos pintados en color naranja fluorescente y en el lugar correspondiente',
+                'tipos' => null
+            ],
+            6  => [
+                'desc' => 'Lona del camión',
+                'tipos' => ['camión']
+            ],
+            7  => [
+                'desc' => 'Luces y pide vías',
+                'tipos' => null
+            ],
+            8  => [
+                'desc' => 'Sistema eléctrico',
+                'tipos' => null
+            ],
+            9  => [
+                'desc' => 'Herramienta extra para reparación de vehículos',
+                'tipos' => ['automóvil', 'pickup', 'camión', 'microbús', 'blindado', 'camioneta', 'otro']
+            ],
+            10 => [
+                'desc' => 'Herramienta básica (Tricket, llave de chuchos, palanca o tubo, trozo, cable o cadena, señalizaciones etc.)',
+                'tipos' => ['automóvil', 'pickup', 'camión', 'microbús', 'blindado', 'camioneta', 'otro']
+            ],
+            11 => [
+                'desc' => 'Herramienta de emergencia (llave de ½, Nos. 12, 13, 14, alicate, llave ajustable, juego de desatornilladores)',
+                'tipos' => ['automóvil', 'pickup', 'camión', 'microbús', 'blindado', 'camioneta', 'otro']
+            ],
+            12 => [
+                'desc' => 'Repuestos necesarios de emergencias',
+                'tipos' => ['automóvil', 'pickup', 'camión', 'microbús', 'blindado', 'camioneta', 'otro']
+            ],
+            13 => [
+                'desc' => 'Neumático de repuesto',
+                'tipos' => ['automóvil', 'pickup', 'camión', 'microbús', 'blindado', 'camioneta', 'otro']
+            ],
+            14 => [
+                'desc' => 'Acumulador o batería',
+                'tipos' => null
+            ],
+            15 => [
+                'desc' => 'Neumáticos',
+                'tipos' => null
+            ],
+            16 => [
+                'desc' => 'Lubricante',
+                'tipos' => null
+            ],
+            17 => [
+                'desc' => 'Odómetro',
+                'tipos' => ['automóvil', 'pickup', 'camión', 'microbús', 'blindado', 'camioneta', 'otro', 'motocicleta']
+            ],
         ];
+
+        // ── Filtrar según tipo ────────────────────────────────────────────────────
+        $items = array_filter(
+            $itemsDef,
+            fn($item) => $item['tipos'] === null || in_array($tipoVehiculo, $item['tipos'])
+        );
 
         $resultados = [];
         if ($chequeo && !empty($chequeo['items'])) {
@@ -785,9 +846,11 @@ class ExpedienteController
             }
         }
 
-        $colores = ['BE' => '#2e7d32', 'ME' => '#e05252', 'MEI' => '#e8b84b', 'NT' => '#7c8398'];
+        $colores = ['BE' => '#2e7d32', 'ME' => '#e8b84b', 'MEI' => '#e05252', 'NT' => '#7c8398'];
         $filas   = '';
-        foreach ($items as $num => $desc) {
+        $contador = 1;
+        foreach ($items as $num => $item) {
+            $desc   = $item['desc'];
             $res    = $resultados[$num]['resultado']   ?? '';
             $obs    = $resultados[$num]['observacion'] ?? '';
             $celdas = '';
@@ -798,14 +861,15 @@ class ExpedienteController
                     : '<svg width="14" height="14" xmlns="http://www.w3.org/2000/svg"><circle cx="7" cy="7" r="6" fill="none" stroke="#cccccc" stroke-width="1.5"/></svg>';
                 $celdas .= '<td style="text-align:center;padding:3px 4px;width:38px;">' . $circulo . '</td>';
             }
-            $bg = ($num % 2 === 0) ? '#fff8f2' : '#ffffff';
+            $bg = ($contador % 2 === 0) ? '#fff8f2' : '#ffffff';
             $filas .= '
-            <tr style="background:' . $bg . ';border-bottom:0.5pt solid #f0e0cc;">
-                <td style="text-align:center;font-weight:bold;color:#C75B00;font-size:7.5pt;padding:4px 5px;width:28px;">' . str_pad($num, 2, '0', STR_PAD_LEFT) . '</td>
-                <td style="text-align:left;font-size:8pt;padding:4px 6px;color:#1a1a1a;">' . htmlspecialchars($desc) . '</td>
-                ' . $celdas . '
-                <td style="font-size:7.5pt;color:#888;padding:4px 6px;">' . htmlspecialchars($obs) . '</td>
-            </tr>';
+        <tr style="background:' . $bg . ';border-bottom:0.5pt solid #f0e0cc;">
+            <td style="text-align:center;font-weight:bold;color:#C75B00;font-size:7.5pt;padding:4px 5px;width:28px;">' . str_pad($contador, 2, '0', STR_PAD_LEFT) . '</td>
+            <td style="text-align:left;font-size:8pt;padding:4px 6px;color:#1a1a1a;">' . htmlspecialchars($desc) . '</td>
+            ' . $celdas . '
+            <td style="font-size:7.5pt;color:#888;padding:4px 6px;">' . htmlspecialchars($obs) . '</td>
+        </tr>';
+            $contador++;
         }
 
         $fecha       = $chequeo ? $chequeo['fecha_chequeo']  : '—';
@@ -818,80 +882,80 @@ class ExpedienteController
             : '<span style="background:#fce8e8;color:#c62828;border:0.5pt solid #c62828;padding:1px 8px;border-radius:3px;font-size:7pt;font-weight:bold;">⚠ PENDIENTE</span>';
 
         return '
-        ' . self::encabezado('HOJA INDIVIDUAL DE CHEQUEO DE VEHÍCULOS') . '
-        <table width="100%" style="border-collapse:collapse;margin-bottom:10px;">
+    ' . self::encabezado('HOJA INDIVIDUAL DE CHEQUEO DE VEHÍCULOS') . '
+    <table width="100%" style="border-collapse:collapse;margin-bottom:10px;">
+        <tr>
+            <td style="background:#C75B00;padding:5px 8px;border:1pt solid #a34800;width:18%;">
+                <div style="font-size:7pt;color:#ffe0b2;text-transform:uppercase;">Catálogo</div>
+                <div style="font-size:12pt;font-weight:bold;color:#ffffff;">' . htmlspecialchars($v['placa']) . '</div>
+            </td>
+            <td style="background:#fff8f2;padding:5px 8px;border:1pt solid #e8c89a;width:26%;">
+                <div style="font-size:7pt;color:#C75B00;text-transform:uppercase;">Marca / Modelo</div>
+                <div style="font-size:10pt;font-weight:bold;">' . htmlspecialchars($v['marca'] . ' ' . $v['modelo']) . '</div>
+            </td>
+            <td style="background:#fff8f2;padding:5px 8px;border:1pt solid #e8c89a;width:20%;">
+                <div style="font-size:7pt;color:#C75B00;text-transform:uppercase;">Fecha</div>
+                <div style="font-size:9.5pt;font-weight:bold;">' . $fecha . ' &nbsp;' . $estadoBadge . '</div>
+            </td>
+            <td style="background:#fff8f2;padding:5px 8px;border:1pt solid #e8c89a;width:18%;">
+                <div style="font-size:7pt;color:#C75B00;text-transform:uppercase;">KM al Momento</div>
+                <div style="font-size:9.5pt;font-weight:bold;">' . $km . '</div>
+            </td>
+            <td style="background:#fff8f2;padding:5px 8px;border:1pt solid #e8c89a;width:18%;">
+                <div style="font-size:7pt;color:#C75B00;text-transform:uppercase;">Realizado Por</div>
+                <div style="font-size:9.5pt;font-weight:bold;">' . htmlspecialchars($responsable) . '</div>
+            </td>
+        </tr>
+    </table>
+    <table width="100%" style="border-collapse:collapse;font-size:8.5pt;">
+        <thead>
+            <tr style="background:#1a1a1a;color:#ffffff;">
+                <th style="padding:5px;text-align:center;width:28px;font-size:7pt;">No.</th>
+                <th style="padding:5px;text-align:left;font-size:7pt;">Descripción del Ítem</th>
+                <th style="padding:5px;text-align:center;width:38px;color:#4caf7d;font-size:7pt;">BE</th>
+                <th style="padding:5px;text-align:center;width:38px;color:#e05252;font-size:7pt;">ME</th>
+                <th style="padding:5px;text-align:center;width:38px;color:#e8b84b;font-size:7pt;">MEI</th>
+                <th style="padding:5px;text-align:center;width:38px;color:#aaa;font-size:7pt;">NT</th>
+                <th style="padding:5px;text-align:left;font-size:7pt;">Observación</th>
+            </tr>
+        </thead>
+        <tbody>' . $filas . '</tbody>
+    </table>
+    <div style="margin-top:5px;font-size:7pt;color:#aaa;">
+        <strong style="color:#C75B00;">BE</strong> = Buen Estado &nbsp;·&nbsp;
+        <strong style="color:#C75B00;">ME</strong> = Mal Estado &nbsp;·&nbsp;
+        <strong style="color:#C75B00;">MEI</strong> = Mal Estado Irreparable &nbsp;·&nbsp;
+        <strong style="color:#C75B00;">NT</strong> = No Tiene
+    </div>
+    ' . (!empty($obsGen) ? '
+    <div style="margin-top:8px;border:1pt solid #e8c89a;border-left:4pt solid #C75B00;
+        padding:6px 10px;font-size:8pt;background:#fffaf5;border-radius:0 3pt 3pt 0;">
+        <strong style="color:#C75B00;">Observaciones:</strong> ' . htmlspecialchars($obsGen) . '
+    </div>' : '') . '
+    <div style="margin-top:16px;">
+        <table width="100%" style="border-collapse:collapse;">
             <tr>
-                <td style="background:#C75B00;padding:5px 8px;border:1pt solid #a34800;width:18%;">
-                    <div style="font-size:7pt;color:#ffe0b2;text-transform:uppercase;">Catálogo</div>
-                    <div style="font-size:12pt;font-weight:bold;color:#ffffff;">' . htmlspecialchars($v['placa']) . '</div>
+                <td style="text-align:center;padding:10px 16px;">
+                    <div style="border-top:1pt solid #C75B00;margin:0 16px;padding-top:5px;
+                        font-size:7.5pt;color:#666;text-transform:uppercase;letter-spacing:.5pt;">
+                        Firma del Responsable
+                    </div>
                 </td>
-                <td style="background:#fff8f2;padding:5px 8px;border:1pt solid #e8c89a;width:26%;">
-                    <div style="font-size:7pt;color:#C75B00;text-transform:uppercase;">Marca / Modelo</div>
-                    <div style="font-size:10pt;font-weight:bold;">' . htmlspecialchars($v['marca'] . ' ' . $v['modelo']) . '</div>
+                <td style="text-align:center;padding:10px 16px;">
+                    <div style="border-top:1pt solid #C75B00;margin:0 16px;padding-top:5px;
+                        font-size:7.5pt;color:#666;text-transform:uppercase;letter-spacing:.5pt;">
+                        Firma del Oficial de Turno
+                    </div>
                 </td>
-                <td style="background:#fff8f2;padding:5px 8px;border:1pt solid #e8c89a;width:20%;">
-                    <div style="font-size:7pt;color:#C75B00;text-transform:uppercase;">Fecha</div>
-                    <div style="font-size:9.5pt;font-weight:bold;">' . $fecha . ' &nbsp;' . $estadoBadge . '</div>
-                </td>
-                <td style="background:#fff8f2;padding:5px 8px;border:1pt solid #e8c89a;width:18%;">
-                    <div style="font-size:7pt;color:#C75B00;text-transform:uppercase;">KM al Momento</div>
-                    <div style="font-size:9.5pt;font-weight:bold;">' . $km . '</div>
-                </td>
-                <td style="background:#fff8f2;padding:5px 8px;border:1pt solid #e8c89a;width:18%;">
-                    <div style="font-size:7pt;color:#C75B00;text-transform:uppercase;">Realizado Por</div>
-                    <div style="font-size:9.5pt;font-weight:bold;">' . htmlspecialchars($responsable) . '</div>
+                <td style="text-align:center;padding:10px 16px;">
+                    <div style="border-top:1pt solid #C75B00;margin:0 16px;padding-top:5px;
+                        font-size:7.5pt;color:#666;text-transform:uppercase;letter-spacing:.5pt;">
+                        Sello Unidad
+                    </div>
                 </td>
             </tr>
         </table>
-        <table width="100%" style="border-collapse:collapse;font-size:8.5pt;">
-            <thead>
-                <tr style="background:#1a1a1a;color:#ffffff;">
-                    <th style="padding:5px;text-align:center;width:28px;font-size:7pt;">No.</th>
-                    <th style="padding:5px;text-align:left;font-size:7pt;">Descripción del Ítem</th>
-                    <th style="padding:5px;text-align:center;width:38px;color:#4caf7d;font-size:7pt;">BE</th>
-                    <th style="padding:5px;text-align:center;width:38px;color:#e05252;font-size:7pt;">ME</th>
-                    <th style="padding:5px;text-align:center;width:38px;color:#e8b84b;font-size:7pt;">MEI</th>
-                    <th style="padding:5px;text-align:center;width:38px;color:#aaa;font-size:7pt;">NT</th>
-                    <th style="padding:5px;text-align:left;font-size:7pt;">Observación</th>
-                </tr>
-            </thead>
-            <tbody>' . $filas . '</tbody>
-        </table>
-        <div style="margin-top:5px;font-size:7pt;color:#aaa;">
-            <strong style="color:#C75B00;">BE</strong> = Buen Estado &nbsp;·&nbsp;
-            <strong style="color:#C75B00;">ME</strong> = Mal Estado &nbsp;·&nbsp;
-            <strong style="color:#C75B00;">MEI</strong> = Mal Estado Irreparable &nbsp;·&nbsp;
-            <strong style="color:#C75B00;">NT</strong> = No Tiene
-        </div>
-        ' . (!empty($obsGen) ? '
-        <div style="margin-top:8px;border:1pt solid #e8c89a;border-left:4pt solid #C75B00;
-            padding:6px 10px;font-size:8pt;background:#fffaf5;border-radius:0 3pt 3pt 0;">
-            <strong style="color:#C75B00;">Observaciones:</strong> ' . htmlspecialchars($obsGen) . '
-        </div>' : '') . '
-        <div style="margin-top:16px;">
-            <table width="100%" style="border-collapse:collapse;">
-                <tr>
-                    <td style="text-align:center;padding:10px 16px;">
-                        <div style="border-top:1pt solid #C75B00;margin:0 16px;padding-top:5px;
-                            font-size:7.5pt;color:#666;text-transform:uppercase;letter-spacing:.5pt;">
-                            Firma del Responsable
-                        </div>
-                    </td>
-                    <td style="text-align:center;padding:10px 16px;">
-                        <div style="border-top:1pt solid #C75B00;margin:0 16px;padding-top:5px;
-                            font-size:7.5pt;color:#666;text-transform:uppercase;letter-spacing:.5pt;">
-                            Firma del Oficial de Turno
-                        </div>
-                    </td>
-                    <td style="text-align:center;padding:10px 16px;">
-                        <div style="border-top:1pt solid #C75B00;margin:0 16px;padding-top:5px;
-                            font-size:7.5pt;color:#666;text-transform:uppercase;letter-spacing:.5pt;">
-                            Sello Unidad
-                        </div>
-                    </td>
-                </tr>
-            </table>
-        </div>
-        ' . self::pie($v['placa'], '16 – HOJA DE CHEQUEO');
+    </div>
+    ' . self::pie($v['placa'], '16 – HOJA DE CHEQUEO');
     }
 }

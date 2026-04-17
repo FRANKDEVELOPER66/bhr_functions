@@ -2332,23 +2332,74 @@ let chequeoResultados = {};
 let chequeoTotalItems = 17; // ← agregar aquí
 
 const ITEMS_CHEQUEO = {
-    1: { desc: 'Tren delantero', tipos: null },
-    2: { desc: 'Tapicería', tipos: null },
-    3: { desc: 'Carrocería', tipos: null },
-    4: { desc: 'Pintura en general', tipos: null },
-    5: { desc: 'Siglas que identifican a los vehículos pintados en color naranja fluorescente y en el lugar correspondiente', tipos: null },
-    6: { desc: 'Lona del camión', tipos: ['Camión'] },
-    7: { desc: 'Luces y pide vías', tipos: null },
-    8: { desc: 'Sistema eléctrico', tipos: null },
-    9: { desc: 'Herramienta extra para reparación de vehículos', tipos: null },
-    10: { desc: 'Herramienta básica (Tricket, llave de chuchos, palanca o tubo, trozo, cable o cadena, señalizaciones etc.)', tipos: null },
-    11: { desc: 'Herramienta de emergencia (llave de ½, Nos. 12, 13, 14, alicate, llave ajustable, juego de desatornilladores)', tipos: null },
-    12: { desc: 'Repuestos necesarios de emergencias', tipos: null },
-    13: { desc: 'Neumático de repuesto', tipos: null },
-    14: { desc: 'Acumulador o batería', tipos: null },
-    15: { desc: 'Neumáticos', tipos: null },
-    16: { desc: 'Lubricante', tipos: null },
-    17: { desc: 'Odómetro', tipos: null },
+    1: {
+        desc: 'Tren delantero',
+        tipos: null
+    }, // todos
+    2: {
+        desc: 'Tapicería',
+        tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro']
+    },
+    3: {
+        desc: 'Carrocería',
+        tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro']
+    },
+    4: {
+        desc: 'Pintura en general',
+        tipos: null
+    },
+    5: {
+        desc: 'Siglas que identifican a los vehículos pintados en color naranja fluorescente y en el lugar correspondiente',
+        tipos: null
+    },
+    6: {
+        desc: 'Lona del camión',
+        tipos: ['Camión']
+    },
+    7: {
+        desc: 'Luces y pide vías',
+        tipos: null
+    },
+    8: {
+        desc: 'Sistema eléctrico',
+        tipos: null
+    },
+    9: {
+        desc: 'Herramienta extra para reparación de vehículos',
+        tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro']
+    },
+    10: {
+        desc: 'Herramienta básica (Tricket, llave de chuchos, palanca o tubo, trozo, cable o cadena, señalizaciones etc.)',
+        tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro']
+    },
+    11: {
+        desc: 'Herramienta de emergencia (llave de ½, Nos. 12, 13, 14, alicate, llave ajustable, juego de desatornilladores)',
+        tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro']
+    },
+    12: {
+        desc: 'Repuestos necesarios de emergencias',
+        tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro']
+    },
+    13: {
+        desc: 'Neumático de repuesto',
+        tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro']
+    },
+    14: {
+        desc: 'Acumulador o batería',
+        tipos: null
+    },
+    15: {
+        desc: 'Neumáticos',
+        tipos: null
+    },
+    16: {
+        desc: 'Lubricante',
+        tipos: null
+    },
+    17: {
+        desc: 'Odómetro',
+        tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro', 'Motocicleta']
+    },
 };
 
 const abrirModalChequeo = async () => {
