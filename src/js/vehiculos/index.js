@@ -2118,7 +2118,13 @@ const abrirModalChequeo = async () => {
 const cerrarModalChequeo = () => {
     document.getElementById('modalChequeo').style.display = 'none';
     document.body.style.overflow = '';
-    cancelarChequeo();
+    // NO llamar cancelarChequeo() aquí — resetea fichaPlacaActual
+    chequeoActualId = null;
+    chequeoResultados = {};
+    const formChequeo = document.getElementById('formNuevoChequeo');
+    const btnChequeo = document.getElementById('btnNuevoChequeo');
+    if (formChequeo) formChequeo.style.display = 'none';
+    if (btnChequeo) btnChequeo.style.display = 'flex';
 };
 
 const actualizarBotonesExpediente = (tieneChequeoMes) => {
@@ -2134,10 +2140,23 @@ const cargarChequeos = async () => {
         const r = await fetch(`${BASE}/API/vehiculos/chequeos/listar?placa=${fichaPlacaActual}`);
         const d = await r.json();
         if (d.codigo !== 1) return;
+
         const badge = document.getElementById('badgeChequeo');
         if (badge) badge.textContent = d.datos.length;
+
+        // ── Bloquear botón si ya hay chequeo este mes ─────────────────────────
+        const ahora = new Date();
+        const mesActual = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`;
+        const yaHayChequeoEsteMes = d.datos.some(c =>
+            c.fecha_chequeo?.startsWith(mesActual) && c.completado == 1
+        );
+
+        const btnNuevo = document.getElementById('btnNuevoChequeo');
         const alerta = document.getElementById('chequeoAlertaMes');
-        if (alerta) alerta.style.display = d.tiene_chequeo_mes ? 'flex' : 'none';
+
+        if (btnNuevo) btnNuevo.style.display = yaHayChequeoEsteMes ? 'none' : 'flex';
+        if (alerta) alerta.style.display = yaHayChequeoEsteMes ? 'flex' : 'none';
+
         actualizarBotonesExpediente(d.tiene_chequeo_mes);
         renderTablaChequeos(d.datos);
     } catch (err) {
@@ -2294,17 +2313,53 @@ const verChequeo = async (id) => {
 };
 
 const guardarChequeo = async () => {
-    const items = Object.entries(chequeoResultados).map(([num, data]) => ({ numero_item: parseInt(num), resultado: data.resultado, observacion: data.observacion || '' }));
+    const items = Object.entries(chequeoResultados).map(([num, data]) => ({
+        numero_item: parseInt(num),
+        resultado: data.resultado,
+        observacion: data.observacion || ''
+    }));
+
     const body = new FormData();
     body.append('id_chequeo', chequeoActualId);
     body.append('items', JSON.stringify(items));
     body.append('observaciones_gen', document.getElementById('chqObservaciones').value);
+
     try {
         const r = await fetch(`${BASE}/API/vehiculos/chequeos/completar`, { method: 'POST', body });
         const d = await r.json();
-        Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
-        if (d.codigo === 1) { cancelarChequeo(); await cargarChequeos(); }
-    } catch (err) { Toast.fire({ icon: 'error', title: 'Error de conexión' }); }
+
+        if (d.codigo === 1) {
+            const placaGuardada = fichaPlacaActual;
+
+            // Cerrar modal chequeo SIN tocar body.overflow
+            document.getElementById('modalChequeo').style.display = 'none';
+            chequeoActualId = null;
+            chequeoResultados = {};
+            const formChequeo = document.getElementById('formNuevoChequeo');
+            const btnChequeo = document.getElementById('btnNuevoChequeo');
+            if (formChequeo) formChequeo.style.display = 'none';
+            if (btnChequeo) btnChequeo.style.display = 'flex';
+
+            // Mostrar Swal (body.overflow sigue hidden por modalFicha — está bien)
+            await Swal.fire({
+                title: '¡Chequeo completado!',
+                icon: 'success',
+                draggable: true,
+                background: '#1a1d27',
+                color: '#e8eaf0',
+                confirmButtonColor: '#6f42c1',
+                customClass: { container: 'swal-over-modal' }
+            });
+
+            // Después del Swal, recargar ficha
+            if (placaGuardada) await abrirFicha(placaGuardada);
+
+        } else {
+            Toast.fire({ icon: 'error', title: d.mensaje });
+        }
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    }
 };
 
 const cancelarChequeo = () => {
