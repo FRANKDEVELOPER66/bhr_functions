@@ -1330,6 +1330,15 @@ document.getElementById('modalFicha').addEventListener('click', (e) => {
 });
 
 const switchTab = (btn, tab) => {
+    // ── Resetear formulario del tab que se abandona ───────────────────────────
+    const tabActivo = document.querySelector('.ficha-tab.activo')?.dataset?.tab;
+    if (tabActivo && tabActivo !== tab) {
+        if (tabActivo === 'servicios') resetFormServicio();
+        if (tabActivo === 'reparaciones') resetFormReparacion();
+        if (tabActivo === 'seguro') resetFormSeguro();
+        if (tabActivo === 'accidentes') resetFormAccidente();
+    }
+
     document.querySelectorAll('.ficha-tab').forEach(b => b.classList.remove('activo'));
     document.querySelectorAll('.ficha-tab-content').forEach(c => c.style.display = 'none');
     btn.classList.add('activo');
@@ -1364,38 +1373,15 @@ const guardarServicio = async (forzar = false) => {
     const responsable = document.getElementById('svcResponsable').value.trim();
 
     if (!tipo) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Seleccione el tipo de servicio',
-            text: 'Debe seleccionar un tipo antes de guardar.',
-            background: '#1a1d27', color: '#e8eaf0',
-            confirmButtonColor: '#e8b84b',
-            customClass: { container: 'swal-over-modal' }
-        });
+        Swal.fire({ icon: 'info', title: 'Seleccione el tipo de servicio', text: 'Debe seleccionar un tipo antes de guardar.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
         return;
     }
-
     if (!responsable) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Ingrese el responsable',
-            text: 'Debe indicar quién realizó el servicio.',
-            background: '#1a1d27', color: '#e8eaf0',
-            confirmButtonColor: '#e8b84b',
-            customClass: { container: 'swal-over-modal' }
-        });
+        Swal.fire({ icon: 'info', title: 'Ingrese el responsable', text: 'Debe indicar quién realizó el servicio.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
         return;
     }
-
     if (!fecha || !km) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Faltan datos obligatorios',
-            text: 'La fecha y el KM son requeridos.',
-            background: '#1a1d27', color: '#e8eaf0',
-            confirmButtonColor: '#e8b84b',
-            customClass: { container: 'swal-over-modal' }
-        });
+        Swal.fire({ icon: 'info', title: 'Faltan datos obligatorios', text: 'La fecha y el KM son requeridos.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
         return;
     }
 
@@ -1409,45 +1395,28 @@ const guardarServicio = async (forzar = false) => {
     if (forzar) body.append('forzar', '1');
 
     try {
+        mostrarLoader('Guardando servicio...');
         const r = await fetch(`${BASE}/API/vehiculos/servicio/guardar`, { method: 'POST', body });
         const d = await r.json();
 
-        // ── Bloqueo duro — menos de 15 días ──────────────────────────────────
         if (d.codigo === 0 && d.bloqueo_duro) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Registro bloqueado',
-                text: d.mensaje,
-                background: '#1a1d27', color: '#e8eaf0',
-                confirmButtonColor: '#e05252',
-                customClass: { container: 'swal-over-modal' }
-            });
+            Swal.fire({ icon: 'error', title: 'Registro bloqueado', text: d.mensaje, background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e05252', customClass: { container: 'swal-over-modal' } });
             return;
         }
 
-        // ── Advertencia — entre 15 y 90 días ─────────────────────────────────
         if (d.codigo === 2) {
             const conf = await Swal.fire({
-                icon: 'warning',
-                title: '¿Registrar de todas formas?',
-                html: `${d.mensaje}<br><br>
-                    <small style="color:#888;">Último servicio: <strong>${d.ultimo_km ? Number(d.ultimo_km).toLocaleString() + ' km' : '—'}</strong></small>`,
-                showCancelButton: true,
-                confirmButtonText: 'Sí, registrar',
-                cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#e8b84b',
-                cancelButtonColor: '#555',
-                background: '#1a1d27', color: '#e8eaf0',
-                customClass: { container: 'swal-over-modal' }
+                icon: 'warning', title: '¿Registrar de todas formas?',
+                html: `${d.mensaje}<br><br><small style="color:#888;">Último servicio: <strong>${d.ultimo_km ? Number(d.ultimo_km).toLocaleString() + ' km' : '—'}</strong></small>`,
+                showCancelButton: true, confirmButtonText: 'Sí, registrar', cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#e8b84b', cancelButtonColor: '#555',
+                background: '#1a1d27', color: '#e8eaf0', customClass: { container: 'swal-over-modal' }
             });
-
             if (conf.isConfirmed) await guardarServicio(true);
             return;
         }
 
-        // ── Éxito ─────────────────────────────────────────────────────────────
         Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
-
         if (d.codigo === 1) {
             document.getElementById('svcTipo').value = '';
             document.getElementById('svcResponsable').value = '';
@@ -1459,6 +1428,8 @@ const guardarServicio = async (forzar = false) => {
         }
     } catch (err) {
         Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    } finally {
+        ocultarLoader();
     }
 };
 
@@ -1503,50 +1474,19 @@ const guardarReparacion = async (forzar = false) => {
     const km = document.getElementById('repKm').value;
 
     if (!tipo) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Seleccione el tipo de reparación',
-            text: 'Debe seleccionar un tipo antes de guardar.',
-            background: '#1a1d27', color: '#e8eaf0',
-            confirmButtonColor: '#e8b84b',
-            customClass: { container: 'swal-over-modal' }
-        });
+        Swal.fire({ icon: 'info', title: 'Seleccione el tipo de reparación', text: 'Debe seleccionar un tipo antes de guardar.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
         return;
     }
-
     if (!desc) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Ingrese una descripción',
-            text: 'Debe describir la reparación a realizar.',
-            background: '#1a1d27', color: '#e8eaf0',
-            confirmButtonColor: '#e8b84b',
-            customClass: { container: 'swal-over-modal' }
-        });
+        Swal.fire({ icon: 'info', title: 'Ingrese una descripción', text: 'Debe describir la reparación a realizar.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
         return;
     }
-
     if (!km || parseInt(km) <= 0) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Ingrese el KM al momento',
-            text: 'El kilometraje al momento de la reparación es obligatorio.',
-            background: '#1a1d27', color: '#e8eaf0',
-            confirmButtonColor: '#e8b84b',
-            customClass: { container: 'swal-over-modal' }
-        });
+        Swal.fire({ icon: 'info', title: 'Ingrese el KM al momento', text: 'El kilometraje al momento de la reparación es obligatorio.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
         return;
     }
-
     if (!fecha) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Faltan datos obligatorios',
-            text: 'La fecha de inicio es requerida.',
-            background: '#1a1d27', color: '#e8eaf0',
-            confirmButtonColor: '#e8b84b',
-            customClass: { container: 'swal-over-modal' }
-        });
+        Swal.fire({ icon: 'info', title: 'Faltan datos obligatorios', text: 'La fecha de inicio es requerida.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
         return;
     }
 
@@ -1572,45 +1512,28 @@ const guardarReparacion = async (forzar = false) => {
         : `${BASE}/API/vehiculos/reparacion/guardar`;
 
     try {
+        mostrarLoader('Guardando reparación...');
         const r = await fetch(url, { method: 'POST', body });
         const d = await r.json();
 
-        // ── Bloqueo duro — reparación en proceso del mismo tipo ───────────────
         if (d.codigo === 0 && d.bloqueo_duro) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Registro bloqueado',
-                text: d.mensaje,
-                background: '#1a1d27', color: '#e8eaf0',
-                confirmButtonColor: '#e05252',
-                customClass: { container: 'swal-over-modal' }
-            });
+            Swal.fire({ icon: 'error', title: 'Registro bloqueado', text: d.mensaje, background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e05252', customClass: { container: 'swal-over-modal' } });
             return;
         }
 
-        // ── Advertencia — menos de 30 días desde la última ────────────────────
         if (d.codigo === 2) {
             const conf = await Swal.fire({
-                icon: 'warning',
-                title: '¿Registrar de todas formas?',
-                html: `${d.mensaje}<br><br>
-                    <small style="color:#888;">Último KM registrado: <strong>${d.ultimo_km ? Number(d.ultimo_km).toLocaleString() + ' km' : '—'}</strong></small>`,
-                showCancelButton: true,
-                confirmButtonText: 'Sí, registrar',
-                cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#e8b84b',
-                cancelButtonColor: '#555',
-                background: '#1a1d27', color: '#e8eaf0',
-                customClass: { container: 'swal-over-modal' }
+                icon: 'warning', title: '¿Registrar de todas formas?',
+                html: `${d.mensaje}<br><br><small style="color:#888;">Último KM registrado: <strong>${d.ultimo_km ? Number(d.ultimo_km).toLocaleString() + ' km' : '—'}</strong></small>`,
+                showCancelButton: true, confirmButtonText: 'Sí, registrar', cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#e8b84b', cancelButtonColor: '#555',
+                background: '#1a1d27', color: '#e8eaf0', customClass: { container: 'swal-over-modal' }
             });
-
             if (conf.isConfirmed) await guardarReparacion(true);
             return;
         }
 
-        // ── Éxito ─────────────────────────────────────────────────────────────
         Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
-
         if (d.codigo === 1) {
             reparacionEditandoId = null;
             ['repTipo', 'repDescripcion', 'repFechaFin', 'repCosto',
@@ -1623,9 +1546,10 @@ const guardarReparacion = async (forzar = false) => {
             switchTab(document.querySelector('.ficha-tab[data-tab="reparaciones"]'), 'reparaciones');
             buscar();
         }
-
     } catch (err) {
         Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    } finally {
+        ocultarLoader();
     }
 };
 
@@ -1732,6 +1656,12 @@ const renderTablaSeguros = (seguros) => {
             <div><div class="svc-label">Costo Anual</div><div class="svc-val">${s.prima_anual ? 'Q ' + Number(s.prima_anual).toLocaleString() : '—'}</div></div>
             <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
                 ${s.pdf_poliza_url ? `<a href="${s.pdf_poliza_url}" target="_blank" style="background:rgba(232,184,75,.15);border:1px solid rgba(232,184,75,.3);color:var(--accent);border-radius:6px;padding:.35rem .6rem;font-size:.8rem;text-decoration:none;" title="Ver póliza PDF"><i class="bi bi-file-earmark-pdf"></i></a>` : ''}
+                <button onclick="verSeguro(${s.id_seguro})" style="
+    background:rgba(76,175,125,.15);border:1px solid rgba(76,175,125,.3);
+    color:#4caf7d;border-radius:6px;padding:.35rem .6rem;
+    cursor:pointer;font-size:.8rem;" title="Ver detalle">
+    <i class="bi bi-eye"></i>
+</button>
                 <button onclick="editarSeguro(${s.id_seguro})" style="background:rgba(58,123,213,.15);border:1px solid rgba(58,123,213,.3);color:#5b9bd5;border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;" title="Editar"><i class="bi bi-pencil-square"></i></button>
                 <button onclick="eliminarSeguro(${s.id_seguro})" style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);color:var(--danger);border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;" title="Eliminar"><i class="bi bi-trash3"></i></button>
             </div>
@@ -1743,44 +1673,107 @@ const renderTablaSeguros = (seguros) => {
 const guardarSeguro = async () => {
     const poliza = document.getElementById('fsNumeroPoliza').value.trim();
     const aseguradora = document.getElementById('fsAseguradora').value.trim();
+    const cobertura = document.getElementById('fsTipoCobertura').value;
     const fechaInicio = document.getElementById('fsFechaInicio').value;
     const fechaVenc = document.getElementById('fsFechaVenc').value;
-    if (!poliza || !aseguradora || !fechaInicio || !fechaVenc) {
-        Swal.fire({ icon: 'info', title: 'Faltan campos obligatorios', text: 'Póliza, aseguradora, fecha inicio y fecha vencimiento son requeridos', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
+    const prima = document.getElementById('fsPrima').value;
+    const agente = document.getElementById('fsAgente').value.trim();
+    const telefono = document.getElementById('fsTelefono').value.trim();
+    const esEdicion = seguroEditandoId !== null;
+
+    if (!aseguradora) {
+        Swal.fire({ icon: 'warning', title: 'Aseguradora requerida', text: 'Ingresa el nombre de la aseguradora.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
+        document.getElementById('fsAseguradora').focus(); return;
+    }
+    if (!poliza) {
+        Swal.fire({ icon: 'warning', title: 'Número de póliza requerido', text: 'Ingresa el número de póliza.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
+        document.getElementById('fsNumeroPoliza').focus(); return;
+    }
+    if (!fechaInicio) {
+        Swal.fire({ icon: 'warning', title: 'Fecha de inicio requerida', text: 'Selecciona la fecha de inicio del seguro.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
+        document.getElementById('fsFechaInicio').focus(); return;
+    }
+    if (!fechaVenc) {
+        Swal.fire({ icon: 'warning', title: 'Fecha de vencimiento requerida', text: 'Selecciona la fecha de vencimiento del seguro.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
+        document.getElementById('fsFechaVenc').focus(); return;
+    }
+    if (fechaVenc <= fechaInicio) {
+        Swal.fire({ icon: 'warning', title: 'Fechas inválidas', text: 'La fecha de vencimiento debe ser posterior a la fecha de inicio.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
+        document.getElementById('fsFechaVenc').focus(); return;
+    }
+    if (!prima || isNaN(parseFloat(prima)) || parseFloat(prima) < 0) {
+        Swal.fire({ icon: 'warning', title: 'Prima anual requerida', text: 'Ingresa la prima anual del seguro (puede ser 0).', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
+        document.getElementById('fsPrima').focus(); return;
+    }
+    if (!agente) {
+        Swal.fire({ icon: 'warning', title: 'Agente requerido', text: 'Ingresa el nombre del agente de contacto.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
+        document.getElementById('fsAgente').focus(); return;
+    }
+    if (!telefono) {
+        Swal.fire({ icon: 'warning', title: 'Teléfono requerido', text: 'Ingresa el teléfono del agente.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
+        document.getElementById('fsTelefono').focus(); return;
+    }
+
+    const inputPdfSeg = document.getElementById('fsArchivo');
+    if (!esEdicion && (!inputPdfSeg || !inputPdfSeg.files[0])) {
+        Swal.fire({ icon: 'warning', title: 'Póliza PDF requerida', text: 'Debes subir el archivo PDF de la póliza.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
         return;
     }
+    if (inputPdfSeg?.files[0] && inputPdfSeg.files[0].type !== 'application/pdf') {
+        Swal.fire({ icon: 'warning', title: 'Archivo inválido', text: 'La póliza debe ser un archivo PDF.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
+        return;
+    }
+
     const body = new FormData();
     body.append('placa', fichaPlacaActual);
     body.append('numero_poliza', poliza);
     body.append('aseguradora', aseguradora);
-    body.append('tipo_cobertura', document.getElementById('fsTipoCobertura').value);
+    body.append('tipo_cobertura', cobertura);
     body.append('fecha_inicio', fechaInicio);
     body.append('fecha_vencimiento', fechaVenc);
-    body.append('prima_anual', document.getElementById('fsPrima').value);
-    body.append('agente_contacto', document.getElementById('fsAgente').value);
-    body.append('telefono_agente', document.getElementById('fsTelefono').value);
+    body.append('prima_anual', prima);
+    body.append('agente_contacto', agente);
+    body.append('telefono_agente', telefono);
     body.append('observaciones', document.getElementById('fsObs').value);
-    const inputPdfSeg = document.getElementById('fsArchivo');
-    if (inputPdfSeg && inputPdfSeg.files[0]) body.append('archivo_poliza', inputPdfSeg.files[0]);
-    const esEdicion = seguroEditandoId !== null;
+
+    if (inputPdfSeg?.files[0]) body.append('archivo_poliza', inputPdfSeg.files[0]);
     if (esEdicion) body.append('id_seguro', seguroEditandoId);
-    const url = esEdicion ? `${BASE}/API/vehiculos/seguros/modificar` : `${BASE}/API/vehiculos/seguros/guardar`;
+
+    const url = esEdicion
+        ? `${BASE}/API/vehiculos/seguros/modificar`
+        : `${BASE}/API/vehiculos/seguros/guardar`;
+
     try {
+        mostrarLoader('Guardando seguro...');
         const r = await fetch(url, { method: 'POST', body });
         const d = await r.json();
         Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
-        if (d.codigo === 1) { resetFormSeguro(); await abrirFicha(fichaPlacaActual); switchTab(document.querySelector('.ficha-tab[data-tab="seguro"]'), 'seguro'); buscar(); }
-    } catch (err) { Toast.fire({ icon: 'error', title: 'Error de conexión' }); }
+        if (d.codigo === 1) {
+            resetFormSeguro();
+            await abrirFicha(fichaPlacaActual);
+            switchTab(document.querySelector('.ficha-tab[data-tab="seguro"]'), 'seguro');
+            buscar();
+        }
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    } finally {
+        ocultarLoader();
+    }
 };
+
+
 
 const editarSeguro = (id) => {
     const s = segurosData.find(x => x.id_seguro == id);
     if (!s) return;
+
     seguroEditandoId = s.id_seguro;
+
     const form = document.getElementById('formNuevoSeguroFicha');
     const btn = document.getElementById('btnToggleFormSeguro');
     form.style.display = 'block';
     btn.innerHTML = '<i class="bi bi-x-circle"></i> Cancelar';
+
     document.getElementById('fsNumeroPoliza').value = s.numero_poliza || '';
     document.getElementById('fsAseguradora').value = s.aseguradora || '';
     document.getElementById('fsTipoCobertura').value = s.tipo_cobertura || '';
@@ -1790,6 +1783,36 @@ const editarSeguro = (id) => {
     document.getElementById('fsAgente').value = s.agente_contacto || '';
     document.getElementById('fsTelefono').value = s.telefono_agente || '';
     document.getElementById('fsObs').value = s.observaciones || '';
+
+    // ── Mostrar PDF existente si tiene ───────────────────────────────────────
+    const areaPoliza = document.getElementById('areaPolizaFicha');
+    if (areaPoliza) {
+        if (s.pdf_poliza_url) {
+            areaPoliza.classList.add('has-file');
+            areaPoliza.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
+            areaPoliza.querySelector('.upload-label').innerHTML = `
+                <span style="color:var(--success)">Póliza cargada</span><br>
+                <small>
+                    <a href="${s.pdf_poliza_url}" target="_blank"
+                        style="color:var(--accent);text-decoration:none;">
+                        <i class="bi bi-file-earmark-pdf"></i> Ver PDF actual
+                    </a>
+                    &nbsp;·&nbsp; Sube uno nuevo para reemplazarlo
+                </small>`;
+        } else {
+            areaPoliza.classList.remove('has-file');
+            areaPoliza.querySelector('.upload-icon i').className = 'bi bi-file-pdf';
+            areaPoliza.querySelector('.upload-label').innerHTML = `<span>Subir PDF</span>`;
+        }
+    }
+
+    // ── Cambiar botón guardar a "Actualizar" ──────────────────────────────────
+    const btnSave = document.querySelector('#formNuevoSeguroFicha button[onclick="guardarSeguroFicha()"]');
+    if (btnSave) {
+        btnSave.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Actualizar Seguro';
+        btnSave.style.background = 'linear-gradient(135deg,#3a7bd5,#2563b0)';
+    }
+
     form.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
@@ -1806,6 +1829,127 @@ const eliminarSeguro = async (id) => {
     } catch (err) { Toast.fire({ icon: 'error', title: 'Error de conexión' }); }
 };
 
+
+
+const verSeguro = (id) => {
+    const s = segurosData.find(x => x.id_seguro == id);
+    if (!s) return;
+
+    const hoy = new Date();
+    const vence = s.fecha_vencimiento ? new Date(s.fecha_vencimiento) : null;
+    const dias = vence ? Math.ceil((vence - hoy) / (1000 * 60 * 60 * 24)) : null;
+
+    const estadoColor = {
+        'Vigente': '#4caf7d',
+        'Vencido': '#e05252',
+        'Cancelado': '#7c8398'
+    };
+
+    let estadoHTML = '';
+    if (s.estado === 'Vigente' && dias !== null) {
+        if (dias <= 0) {
+            estadoHTML = `<span style="background:rgba(224,82,82,.2);color:#e05252;border:1px solid rgba(224,82,82,.4);padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:700;">VENCIDO</span>`;
+        } else if (dias <= 30) {
+            estadoHTML = `<span style="background:rgba(232,184,75,.2);color:#e8b84b;border:1px solid rgba(232,184,75,.4);padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:700;">⚠ Vence en ${dias} días</span>`;
+        } else {
+            estadoHTML = `<span style="background:rgba(76,175,125,.2);color:#4caf7d;border:1px solid rgba(76,175,125,.4);padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:700;">✓ VIGENTE</span>`;
+        }
+    } else {
+        const color = estadoColor[s.estado] || '#888';
+        estadoHTML = `<span style="background:${color}22;color:${color};border:1px solid ${color}44;padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:700;">${s.estado}</span>`;
+    }
+
+    const polizaHTML = s.pdf_poliza_url
+        ? `<a href="${s.pdf_poliza_url}" target="_blank"
+            style="display:inline-flex;align-items:center;gap:.4rem;
+            background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.25);
+            color:var(--accent);padding:.35rem .75rem;border-radius:6px;
+            font-size:.78rem;text-decoration:none;margin:.2rem;">
+            <i class="bi bi-file-earmark-pdf"></i> Ver Póliza PDF
+           </a>`
+        : '<span style="color:#555;font-size:.78rem;">Sin póliza adjunta</span>';
+
+    Swal.fire({
+        title: `<span style="font-family:Rajdhani,sans-serif;font-size:1.1rem;">
+            <i class="bi bi-shield-check" style="color:#4caf7d;"></i>
+            Seguro — ${s.aseguradora}
+        </span>`,
+        html: `
+        <div style="text-align:left;font-size:.82rem;">
+
+            <!-- Estado y póliza -->
+            <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;">
+                ${estadoHTML}
+                <span style="color:#888;font-size:.78rem;">
+                    <i class="bi bi-file-text"></i> Póliza: <strong style="color:#e8eaf0;">${s.numero_poliza}</strong>
+                </span>
+            </div>
+
+            <!-- Grid de datos -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem;">
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
+                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Aseguradora</div>
+                    <div style="color:#c8cfe0;font-weight:600;">${s.aseguradora}</div>
+                </div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
+                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Tipo de Cobertura</div>
+                    <div style="color:#c8cfe0;font-weight:600;">${s.tipo_cobertura || '—'}</div>
+                </div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
+                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Fecha Inicio</div>
+                    <div style="color:#c8cfe0;font-weight:600;">${s.fecha_inicio || '—'}</div>
+                </div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
+                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Fecha Vencimiento</div>
+                    <div style="color:${dias !== null && dias <= 30 ? '#e8b84b' : '#c8cfe0'};font-weight:600;">
+                        ${s.fecha_vencimiento || '—'}
+                        ${dias !== null && dias > 0 ? `<span style="font-size:.7rem;color:#888;"> (${dias}d)</span>` : ''}
+                    </div>
+                </div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
+                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Prima Anual</div>
+                    <div style="color:#4caf7d;font-weight:700;">${s.prima_anual ? 'Q ' + Number(s.prima_anual).toLocaleString() : '—'}</div>
+                </div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
+                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Agente de Contacto</div>
+                    <div style="color:#c8cfe0;">${s.agente_contacto || '—'}</div>
+                </div>
+            </div>
+
+            <!-- Teléfono -->
+            ${s.telefono_agente ? `
+            <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;margin-bottom:1rem;
+                display:flex;align-items:center;gap:.5rem;">
+                <i class="bi bi-telephone-fill" style="color:#4caf7d;"></i>
+                <span style="color:#c8cfe0;">${s.telefono_agente}</span>
+            </div>` : ''}
+
+            <!-- Observaciones -->
+            ${s.observaciones ? `
+            <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;margin-bottom:1rem;">
+                <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Observaciones</div>
+                <div style="color:#888;">${s.observaciones}</div>
+            </div>` : ''}
+
+            <!-- Póliza PDF -->
+            <div>
+                <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.5rem;">
+                    <i class="bi bi-file-earmark-text"></i> Documento de Póliza
+                </div>
+                <div>${polizaHTML}</div>
+            </div>
+
+        </div>`,
+        background: '#1a1d27',
+        color: '#e8eaf0',
+        confirmButtonColor: '#3a7bd5',
+        confirmButtonText: '<i class="bi bi-x"></i> Cerrar',
+        width: '580px',
+        customClass: { container: 'swal-over-modal' }
+    });
+};
+
+window.verSeguro = verSeguro;
 const inputSeguroPdf = document.getElementById('fsArchivo');
 if (inputSeguroPdf) {
     inputSeguroPdf.addEventListener('change', () => {
@@ -1903,43 +2047,64 @@ const renderTablaAccidentes = (accidentes) => {
 
 const guardarAccidente = async () => {
     const fecha = document.getElementById('acFecha').value;
-    const tipo = document.getElementById('acTipo').value.trim();
+    const lugar = document.getElementById('acLugar').value.trim();
+    const tipo = document.getElementById('acTipo').value;
     const desc = document.getElementById('acDescripcion').value.trim();
+    const conductor = document.getElementById('acConductor').value.trim();
+    const esEdicion = accidenteEditandoId !== null;
 
-    if (!fecha || !tipo || !desc) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Fecha, tipo y descripción son obligatorios',
-            background: '#1a1d27', color: '#e8eaf0',
-            confirmButtonColor: '#e8b84b',
-            customClass: { container: 'swal-over-modal' }
-        });
+    // ── Validaciones ──────────────────────────────────────────────────────────
+    if (!fecha) {
+        Swal.fire({ icon: 'warning', title: 'Fecha requerida', text: 'Selecciona la fecha del accidente.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
+        document.getElementById('acFecha').focus(); return;
+    }
+    if (!lugar) {
+        Swal.fire({ icon: 'warning', title: 'Lugar requerido', text: 'Ingresa el lugar del accidente.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
+        document.getElementById('acLugar').focus(); return;
+    }
+    if (!tipo) {
+        Swal.fire({ icon: 'warning', title: 'Tipo requerido', text: 'Selecciona el tipo de accidente.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
+        document.getElementById('acTipo').focus(); return;
+    }
+    if (!desc) {
+        Swal.fire({ icon: 'warning', title: 'Descripción requerida', text: 'Describe cómo ocurrió el accidente.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
+        document.getElementById('acDescripcion').focus(); return;
+    }
+    if (!conductor) {
+        Swal.fire({ icon: 'warning', title: 'Conductor requerido', text: 'Ingresa el nombre del conductor responsable.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
+        document.getElementById('acConductor').focus(); return;
+    }
+
+    // ── Validar informe policial ───────────────────────────────────────────────
+    const acInformeEl = document.getElementById('acInforme');
+    if (!esEdicion && (!acInformeEl || !acInformeEl.files[0])) {
+        Swal.fire({ icon: 'warning', title: 'Informe policial requerido', text: 'Debes subir el informe policial en PDF.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
+        return;
+    }
+    if (acInformeEl?.files[0] && acInformeEl.files[0].type !== 'application/pdf') {
+        Swal.fire({ icon: 'warning', title: 'Archivo inválido', text: 'El informe policial debe ser un archivo PDF.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
         return;
     }
 
+    // ── Construir body ────────────────────────────────────────────────────────
     const body = new FormData();
     body.append('placa', fichaPlacaActual);
     body.append('fecha_accidente', fecha);
+    body.append('lugar', lugar);
     body.append('tipo_accidente', tipo);
     body.append('descripcion', desc);
-    body.append('lugar', (document.getElementById('acLugar') || { value: '' }).value);
-    body.append('conductor_responsable', (document.getElementById('acConductor') || { value: '' }).value);
-    body.append('costo_estimado', (document.getElementById('acCostoEst') || { value: '' }).value);
-    body.append('costo_real', (document.getElementById('acCostoReal') || { value: '' }).value);
-    body.append('estado_caso', (document.getElementById('acEstado') || { value: 'Reportado' }).value);
-    body.append('numero_expediente', (document.getElementById('acExpediente') || { value: '' }).value);
-    body.append('observaciones', (document.getElementById('acObs') || { value: '' }).value);
+    body.append('conductor_responsable', conductor);
+    body.append('costo_estimado', document.getElementById('acCostoEst').value);
+    body.append('costo_real', document.getElementById('acCostoReal').value);
+    body.append('estado_caso', document.getElementById('acEstado').value);
+    body.append('numero_expediente', document.getElementById('acExpediente').value);
+    body.append('observaciones', document.getElementById('acObs').value);
 
-    // ── Fotos dinámicas (hasta 4) ─────────────────────────────────────────────
     document.querySelectorAll('#fotosAccContainer input[type="file"]').forEach((input, i) => {
         if (input.files[0]) body.append(`archivo_foto_${i + 1}`, input.files[0]);
     });
 
-    // ── Informe policial ──────────────────────────────────────────────────────
-    const acInformeEl = document.getElementById('acInforme');
-    if (acInformeEl && acInformeEl.files[0]) body.append('archivo_informe', acInformeEl.files[0]);
-
-    const esEdicion = accidenteEditandoId !== null;
+    if (acInformeEl?.files[0]) body.append('archivo_informe', acInformeEl.files[0]);
     if (esEdicion) body.append('id_accidente', accidenteEditandoId);
 
     const url = esEdicion
@@ -1947,6 +2112,7 @@ const guardarAccidente = async () => {
         : `${BASE}/API/vehiculos/accidentes/guardar`;
 
     try {
+        mostrarLoader('Guardando accidente...');
         const r = await fetch(url, { method: 'POST', body });
         const d = await r.json();
         Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
@@ -1958,6 +2124,8 @@ const guardarAccidente = async () => {
         }
     } catch (err) {
         Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    } finally {
+        ocultarLoader();
     }
 };
 
