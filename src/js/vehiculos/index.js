@@ -1094,6 +1094,7 @@ const resetFormReparacion = () => {
 
 const abrirFicha = async (placa) => {
     fichaPlacaActual = placa;
+    fichaTipoVehiculo = '';
     const modal = document.getElementById('modalFicha');
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
@@ -1122,6 +1123,7 @@ const abrirFicha = async (placa) => {
         if (d.codigo !== 1) return;
 
         const v = d.vehiculo;
+        fichaTipoVehiculo = v.tipo || '';
 
         if (fichaPlacaEl) fichaPlacaEl.textContent = v.placa;
         if (fichaVehiculoEl) fichaVehiculoEl.textContent = `${v.marca} ${v.modelo} · ${v.anio}`;
@@ -2090,16 +2092,26 @@ window.verAccidente = verAccidente;
 let chequeoActualId = null;
 let chequeoItemsDef = {};
 let chequeoResultados = {};
+let chequeoTotalItems = 17; // ← agregar aquí
 
 const ITEMS_CHEQUEO = {
-    1: 'Tren delantero', 2: 'Tapicería', 3: 'Carrocería', 4: 'Pintura en general',
-    5: 'Siglas que identifican a los vehículos pintados en color naranja fluorescente y en el lugar correspondiente',
-    6: 'Lona del camión', 7: 'Luces y pide vías', 8: 'Sistema eléctrico',
-    9: 'Herramienta extra para reparación de vehículos',
-    10: 'Herramienta básica (Tricket, llave de chuchos, palanca o tubo, trozo, cable o cadena, señalizaciones etc.)',
-    11: 'Herramienta de emergencia (llave de ½, Nos. 12, 13, 14, alicate, llave ajustable, juego de desatornilladores)',
-    12: 'Repuestos necesarios de emergencias', 13: 'Neumático de repuesto',
-    14: 'Acumulador o batería', 15: 'Neumáticos', 16: 'Lubricante', 17: 'Odómetro'
+    1: { desc: 'Tren delantero', tipos: null },
+    2: { desc: 'Tapicería', tipos: null },
+    3: { desc: 'Carrocería', tipos: null },
+    4: { desc: 'Pintura en general', tipos: null },
+    5: { desc: 'Siglas que identifican a los vehículos pintados en color naranja fluorescente y en el lugar correspondiente', tipos: null },
+    6: { desc: 'Lona del camión', tipos: ['Camión'] },
+    7: { desc: 'Luces y pide vías', tipos: null },
+    8: { desc: 'Sistema eléctrico', tipos: null },
+    9: { desc: 'Herramienta extra para reparación de vehículos', tipos: null },
+    10: { desc: 'Herramienta básica (Tricket, llave de chuchos, palanca o tubo, trozo, cable o cadena, señalizaciones etc.)', tipos: null },
+    11: { desc: 'Herramienta de emergencia (llave de ½, Nos. 12, 13, 14, alicate, llave ajustable, juego de desatornilladores)', tipos: null },
+    12: { desc: 'Repuestos necesarios de emergencias', tipos: null },
+    13: { desc: 'Neumático de repuesto', tipos: null },
+    14: { desc: 'Acumulador o batería', tipos: null },
+    15: { desc: 'Neumáticos', tipos: null },
+    16: { desc: 'Lubricante', tipos: null },
+    17: { desc: 'Odómetro', tipos: null },
 };
 
 const abrirModalChequeo = async () => {
@@ -2192,31 +2204,65 @@ const renderTablaChequeos = (chequeos) => {
 const generarFilasChequeo = (itemsExistentes = {}) => {
     const tbody = document.getElementById('chequeoTablaItems');
     if (!tbody) return;
-    tbody.innerHTML = Object.entries(ITEMS_CHEQUEO).map(([num, desc]) => {
+
+    const tipo = fichaTipoVehiculo;
+
+    // Filtrar ítems que aplican al tipo de vehículo
+    const itemsAplicables = Object.entries(ITEMS_CHEQUEO).filter(([num, item]) => {
+        if (!item.tipos) return true; // null = aplica a todos
+        return item.tipos.includes(tipo);
+    });
+
+    tbody.innerHTML = itemsAplicables.map(([num, item], idx) => {
         const n = parseInt(num);
         const res = itemsExistentes[n] || {};
+        const desc = item.desc;
         const opciones = ['BE', 'ME', 'MEI', 'NT'];
         const colores = { BE: '#4caf7d', ME: '#e8b84b', MEI: '#e05252', NT: '#7c8398' };
+
         const radiosCols = opciones.map(op => `
             <td style="text-align:center;padding:.5rem .25rem;">
                 <label style="cursor:pointer;display:flex;align-items:center;justify-content:center;">
-                    <input type="radio" name="chq_item_${n}" value="${op}" ${res.resultado === op ? 'checked' : ''}
+                    <input type="radio" name="chq_item_${n}" value="${op}"
+                        ${res.resultado === op ? 'checked' : ''}
                         onchange="onChequeoItemChange(${n}, '${op}')"
-                        style="appearance:none;width:22px;height:22px;border-radius:50%;border:2px solid ${colores[op]};background:${res.resultado === op ? colores[op] : 'transparent'};cursor:pointer;transition:all .2s;flex-shrink:0;">
+                        style="appearance:none;width:22px;height:22px;border-radius:50%;
+                        border:2px solid ${colores[op]};
+                        background:${res.resultado === op ? colores[op] : 'transparent'};
+                        cursor:pointer;transition:all .2s;flex-shrink:0;">
                 </label>
             </td>`).join('');
+
         return `
-            <tr style="border-bottom:1px solid var(--border);transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background='transparent'">
-                <td style="padding:.6rem .75rem;color:var(--text-muted);font-size:.8rem;font-weight:600;">${String(n).padStart(2, '0')}</td>
-                <td style="padding:.6rem .75rem;color:var(--text-main);font-size:.82rem;line-height:1.4;">${desc}</td>
+            <tr style="border-bottom:1px solid var(--border);transition:background .15s;"
+                onmouseover="this.style.background='rgba(255,255,255,.03)'"
+                onmouseout="this.style.background='transparent'">
+                <td style="padding:.6rem .75rem;color:var(--text-muted);font-size:.8rem;font-weight:600;">
+                    ${String(idx + 1).padStart(2, '0')}
+                </td>
+                <td style="padding:.6rem .75rem;color:var(--text-main);font-size:.82rem;line-height:1.4;">
+                    ${desc}
+                </td>
                 ${radiosCols}
-                <td style="padding:.5rem .75rem;"><input type="text" id="chq_obs_${n}" value="${res.observacion || ''}" placeholder="..." class="form-control" style="font-size:.75rem;padding:.3rem .5rem !important;" oninput="onChequeoObsChange(${n}, this.value)"></td>
+                <td style="padding:.5rem .75rem;">
+                    <input type="text" id="chq_obs_${n}" value="${res.observacion || ''}"
+                        placeholder="..." class="form-control"
+                        style="font-size:.75rem;padding:.3rem .5rem !important;"
+                        oninput="onChequeoObsChange(${n}, this.value)">
+                </td>
             </tr>`;
     }).join('');
+
+    // Actualizar total de ítems para el progreso
+    chequeoTotalItems = itemsAplicables.length;
+
     if (Object.keys(itemsExistentes).length) {
         chequeoResultados = {};
         Object.entries(itemsExistentes).forEach(([num, data]) => {
-            if (data.resultado) chequeoResultados[parseInt(num)] = { resultado: data.resultado, observacion: data.observacion || '' };
+            if (data.resultado) chequeoResultados[parseInt(num)] = {
+                resultado: data.resultado,
+                observacion: data.observacion || ''
+            };
         });
         actualizarProgreso();
     }
@@ -2236,7 +2282,7 @@ const onChequeoObsChange = (num, valor) => {
 };
 
 const actualizarProgreso = () => {
-    const total = Object.keys(ITEMS_CHEQUEO).length;
+    const total = chequeoTotalItems;
     const completados = Object.values(chequeoResultados).filter(v => v.resultado).length;
     const pct = Math.round((completados / total) * 100);
     const textoEl = document.getElementById('chqProgreso');
@@ -2597,6 +2643,7 @@ window.cerrarModalChequeo = cerrarModalChequeo;
 // ── DATA EN MEMORIA ───────────────────────────────────────────────────────────
 let segurosData = [];
 let accidentesData = [];
+let fichaTipoVehiculo = '';
 
 // ── SEGURO EN FORMULARIO NUEVO ────────────────────────────────────────────────
 let vehiculoTieneSeguro = false;
