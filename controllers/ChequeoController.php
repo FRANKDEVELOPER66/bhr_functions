@@ -164,6 +164,8 @@ class ChequeoController
 
             $chequeo->sincronizar([
                 'estado'            => 'Completado',
+                'km_al_chequeo'     => !empty($_POST['km_al_chequeo']) ? (int)$_POST['km_al_chequeo'] : $chequeo->km_al_chequeo,
+                'realizado_por'     => !empty($_POST['realizado_por']) ? htmlspecialchars($_POST['realizado_por']) : $chequeo->realizado_por,
                 'observaciones_gen' => htmlspecialchars($_POST['observaciones_gen'] ?? $chequeo->observaciones_gen ?? '')
             ]);
             $chequeo->actualizar();

@@ -22,6 +22,7 @@ class Chequeos extends ActiveRecord
     public $realizado_por;
     public $observaciones_gen;
     public $estado;
+    public $completado;
 
     // Ítems del chequeo — los 17 de la hoja física
     public static $ITEMS = [

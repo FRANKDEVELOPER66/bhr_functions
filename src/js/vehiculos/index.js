@@ -1272,7 +1272,7 @@ const abrirFicha = async (placa) => {
 const cerrarFicha = () => {
     document.getElementById('modalFicha').style.display = 'none';
     document.body.style.overflow = '';
-    fichaPlacaActual = '';
+    fichaPlacaActual = '';  // ← solo aquí
 };
 
 document.getElementById('modalFicha').addEventListener('click', (e) => {
@@ -2118,13 +2118,13 @@ const abrirModalChequeo = async () => {
 const cerrarModalChequeo = () => {
     document.getElementById('modalChequeo').style.display = 'none';
     document.body.style.overflow = '';
-    // NO llamar cancelarChequeo() aquí — resetea fichaPlacaActual
     chequeoActualId = null;
     chequeoResultados = {};
     const formChequeo = document.getElementById('formNuevoChequeo');
     const btnChequeo = document.getElementById('btnNuevoChequeo');
     if (formChequeo) formChequeo.style.display = 'none';
     if (btnChequeo) btnChequeo.style.display = 'flex';
+    // ← NO fichaPlacaActual = '' aquí
 };
 
 const actualizarBotonesExpediente = (tieneChequeoMes) => {
@@ -2247,29 +2247,18 @@ const actualizarProgreso = () => {
     if (btnEl) { const ok = completados === total; btnEl.disabled = !ok; btnEl.style.opacity = ok ? '1' : '.5'; }
 };
 
-const iniciarNuevoChequeo = async () => {
-    if (chequeoActualId !== null) {
-        document.getElementById('formNuevoChequeo').style.display = 'block';
-        document.getElementById('btnNuevoChequeo').style.display = 'none';
-        return;
-    }
+const iniciarNuevoChequeo = () => {
     chequeoResultados = {};
-    const body = new FormData();
-    body.append('placa', fichaPlacaActual);
-    body.append('fecha_chequeo', new Date().toISOString().split('T')[0]);
-    body.append('km_al_chequeo', document.getElementById('fd-km')?.textContent?.replace(/\D/g, '') || '0');
-    try {
-        const r = await fetch(`${BASE}/API/vehiculos/chequeos/crear`, { method: 'POST', body });
-        const d = await r.json();
-        if (d.codigo !== 1) { Toast.fire({ icon: 'error', title: d.mensaje }); return; }
-        chequeoActualId = d.id_chequeo;
-        document.getElementById('formNuevoChequeo').style.display = 'block';
-        document.getElementById('btnNuevoChequeo').style.display = 'none';
-        document.getElementById('chqFecha').value = new Date().toISOString().split('T')[0];
-        document.getElementById('chqKm').value = document.getElementById('fd-km')?.textContent?.replace(/\D/g, '') || '';
-        generarFilasChequeo();
-        actualizarProgreso();
-    } catch (err) { Toast.fire({ icon: 'error', title: 'Error de conexión' }); }
+    chequeoActualId = null;
+
+    document.getElementById('formNuevoChequeo').style.display = 'block';
+    document.getElementById('btnNuevoChequeo').style.display = 'none';
+    document.getElementById('chqFecha').value = new Date().toISOString().split('T')[0];
+    document.getElementById('chqKm').value = document.getElementById('fd-km')?.textContent?.replace(/\D/g, '') || '';
+    document.getElementById('chqResponsable').value = '';
+    document.getElementById('chqObservaciones').value = '';
+    generarFilasChequeo();
+    actualizarProgreso();
 };
 
 const continuarChequeo = async (id) => {
@@ -2313,6 +2302,65 @@ const verChequeo = async (id) => {
 };
 
 const guardarChequeo = async () => {
+    // ── Validar campos del encabezado ─────────────────────────────────────────
+    const fecha = document.getElementById('chqFecha').value;
+    const km = document.getElementById('chqKm').value;
+    const responsable = document.getElementById('chqResponsable').value.trim();
+
+    if (!fecha) {
+        Swal.fire({
+            icon: 'warning', title: 'Fecha requerida',
+            text: 'Selecciona la fecha del chequeo.',
+            background: '#1a1d27', color: '#e8eaf0',
+            confirmButtonColor: '#6f42c1',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+
+    if (!km || parseInt(km) <= 0) {
+        Swal.fire({
+            icon: 'warning', title: 'KM requerido',
+            text: 'Ingresa el kilometraje al momento del chequeo.',
+            background: '#1a1d27', color: '#e8eaf0',
+            confirmButtonColor: '#6f42c1',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+
+    if (!responsable) {
+        Swal.fire({
+            icon: 'warning', title: 'Responsable requerido',
+            text: 'Indica quién realizó el chequeo.',
+            background: '#1a1d27', color: '#e8eaf0',
+            confirmButtonColor: '#6f42c1',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+
+    // ── Si aún no hay chequeo creado en BD, crearlo ahora ────────────────────
+    if (!chequeoActualId) {
+        try {
+            const bodyCrear = new FormData();
+            bodyCrear.append('placa', fichaPlacaActual);
+            bodyCrear.append('fecha_chequeo', fecha);
+            bodyCrear.append('km_al_chequeo', km);
+            const rCrear = await fetch(`${BASE}/API/vehiculos/chequeos/crear`, { method: 'POST', body: bodyCrear });
+            const dCrear = await rCrear.json();
+            if (dCrear.codigo !== 1) {
+                Toast.fire({ icon: 'error', title: dCrear.mensaje });
+                return;
+            }
+            chequeoActualId = dCrear.id_chequeo;
+        } catch (err) {
+            Toast.fire({ icon: 'error', title: 'Error al crear el chequeo' });
+            return;
+        }
+    }
+
+    // ── Completar chequeo ─────────────────────────────────────────────────────
     const items = Object.entries(chequeoResultados).map(([num, data]) => ({
         numero_item: parseInt(num),
         resultado: data.resultado,
@@ -2321,6 +2369,8 @@ const guardarChequeo = async () => {
 
     const body = new FormData();
     body.append('id_chequeo', chequeoActualId);
+    body.append('km_al_chequeo', km);
+    body.append('realizado_por', responsable);
     body.append('items', JSON.stringify(items));
     body.append('observaciones_gen', document.getElementById('chqObservaciones').value);
 
@@ -2331,7 +2381,6 @@ const guardarChequeo = async () => {
         if (d.codigo === 1) {
             const placaGuardada = fichaPlacaActual;
 
-            // Cerrar modal chequeo SIN tocar body.overflow
             document.getElementById('modalChequeo').style.display = 'none';
             chequeoActualId = null;
             chequeoResultados = {};
@@ -2340,7 +2389,6 @@ const guardarChequeo = async () => {
             if (formChequeo) formChequeo.style.display = 'none';
             if (btnChequeo) btnChequeo.style.display = 'flex';
 
-            // Mostrar Swal (body.overflow sigue hidden por modalFicha — está bien)
             await Swal.fire({
                 title: '¡Chequeo completado!',
                 icon: 'success',
@@ -2351,7 +2399,6 @@ const guardarChequeo = async () => {
                 customClass: { container: 'swal-over-modal' }
             });
 
-            // Después del Swal, recargar ficha
             if (placaGuardada) await abrirFicha(placaGuardada);
 
         } else {
@@ -2369,6 +2416,7 @@ const cancelarChequeo = () => {
     if (btnChequeo) btnChequeo.style.display = 'flex';
     chequeoActualId = null;
     chequeoResultados = {};
+    // ← NO tocar fichaPlacaActual aquí
 };
 
 const eliminarChequeo = async (id) => {
