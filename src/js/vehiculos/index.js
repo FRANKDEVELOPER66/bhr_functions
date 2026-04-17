@@ -44,6 +44,21 @@ const infoUbicacion = document.getElementById('infoUbicacion');
 let todosLosVehiculos = [];
 let modoEdicion = false;
 
+
+
+// ── LOADER ────────────────────────────────────────────────────────────────────
+const mostrarLoader = (mensaje = 'Procesando...') => {
+    const loader = document.getElementById('bhr-loader');
+    const msg = document.getElementById('loaderMensaje');
+    if (msg) msg.textContent = mensaje;
+    if (loader) loader.classList.add('visible');
+};
+
+const ocultarLoader = () => {
+    const loader = document.getElementById('bhr-loader');
+    if (loader) loader.classList.remove('visible');
+};
+
 // ── SELECT ÚNICO DE UNIDAD ────────────────────────────────────────────────────
 const cargarUnidades = async () => {
     try {
@@ -551,6 +566,7 @@ btnLimpiarFiltros.addEventListener('click', () => {
 
 // ── BUSCAR ────────────────────────────────────────────────────────────────────
 const buscar = async () => {
+    mostrarLoader('Cargando flota vehicular...');
     try {
         const respuesta = await fetch(`${BASE}/API/vehiculos/buscar`, { method: 'GET' });
         const data = await respuesta.json();
@@ -563,6 +579,8 @@ const buscar = async () => {
                 <i class="bi bi-wifi-off"></i>
                 <p>Error al cargar los vehículos</p>
             </div>`;
+    } finally {
+        ocultarLoader();
     }
 };
 
@@ -776,13 +794,17 @@ const guardar = async (e) => {
     }
 
     // ── ENVIAR ────────────────────────────────────────────────────────────────
+    // En guardar(), reemplaza el bloque ENVIAR:
     try {
+        mostrarLoader('Registrando vehículo...');
         const r = await fetch(`${BASE}/API/vehiculos/guardar`, { method: 'POST', body });
         const d = await r.json();
         Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
         if (d.codigo === 1) { cancelar(); buscar(); }
     } catch (err) {
         Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    } finally {
+        ocultarLoader();
     }
 };
 
@@ -942,11 +964,10 @@ const modificar = async () => {
     }
 
     try {
+        mostrarLoader('Guardando cambios...');
         const body = new FormData(formulario);
         body.set('placa', inputPlacaOriginal.value);
 
-        // Agregar archivos nuevos manualmente (FormData(formulario) ya los incluye
-        // pero nos aseguramos de los nuevos campos)
         const fotoLateral = document.getElementById('foto_lateral');
         if (fotoLateral && fotoLateral.files.length > 0) body.set('foto_lateral', fotoLateral.files[0]);
 
@@ -974,6 +995,8 @@ const modificar = async () => {
     } catch (error) {
         console.error(error);
         Toast.fire({ icon: 'error', title: 'Error de conexión al modificar' });
+    } finally {
+        ocultarLoader();
     }
 };
 
@@ -1095,9 +1118,11 @@ const resetFormReparacion = () => {
 const abrirFicha = async (placa) => {
     fichaPlacaActual = placa;
     fichaTipoVehiculo = '';
+
     const modal = document.getElementById('modalFicha');
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
+
     resetFormServicio();
     resetFormReparacion();
     resetFormSeguro();
@@ -1110,6 +1135,8 @@ const abrirFicha = async (placa) => {
     const fichaVehiculoEl = document.getElementById('fichaVehiculo');
     if (fichaPlacaEl) fichaPlacaEl.textContent = placa;
     if (fichaVehiculoEl) fichaVehiculoEl.textContent = 'Cargando...';
+
+    mostrarLoader('Cargando ficha del vehículo...');
 
     await cargarTiposServicio();
     await cargarTiposReparacion();
@@ -1132,42 +1159,24 @@ const abrirFicha = async (placa) => {
         const img = document.getElementById('fichaFoto');
         const noFoto = document.getElementById('fichaNoFoto');
         if (img && noFoto) {
-            if (v.foto_url) {
-                img.src = v.foto_url;
-                img.style.display = 'block';
-                noFoto.style.display = 'none';
-            } else {
-                img.style.display = 'none';
-                noFoto.style.display = 'flex';
-            }
+            if (v.foto_url) { img.src = v.foto_url; img.style.display = 'block'; noFoto.style.display = 'none'; }
+            else { img.style.display = 'none'; noFoto.style.display = 'flex'; }
         }
 
         // ── Foto lateral ──────────────────────────────────────────────────────
         const imgLateral = document.getElementById('fichaFotoLateral');
         const noImgLateral = document.getElementById('fichaNoFotoLateral');
         if (imgLateral && noImgLateral) {
-            if (v.foto_lateral_url) {
-                imgLateral.src = v.foto_lateral_url;
-                imgLateral.style.display = 'block';
-                noImgLateral.style.display = 'none';
-            } else {
-                imgLateral.style.display = 'none';
-                noImgLateral.style.display = 'flex';
-            }
+            if (v.foto_lateral_url) { imgLateral.src = v.foto_lateral_url; imgLateral.style.display = 'block'; noImgLateral.style.display = 'none'; }
+            else { imgLateral.style.display = 'none'; noImgLateral.style.display = 'flex'; }
         }
 
         // ── Foto trasera ──────────────────────────────────────────────────────
         const imgTrasera = document.getElementById('fichaFotoTrasera');
         const noImgTrasera = document.getElementById('fichaNoFotoTrasera');
         if (imgTrasera && noImgTrasera) {
-            if (v.foto_trasera_url) {
-                imgTrasera.src = v.foto_trasera_url;
-                imgTrasera.style.display = 'block';
-                noImgTrasera.style.display = 'none';
-            } else {
-                imgTrasera.style.display = 'none';
-                noImgTrasera.style.display = 'flex';
-            }
+            if (v.foto_trasera_url) { imgTrasera.src = v.foto_trasera_url; imgTrasera.style.display = 'block'; noImgTrasera.style.display = 'none'; }
+            else { imgTrasera.style.display = 'none'; noImgTrasera.style.display = 'flex'; }
         }
 
         // ── Tarjeta PDF ───────────────────────────────────────────────────────
@@ -1241,13 +1250,11 @@ const abrirFicha = async (placa) => {
             }
         }
 
-        // KM y fecha para servicios
+        // ── KM para servicios y reparaciones ─────────────────────────────────
         const svcKmEl = document.getElementById('svcKm');
-        if (svcKmEl) svcKmEl.value = v.km_actuales;
-
-        // KM y fecha para reparaciones
         const repKmEl = document.getElementById('repKm');
         const repFechaEl = document.getElementById('repFechaInicio');
+        if (svcKmEl) svcKmEl.value = v.km_actuales;
         if (repKmEl) repKmEl.value = v.km_actuales;
         if (repFechaEl) repFechaEl.value = new Date().toISOString().split('T')[0];
 
@@ -1268,6 +1275,8 @@ const abrirFicha = async (placa) => {
     } catch (err) {
         console.error('Error en abrirFicha:', err);
         Toast.fire({ icon: 'error', title: 'Error al cargar la ficha' });
+    } finally {
+        ocultarLoader();
     }
 };
 
@@ -2591,6 +2600,7 @@ const resetFotosAcc = () => {
 window.agregarFotoAcc = agregarFotoAcc;
 window.onFotoAccChange = onFotoAccChange;
 window.quitarFotoAcc = quitarFotoAcc;
+
 
 // ── GENERAR EXPEDIENTE ────────────────────────────────────────────────────────
 const generarExpediente = (placa) => {
