@@ -442,7 +442,30 @@
         font-size: .875rem;
         cursor: pointer;
         transition: all .2s ease;
-        min-width: 150px;
+        /* ← QUITA min-width: 150px de aquí */
+    }
+
+    /* Tamaños individuales por filtro */
+    #filtroTipo {
+        min-width: 130px;
+        flex: 0 0 130px;
+    }
+
+    #filtroEstado {
+        min-width: 130px;
+        flex: 0 0 130px;
+    }
+
+    #filtroUnidad {
+        min-width: 180px;
+        max-width: 220px;
+        flex: 1 1 180px;
+    }
+
+    /* ← key fix */
+    #filtroBusqueda {
+        min-width: 180px;
+        flex: 2 1 180px;
     }
 
     .filtro-select:focus {
@@ -2083,26 +2106,27 @@
         <div class="filtros-container">
             <label><i class="bi bi-funnel"></i> Filtrar:</label>
             <select id="filtroTipo" class="filtro-select">
-                <option value="">Todos los tipos</option>
+                <option value="">Todos Tipos</option>
                 <option value="Automóvil">Automóvil</option>
                 <option value="Pickup">Pickup</option>
                 <option value="Camión">Camión</option>
                 <option value="Motocicleta">Motocicleta</option>
-                <option value="Furgoneta">Furgoneta</option>
+                <option value="Cuatrimoto">Cuatrimoto</option>
+                <option value="Microbús">Microbús</option>
                 <option value="Blindado">Blindado</option>
+                <option value="Camioneta">Camioneta</option>
                 <option value="Otro">Otro</option>
             </select>
             <select id="filtroEstado" class="filtro-select">
-                <option value="">Todos los estados</option>
+                <option value="">Estados</option>
                 <option value="Alta">Alta</option>
                 <option value="Baja">Baja</option>
                 <option value="Taller">Taller</option>
             </select>
-            <select id="filtroSeguro" class="filtro-select">
-                <option value="">Todos los seguros</option>
-                <option value="vigente">Con seguro vigente</option>
-                <option value="vencido">Seguro vencido</option>
-                <option value="ninguno">Sin seguro</option>
+            <!-- Pon esto: -->
+            <select id="filtroUnidad" class="filtro-select">
+                <option value="">Todas las unidades</option>
+                <!-- Se llena dinámicamente -->
             </select>
             <input type="text" id="filtroBusqueda" class="filtro-search" placeholder="Buscar por placa, marca, modelo...">
             <button id="btnLimpiarFiltros" class="btn-limpiar-filtros"><i class="bi bi-x-circle"></i> Limpiar</button>

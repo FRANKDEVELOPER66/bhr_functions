@@ -60,12 +60,14 @@ const ocultarLoader = () => {
 };
 
 // ── SELECT ÚNICO DE UNIDAD ────────────────────────────────────────────────────
+// ── CARGAR UNIDADES — agrega el llenado del filtro ───────────────────────────
 const cargarUnidades = async () => {
     try {
         const r = await fetch(`${BASE}/API/unidades/lista`);
         const d = await r.json();
         if (d.codigo !== 1) return;
 
+        // Select del formulario
         selectUnidad.innerHTML =
             '<option value="">— Sin asignar —</option>' +
             d.datos.map(u =>
@@ -76,6 +78,17 @@ const cargarUnidades = async () => {
                     ${u.unidad_destacamento}
                 </option>`
             ).join('');
+
+        // ← NUEVO: llenar el select del filtro
+        const filtroUnidad = document.getElementById('filtroUnidad');
+        if (filtroUnidad) {
+            filtroUnidad.innerHTML =
+                '<option value="">Todas las unidades</option>' +
+                d.datos.map(u =>
+                    `<option value="${u.id_unidad}">${u.unidad_destacamento}</option>`
+                ).join('');
+        }
+
     } catch (err) {
         console.error('Error cargando unidades:', err);
     }
@@ -528,24 +541,33 @@ const renderCartas = (vehiculos) => {
 };
 
 // ── FILTROS ───────────────────────────────────────────────────────────────────
+// ── FILTROS ───────────────────────────────────────────────────────────────────
 const aplicarFiltros = () => {
     const tipo = filtroTipo.value.toLowerCase();
     const estado = filtroEstado.value.toLowerCase();
     const busq = filtroBusqueda.value.toLowerCase().trim();
-    const filtroSeguro = document.getElementById('filtroSeguro')?.value.toLowerCase() || '';
+    const unidad = document.getElementById('filtroUnidad')?.value || '';
 
     const filtrados = todosLosVehiculos.filter(v => {
         const matchTipo = !tipo || v.tipo.toLowerCase() === tipo;
         const matchEstado = !estado || v.estado.toLowerCase() === estado;
-        const matchSeguro = !filtroSeguro || (v.seguro_estado || 'sin seguro').toLowerCase() === filtroSeguro;
+        const matchUnidad = !unidad || String(v.id_unidad) === unidad;
         const matchBusq = !busq
-            || v.placa.toLowerCase().includes(busq)
-            || v.marca.toLowerCase().includes(busq)
-            || v.modelo.toLowerCase().includes(busq)
-            || (v.numero_serie || '').toLowerCase().includes(busq)
-            || (v.unidad_nombre || '').toLowerCase().includes(busq)
-            || (v.destacamento_nombre || '').toLowerCase().includes(busq);
-        return matchTipo && matchEstado && matchSeguro && matchBusq;
+            || (v.placa ?? '').toLowerCase().includes(busq)
+            || (v.marca ?? '').toLowerCase().includes(busq)
+            || (v.modelo ?? '').toLowerCase().includes(busq)
+            || (v.numero_serie ?? '').toLowerCase().includes(busq)
+            || (v.color ?? '').toLowerCase().includes(busq)
+            || (v.tipo ?? '').toLowerCase().includes(busq)
+            || (v.anio ?? '').toString().includes(busq)
+            || (v.estado ?? '').toLowerCase().includes(busq)
+            || (v.km_actuales ?? '').toString().includes(busq)
+            || (v.unidad_nombre ?? '').toLowerCase().includes(busq)
+            || (v.destacamento_nombre ?? '').toLowerCase().includes(busq)
+            || (v.destacamento_depto ?? '').toLowerCase().includes(busq)
+            || (v.observaciones ?? '').toLowerCase().includes(busq);
+
+        return matchTipo && matchEstado && matchUnidad && matchBusq;
     });
 
     renderCartas(filtrados);
@@ -554,13 +576,13 @@ const aplicarFiltros = () => {
 filtroTipo.addEventListener('change', aplicarFiltros);
 filtroEstado.addEventListener('change', aplicarFiltros);
 filtroBusqueda.addEventListener('input', aplicarFiltros);
-document.getElementById('filtroSeguro')?.addEventListener('change', aplicarFiltros);
+document.getElementById('filtroUnidad')?.addEventListener('change', aplicarFiltros);
 btnLimpiarFiltros.addEventListener('click', () => {
     filtroTipo.value = '';
     filtroEstado.value = '';
     filtroBusqueda.value = '';
-    const fs = document.getElementById('filtroSeguro');
-    if (fs) fs.value = '';
+    const fu = document.getElementById('filtroUnidad');
+    if (fu) fu.value = '';
     renderCartas(todosLosVehiculos);
 });
 
