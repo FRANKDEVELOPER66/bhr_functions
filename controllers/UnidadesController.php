@@ -12,6 +12,7 @@ class UnidadesController
     // Traer todos los destacamentos
     public static function destacamentosAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
         try {
             $datos = Destacamentos::traerTodos();
@@ -25,6 +26,7 @@ class UnidadesController
     // Traer unidades (todas o filtradas por destacamento)
     public static function unidadesAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
         try {
             $idDestacamento = (int)($_GET['id_destacamento'] ?? 0);

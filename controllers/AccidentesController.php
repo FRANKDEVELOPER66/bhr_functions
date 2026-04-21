@@ -13,6 +13,7 @@ class AccidentesController
     // ── LISTAR ACCIDENTES DE UNA PLACA ────────────────────────────────────────
     public static function listarAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $placa = strtoupper(trim($_GET['placa'] ?? ''));
@@ -58,6 +59,7 @@ class AccidentesController
     // ── GUARDAR ACCIDENTE ─────────────────────────────────────────────────────
     public static function guardarAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $placa = strtoupper(trim(htmlspecialchars($_POST['placa'] ?? '')));
@@ -182,6 +184,7 @@ class AccidentesController
     // ── MODIFICAR ACCIDENTE ───────────────────────────────────────────────────
     public static function modificarAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $id = (int)($_POST['id_accidente'] ?? 0);
@@ -282,6 +285,7 @@ class AccidentesController
     // ── ELIMINAR ACCIDENTE ────────────────────────────────────────────────────
     public static function eliminarAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $id = (int)($_POST['id_accidente'] ?? 0);

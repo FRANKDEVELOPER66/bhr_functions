@@ -18,6 +18,7 @@ class FichaController
     // ── FICHA COMPLETA ───────────────────────────────────────────────────────
     public static function fichaAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $placa = strtoupper(trim($_GET['placa'] ?? ''));
@@ -118,6 +119,7 @@ class FichaController
     // ── TIPOS DE SERVICIO ────────────────────────────────────────────────────
     public static function tiposServicioAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         try {
@@ -135,6 +137,7 @@ class FichaController
     // ── GUARDAR SERVICIO ──────────────────────────────────────────────────────
     public static function guardarServicioAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $placa = strtoupper(trim(htmlspecialchars($_POST['placa'] ?? '')));
@@ -243,6 +246,7 @@ class FichaController
     // ── ELIMINAR SERVICIO ────────────────────────────────────────────────────
     public static function eliminarServicioAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $id = (int)($_POST['id_servicio'] ?? 0);
@@ -284,6 +288,7 @@ class FichaController
     // ── TIPOS DE REPARACIÓN ──────────────────────────────────────────────────
     public static function tiposReparacionAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
         try {
             $tipos = TiposReparacion::traerTodos();
@@ -297,6 +302,7 @@ class FichaController
     // ── GUARDAR REPARACIÓN ───────────────────────────────────────────────────
     public static function guardarReparacionAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $placa = strtoupper(trim(htmlspecialchars($_POST['placa'] ?? '')));
@@ -388,6 +394,7 @@ class FichaController
     // ── ELIMINAR REPARACIÓN ──────────────────────────────────────────────────
     public static function eliminarReparacionAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $id = (int)($_POST['id_reparacion'] ?? 0);
@@ -427,6 +434,7 @@ class FichaController
     // ── MODIFICAR REPARACIÓN ─────────────────────────────────────────────────
     public static function modificarReparacionAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $id = (int)($_POST['id_reparacion'] ?? 0);

@@ -21,6 +21,7 @@ class VehiculosController
     // ── GUARDAR ──────────────────────────────────────────────────────────────
     public static function guardarAPI()
     {
+        isAuthApi();
         ob_start();
         header('Content-Type: application/json; charset=UTF-8');
         ob_clean();
@@ -148,6 +149,7 @@ class VehiculosController
     // ── BUSCAR ───────────────────────────────────────────────────────────────
     public static function buscarAPI()
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         try {
@@ -174,6 +176,7 @@ class VehiculosController
     // ── MODIFICAR ────────────────────────────────────────────────────────────
     public static function modificarAPI()
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $placa = strtoupper(trim(htmlspecialchars($_POST['placa'] ?? '')));
@@ -312,6 +315,7 @@ class VehiculosController
     // ── ELIMINAR ─────────────────────────────────────────────────────────────
     public static function eliminarAPI()
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $placa = strtoupper(trim(htmlspecialchars($_POST['placa'] ?? '')));

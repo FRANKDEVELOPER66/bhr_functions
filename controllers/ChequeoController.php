@@ -12,6 +12,7 @@ class ChequeoController
     // ── LISTAR CHEQUEOS DE UNA PLACA ─────────────────────────────────────────
     public static function listarAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $placa = strtoupper(trim($_GET['placa'] ?? ''));
@@ -45,6 +46,7 @@ class ChequeoController
     // ── OBTENER UN CHEQUEO CON SUS ÍTEMS ─────────────────────────────────────
     public static function obtenerAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $id = (int)($_GET['id'] ?? 0);
@@ -82,6 +84,7 @@ class ChequeoController
     // ── CREAR CHEQUEO (inicia vacío) ──────────────────────────────────────────
     public static function crearAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $placa = strtoupper(trim($_POST['placa'] ?? ''));
@@ -122,6 +125,7 @@ class ChequeoController
     // ── GUARDAR ÍTEMS Y COMPLETAR CHEQUEO ────────────────────────────────────
     public static function completarAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $id    = (int)($_POST['id_chequeo'] ?? 0);
@@ -187,6 +191,7 @@ class ChequeoController
     // ── ELIMINAR CHEQUEO ──────────────────────────────────────────────────────
     public static function eliminarAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $id = (int)($_POST['id_chequeo'] ?? 0);

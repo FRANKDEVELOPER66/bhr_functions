@@ -12,6 +12,7 @@ class SegurosController
     // ── LISTAR SEGUROS DE UNA PLACA ──────────────────────────────────────────
     public static function listarAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $placa = strtoupper(trim($_GET['placa'] ?? ''));
@@ -67,6 +68,7 @@ class SegurosController
     // ── GUARDAR SEGURO ───────────────────────────────────────────────────────
     public static function guardarAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $placa = strtoupper(trim(htmlspecialchars($_POST['placa'] ?? '')));
@@ -174,6 +176,7 @@ class SegurosController
     // ── MODIFICAR SEGURO ─────────────────────────────────────────────────────
     public static function modificarAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $id = (int)($_POST['id_seguro'] ?? 0);
@@ -287,6 +290,7 @@ class SegurosController
     // ── CANCELAR SEGURO ──────────────────────────────────────────────────────
     public static function cancelarAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $id = (int)($_POST['id_seguro'] ?? 0);
@@ -326,6 +330,7 @@ class SegurosController
     // ── ELIMINAR SEGURO ──────────────────────────────────────────────────────
     public static function eliminarAPI(Router $router)
     {
+        isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
 
         $id = (int)($_POST['id_seguro'] ?? 0);

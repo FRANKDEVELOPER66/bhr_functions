@@ -27,11 +27,9 @@ function isAuth()
 function isAuthApi()
 {
     getHeadersApi();
-    session_start();
     if (!isset($_SESSION['auth_user'])) {
         echo json_encode([
-            "mensaje" => "No esta autenticado",
-
+            "mensaje" => "No está autenticado",
             "codigo" => 4,
         ]);
         exit;
@@ -40,9 +38,10 @@ function isAuthApi()
 
 function isNotAuth()
 {
-    session_start();
-    if (isset($_SESSION['auth'])) {
-        header('Location: /auth/');
+    if (isset($_SESSION['auth_user'])) {
+        $base = $_ENV['APP_NAME'] ? '/' . $_ENV['APP_NAME'] : '';
+        header('Location: ' . $base . '/vehiculos');
+        exit;
     }
 }
 
