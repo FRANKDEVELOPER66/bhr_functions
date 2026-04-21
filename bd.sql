@@ -214,3 +214,43 @@ INSERT INTO tipos_reparacion (nombre, categoria) VALUES
 ('Cuarta Brigada de Infantería', 'Mazatenango', 'Mazatenango', 'BHR Mazatenango'),
 ('Escuela de Adiestramiento y de Rescate', 'Guatemala', 'Zona 16', 'Escuela BHR'),
 ('Compañia de Apoyo de Servicios', 'Guatemala', 'Zona 13', 'Apoyo de Servicios BHR');
+
+
+
+
+INSERT INTO usuarios (catalogo, grado, arma_servicio, nombre_completo, plaza, rol) VALUES
+('656207', 'Subteniente', 'Infantería', 'Daniel Rivas García', 'Desarrollador', 'SUPERUSUARIO'),
+('512921', 'Coronel', 'Sanidad Militar', 'Hilda Obeyda Gonzalez Klusmann', 'Comandante BHR', 'COMTE_BHR'),
+('462440', 'Coronel', 'Infantería', 'Luis Alfredo Escobar García', 'Segundo Comandante BHR', 'COMTE_BHR'),
+('470963', 'Coronel', 'Infantería', 'Alex Anibal Valle Santos', 'Tercer Comandante BHR', 'COMTE_BHR'),
+('595453', 'Capitán Primero', 'Infantería', 'Fredy Antonio Velasco Flores', 'Comandante Cía AA/SS', 'COMTE_CIA'),
+('608661', 'Capitán Segundo', 'Infantería', 'Sergio Haroldo Chajon Palomo', 'Ejecutivo de Cía AA/SS', 'COMTE_CIA'),
+('648782', 'Teniente', 'Intendencia', 'Sulma Judith Castillo Pineda', 'Comandante Ptn. Transportes', 'COMTE_PTN');
+
+
+
+CREATE TABLE `tokens_acceso` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `catalogo` varchar(10) NOT NULL,
+  `token` varchar(255) NOT NULL,
+  `expira_at` datetime NOT NULL,
+  `usado` tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `fk_token_usuario` (`catalogo`),
+  CONSTRAINT `fk_token_usuario` FOREIGN KEY (`catalogo`) REFERENCES `usuarios` (`catalogo`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+CREATE TABLE `usuarios` (
+  `catalogo` varchar(10) NOT NULL,
+  `grado` varchar(100) NOT NULL,
+  `arma_servicio` varchar(100) NOT NULL,
+  `nombre_completo` varchar(200) NOT NULL,
+  `plaza` varchar(150) DEFAULT NULL,
+  `correo` varchar(150) DEFAULT NULL,
+  `password` varchar(255) DEFAULT NULL,
+  `rol` enum('SUPERUSUARIO','COMTE_BHR','COMTE_CIA','COMTE_PTN') NOT NULL DEFAULT 'COMTE_PTN',
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
+  `primer_ingreso` tinyint(1) NOT NULL DEFAULT '1',
+  PRIMARY KEY (`catalogo`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
