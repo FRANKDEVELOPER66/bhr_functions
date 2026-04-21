@@ -12,7 +12,7 @@ use Controllers\AccidentesController;
 use Controllers\ChequeoController;
 
 $router = new Router();
-$router->setBaseURL("");
+$router->setBaseURL($_ENV['APP_NAME'] ? '/' . $_ENV['APP_NAME'] : '');
 
 $router->get('/', [AppController::class, 'index']);
 
