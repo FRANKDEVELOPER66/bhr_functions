@@ -206,9 +206,11 @@ INSERT INTO tipos_reparacion (nombre, categoria) VALUES
   ('Falla de sistema de AC',  'Climatización');
 
   INSERT INTO destacamentos (nombre, departamento, municipio, descripcion) VALUES
-('Primera Brigada de Infanterría', 'Petén', 'Flores', 'BHR Petén'),
-('Septima Brigada de Infantería', 'Baja Verapaz', 'Salamá', 'BHR Salamá'),
-('BHR Central', 'Guatemala', 'Guatemala', 'BHR Sede'),
+('Primera Brigada de Infantería', 'Petén', 'Flores', 'BHR Petén'),
+('Séptima Brigada de Infantería', 'Baja Verapaz', 'Salamá', 'BHR Salamá'),
 ('Brigada de Infantería de Marina', 'Izabal', 'Puerto Barrios', 'BHR Puerto Barrios'),
+('BHR Central', 'Guatemala', 'Guatemala', 'BHR Sede'),
 ('Quinta Brigada de Infantería', 'Huehuetenango', 'Hehuetenango', 'BHR Huehuetenango'),
-('Cuarta Brigada de Infantería', 'Mazatenango', 'Mazatenango', 'BHR Mazatenango');
+('Cuarta Brigada de Infantería', 'Mazatenango', 'Mazatenango', 'BHR Mazatenango'),
+('Escuela de Adiestramiento y de Rescate', 'Guatemala', 'Zona 16', 'Escuela BHR'),
+('Compañia de Apoyo de Servicios', 'Guatemala', 'Zona 13', 'Apoyo de Servicios BHR');

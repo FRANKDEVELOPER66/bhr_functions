@@ -1703,7 +1703,7 @@
     }
 </style>
 
-<div class="container-fluid mt-4">
+<div class="container-fluid mt-4" data-base="<?= $_ENV['APP_NAME'] ? '/' . $_ENV['APP_NAME'] : '' ?>">
     <!-- LOADER BHR -->
     <div id="bhr-loader">
 
@@ -2671,4 +2671,7 @@
 
 </div><!-- fin container -->
 
+<script>
+    const BASE = '<?= $_ENV["APP_NAME"] ? "/" . $_ENV["APP_NAME"] : "" ?>';
+</script>
 <script src="build/js/vehiculos/index.js" type="module"></script>

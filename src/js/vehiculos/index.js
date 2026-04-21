@@ -2,7 +2,7 @@ import { Toast, validarFormulario } from "../funciones";
 import Swal from "sweetalert2";
 
 
-const BASE = '/bhr_functions';
+const BASE = document.querySelector('[data-base]')?.dataset.base ?? '' ;
 
 // ── ELEMENTOS DOM ─────────────────────────────────────────────────────────────
 const formulario = document.getElementById('formularioVehiculo');
@@ -814,9 +814,6 @@ const guardar = async (e) => {
             body.append('archivo_poliza', pdfPoliza.files[0]);
         }
     }
-
-    // ── ENVIAR ────────────────────────────────────────────────────────────────
-    // En guardar(), reemplaza el bloque ENVIAR:
     try {
         mostrarLoader('Registrando vehículo...');
         const r = await fetch(`${BASE}/API/vehiculos/guardar`, { method: 'POST', body });
