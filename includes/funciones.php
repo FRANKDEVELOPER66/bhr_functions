@@ -18,9 +18,10 @@ function s($html)
 // Función que revisa que el usuario este autenticado
 function isAuth()
 {
-    session_start();
-    if (!isset($_SESSION['login'])) {
-        header('Location: /');
+    if (!isset($_SESSION['auth_user'])) {
+        $base = $_ENV['APP_NAME'] ? '/' . $_ENV['APP_NAME'] : '';
+        header('Location: ' . $base . '/');
+        exit;
     }
 }
 function isAuthApi()

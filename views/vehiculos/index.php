@@ -1784,10 +1784,21 @@
     <!-- HEADER -->
     <div class="veh-header">
         <div class="icon-wrap"><i class="bi bi-truck-front-fill"></i></div>
-        <div>
+        <div style="flex:1;">
             <h1>Control de Vehículos</h1>
             <p>Registro, historial de servicios y estado de flota</p>
         </div>
+        <?php if (isset($_SESSION['auth_user'])): ?>
+            <div style="text-align:right;">
+                <div style="font-family:'Rajdhani',sans-serif;font-size:1.1rem;color:#e8b84b;font-weight:700;letter-spacing:.5px;">
+                    <i class="bi bi-person-fill"></i>
+                    <?= htmlspecialchars($_SESSION['auth_grado']) ?> de <?= htmlspecialchars($_SESSION['auth_arma'] ?? '') ?> <?= htmlspecialchars($_SESSION['auth_nombre']) ?>
+                </div>
+                <div style="font-size:.9rem;color:#7c8398;margin-top:.2rem;">
+                    <?= htmlspecialchars($_SESSION['auth_plaza']) ?>
+                </div>
+            </div>
+        <?php endif; ?>
     </div>
 
     <!-- BOTÓN FLOTANTE -->

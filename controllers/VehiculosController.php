@@ -11,6 +11,7 @@ class VehiculosController
 {
     public static function index(Router $router)
     {
+        isAuth();
         $destacamentos = Destacamentos::obtenerUnidades();
         $router->render('vehiculos/index', [
             'destacamentos' => $destacamentos,

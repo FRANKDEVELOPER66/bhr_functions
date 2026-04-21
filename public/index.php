@@ -9,6 +9,7 @@ use Controllers\UnidadesController;
 use Controllers\VehiculosController;
 use Controllers\SegurosController;
 use Controllers\AccidentesController;
+use Controllers\AuthController;
 use Controllers\ChequeoController;
 
 $router = new Router();
@@ -59,6 +60,17 @@ $router->get('/API/vehiculos/chequeos/obtener',     [ChequeoController::class, '
 $router->post('/API/vehiculos/chequeos/crear',      [ChequeoController::class, 'crearAPI']);
 $router->post('/API/vehiculos/chequeos/completar',  [ChequeoController::class, 'completarAPI']);
 $router->post('/API/vehiculos/chequeos/eliminar',   [ChequeoController::class, 'eliminarAPI']);
+
+// ── AUTH ─────────────────────────────────────────────────────────────────────
+$router->get('/', [AuthController::class, 'login']);
+$router->post('/API/auth/verificar-catalogo', [AuthController::class, 'verificarCatalogoAPI']);
+$router->post('/API/auth/registrar-correo',   [AuthController::class, 'registrarCorreoAPI']);
+$router->get('/auth/setup',                   [AuthController::class, 'setup']);
+$router->post('/API/auth/guardar-password',   [AuthController::class, 'guardarPasswordAPI']);
+$router->post('/API/auth/login',              [AuthController::class, 'loginAPI']);
+$router->post('/API/auth/logout',             [AuthController::class, 'logoutAPI']);
+
+$router->get('/logout', [AuthController::class, 'logoutGET']);
 
 // ── EXPEDIENTE PDF ───────────────────────────────────────────────────────────
 $router->get('/vehiculos/expediente', [ExpedienteController::class, 'generarPDF']);
