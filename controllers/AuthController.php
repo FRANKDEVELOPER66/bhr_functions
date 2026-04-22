@@ -241,35 +241,41 @@ class AuthController
     }
 
     // ── Helper: enviar email ──────────────────────────────────────────────────
-    private static function enviarEmail(string $to, string $subject, string $html): bool
+    public static function enviarEmail(string $to, string $subject, string $html): bool
     {
-        try {
-            $apiKey = $_ENV['RESEND_API_KEY'];
-            $data = json_encode([
-                'from'    => 'VEHICULOS BHR <noreply@vehiculosbhr.com>',
-                'to'      => [$to],
-                'subject' => $subject,
-                'html'    => $html,
-            ]);
+        $apiKey = $_ENV['RESEND_API_KEY'] ?? '';
 
-            $ch = curl_init('https://api.resend.com/emails');
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        // Debug temporal
+        error_log("RESEND KEY: " . substr($apiKey, 0, 10));
+        error_log("SENDING TO: " . $to);
+
+        $payload = json_encode([
+            'from'    => 'noreply@vehiculosbhr.com',
+            'to'      => [$to],
+            'subject' => $subject,
+            'html'    => $html
+        ]);
+
+        $ch = curl_init('https://api.resend.com/emails');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_HTTPHEADER     => [
                 'Authorization: Bearer ' . $apiKey,
-                'Content-Type: application/json',
-            ]);
+                'Content-Type: application/json'
+            ]
+        ]);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
 
-            $response = curl_exec($ch);
-            $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+        // Debug temporal
+        error_log("RESEND RESPONSE: " . $response);
+        error_log("HTTP CODE: " . $httpCode);
 
-            return $httpCode >= 200 && $httpCode < 300;
-        } catch (\Exception $e) {
-            error_log('Error Resend: ' . $e->getMessage());
-            return false;
-        }
+        $data = json_decode($response, true);
+        return isset($data['id']);
     }
 
 
