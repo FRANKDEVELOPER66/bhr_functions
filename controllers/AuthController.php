@@ -101,7 +101,7 @@ class AuthController
             'Crear contraseña — VEHICULOS BHR',
             "
     <div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0f1117;color:#e8eaf0;padding:2rem;border-radius:12px;'>
-        <img src='https://i.imgur.com/placeholder.png' style='width:120px;margin-bottom:1rem;'>
+        <img src='https://vehiculosbhr.com/images/BHR.png' style='width:80px;margin-bottom:1rem;'>
         <h2 style='color:#e8b84b;font-size:1.4rem;'>Bienvenido/a, {$usuario->grado} {$usuario->nombre_completo}</h2>
         <p style='color:#c8cfe0;margin-bottom:.5rem;'>Plaza: <strong>{$usuario->plaza}</strong></p>
         <p style='color:#7c8398;margin:1rem 0;'>
