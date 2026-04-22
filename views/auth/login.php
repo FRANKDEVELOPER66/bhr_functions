@@ -425,8 +425,10 @@
                     irStep('step2b');
                     setTimeout(() => document.getElementById('inputPassword').focus(), 100);
                 }
-            } catch {
-                mostrarError('Error de conexión');
+            } catch (err) {
+                mostrarError('Error al enviar Verificar Catalogo. Intenta de nuevo.');
+                console.error(err);
+
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="bi bi-arrow-right-circle-fill"></i> Continuar';
@@ -467,8 +469,9 @@
                 } else {
                     mostrarError(d.mensaje);
                 }
-            } catch {
-                mostrarError('Error de conexión');
+            } catch (err) {
+                mostrarError('Error al enviar el correo. Intenta de nuevo.');
+                console.error(err);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="bi bi-send-fill"></i> Enviar enlace';
@@ -503,8 +506,9 @@
                 } else {
                     mostrarError(d.mensaje);
                 }
-            } catch {
-                mostrarError('Error de conexión');
+            } catch (err) {
+                mostrarError('Error al Ingresar. Intenta de nuevo.');
+                console.error(err);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Ingresar';

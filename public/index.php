@@ -11,6 +11,7 @@ use Controllers\SegurosController;
 use Controllers\AccidentesController;
 use Controllers\AuthController;
 use Controllers\ChequeoController;
+use Controllers\SolicitudesController;
 
 $router = new Router();
 $router->setBaseURL($_ENV['APP_NAME'] ? '/' . $_ENV['APP_NAME'] : '');
@@ -71,6 +72,14 @@ $router->post('/API/auth/login',              [AuthController::class, 'loginAPI'
 $router->post('/API/auth/logout',             [AuthController::class, 'logoutAPI']);
 
 $router->get('/logout', [AuthController::class, 'logoutGET']);
+
+// ── SOLICITUDES ───────────────────────────────────────────────────────────────
+$router->post('/API/solicitudes/crear',              [SolicitudesController::class, 'crearAPI']);
+$router->get('/API/solicitudes/pendientes',          [SolicitudesController::class, 'pendientesAPI']);
+$router->post('/API/solicitudes/resolver',           [SolicitudesController::class, 'resolverAPI']);
+$router->get('/API/solicitudes/contar',              [SolicitudesController::class, 'contarAPI']);
+$router->get('/API/solicitudes/mis-notificaciones',  [SolicitudesController::class, 'misNotificacionesAPI']);
+$router->post('/API/solicitudes/marcar-leidas',      [SolicitudesController::class, 'marcarLeidasRevisorAPI']);
 
 // ── EXPEDIENTE PDF ───────────────────────────────────────────────────────────
 $router->get('/vehiculos/expediente', [ExpedienteController::class, 'generarPDF']);

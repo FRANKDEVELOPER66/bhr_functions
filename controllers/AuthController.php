@@ -83,8 +83,7 @@ class AuthController
             exit;
         }
 
-        // Guardar correo
-        // Actualizar correo — usar UPDATE no INSERT
+        // Actualizar correo
         $db = \Model\ActiveRecord::getDB();
         $stmt = $db->prepare("UPDATE usuarios SET correo = ? WHERE catalogo = ?");
         $stmt->execute([$correo, $catalogo]);
@@ -101,20 +100,35 @@ class AuthController
             $correo,
             'Crear contraseña — VEHICULOS BHR',
             "
-            <h2>Bienvenido/a al sistema VEHICULOS BHR</h2>
-            <p>Haz clic en el siguiente enlace para crear tu contraseña:</p>
-            <a href='{$link}' style='background:#e8b84b;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;'>
-                Crear contraseña
-            </a>
-            <p style='color:#888;font-size:12px;margin-top:16px;'>Este enlace expira en 2 horas.</p>
-            "
+    <div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0f1117;color:#e8eaf0;padding:2rem;border-radius:12px;'>
+        <img src='https://i.imgur.com/placeholder.png' style='width:120px;margin-bottom:1rem;'>
+        <h2 style='color:#e8b84b;font-size:1.4rem;'>Bienvenido/a, {$usuario->grado} {$usuario->nombre_completo}</h2>
+        <p style='color:#c8cfe0;margin-bottom:.5rem;'>Plaza: <strong>{$usuario->plaza}</strong></p>
+        <p style='color:#7c8398;margin:1rem 0;'>
+            Se ha creado tu acceso al sistema <strong style='color:#e8b84b;'>VEHÍCULOS BHR</strong>.<br>
+            Haz clic en el siguiente enlace para crear tu contraseña:
+        </p>
+        <a href='{$link}' style='display:inline-block;background:#e8b84b;color:#000;padding:12px 28px;
+            border-radius:8px;text-decoration:none;font-weight:bold;font-size:1rem;margin:1rem 0;'>
+            Crear contraseña
+        </a>
+        <p style='color:#555;font-size:12px;margin-top:1.5rem;border-top:1px solid #2e3347;padding-top:1rem;'>
+            Este enlace expira en <strong>2 horas</strong>.<br>
+            Si no solicitaste este acceso, ignora este correo.
+        </p>
+        <p style='color:#3a3d4e;font-size:11px;margin-top:.5rem;'>
+            Ejército de Guatemala · Brigada Humanitaria y de Rescate © <?= date('Y') ?>
+        </p>
+    </div>
+    "
         );
 
-        echo json_encode([
-            'codigo' => 1,
-            'mensaje' => 'Correo enviado correctamente',
-            'debug_link' => $link  // ← solo para desarrollo local
-        ]);
+        if (!$enviado) {
+            echo json_encode(['codigo' => 0, 'mensaje' => 'Error al enviar el correo']);
+            exit;
+        }
+
+        echo json_encode(['codigo' => 1, 'mensaje' => 'Correo enviado correctamente']);
     }
 
     // ── Vista setup (crear contraseña) ────────────────────────────────────────
@@ -229,13 +243,33 @@ class AuthController
     // ── Helper: enviar email ──────────────────────────────────────────────────
     private static function enviarEmail(string $to, string $subject, string $html): bool
     {
-        // Por ahora usamos mail() nativo
-        // Después integramos Resend o Mailgun
-        $headers  = "MIME-Version: 1.0\r\n";
-        $headers .= "Content-type: text/html; charset=UTF-8\r\n";
-        $headers .= "From: VEHICULOS BHR <noreply@bhr.mil.gt>\r\n";
+        try {
+            $apiKey = $_ENV['RESEND_API_KEY'];
+            $data = json_encode([
+                'from'    => 'VEHICULOS BHR <onboarding@resend.dev>',
+                'to'      => [$to],
+                'subject' => $subject,
+                'html'    => $html,
+            ]);
 
-        return mail($to, $subject, $html, $headers);
+            $ch = curl_init('https://api.resend.com/emails');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Authorization: Bearer ' . $apiKey,
+                'Content-Type: application/json',
+            ]);
+
+            $response = curl_exec($ch);
+            $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            return $httpCode >= 200 && $httpCode < 300;
+        } catch (\Exception $e) {
+            error_log('Error Resend: ' . $e->getMessage());
+            return false;
+        }
     }
 
 

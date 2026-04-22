@@ -94,6 +94,7 @@ class ChequeoController
             echo json_encode(['codigo' => 0, 'mensaje' => 'Placa requerida'], JSON_UNESCAPED_UNICODE);
             return;
         }
+        
 
         try {
             $chequeo = new Chequeos([
@@ -106,6 +107,7 @@ class ChequeoController
             ]);
 
             $resultado = $chequeo->crear();
+            
 
             echo json_encode([
                 'codigo'     => 1,

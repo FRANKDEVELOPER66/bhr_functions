@@ -5,6 +5,7 @@ namespace Model;
 class TokensAcceso extends ActiveRecord
 {
     protected static $tabla = 'tokens_acceso';
+    protected static $idTabla = 'id';
     protected static $columnasDB = [
         'id',
         'catalogo',

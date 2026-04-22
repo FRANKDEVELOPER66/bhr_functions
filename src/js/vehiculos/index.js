@@ -2,7 +2,10 @@ import { Toast, validarFormulario } from "../funciones";
 import Swal from "sweetalert2";
 
 
-const BASE = document.querySelector('[data-base]')?.dataset.base ?? '' ;
+const BASE = document.querySelector('[data-base]')?.dataset.base ?? '';
+const ROL = document.documentElement.dataset.rol ?? '';
+const esCIA = ['COMTE_CIA', 'SUPERUSUARIO'].includes(ROL);
+const esBHR = ROL === 'COMTE_BHR';
 
 // ── ELEMENTOS DOM ─────────────────────────────────────────────────────────────
 const formulario = document.getElementById('formularioVehiculo');
@@ -502,42 +505,48 @@ const renderCartas = (vehiculos) => {
                     ${unidadHTML}
                 </div>
                 <div class="card-acciones">
-                    <button class="btn-card-action btn-card-edit modificar"
-                        data-placa="${v.placa}"
-                        data-numero_serie="${v.numero_serie}"
-                        data-marca="${v.marca}"
-                        data-modelo="${v.modelo}"
-                        data-anio="${v.anio}"
-                        data-color="${v.color}"
-                        data-tipo="${v.tipo}"
-                        data-km_actuales="${v.km_actuales}"
-                        data-estado="${v.estado}"
-                        data-fecha_ingreso="${v.fecha_ingreso}"
-                        data-observaciones="${v.observaciones || ''}"
-                        data-foto_url="${v.foto_url || ''}"
-                        data-foto_lateral_url="${v.foto_lateral_url || ''}"
-                        data-foto_trasera_url="${v.foto_trasera_url || ''}"
-                        data-pdf_url="${v.pdf_url || ''}"
-                        data-cert_inventario_url="${v.cert_inventario_url || ''}"
-                        data-cert_sicoin_url="${v.cert_sicoin_url || ''}"
-                        data-id_unidad="${v.id_unidad || ''}">
-                        <i class="bi bi-pencil-square"></i> Editar
-                    </button>
-                    <button class="btn-card-action btn-card-del eliminar"
-                        data-placa="${v.placa}">
-                        <i class="bi bi-trash3"></i>
-                    </button>
-                    <button class="btn-card-action"
-                        style="background:rgba(232,184,75,.15);color:var(--accent);border:1px solid rgba(232,184,75,.2);"
-                        onclick="abrirFicha('${v.placa}')">
-                        <i class="bi bi-card-checklist"></i> Ficha
-                    </button>
-                </div>
+    ${!esBHR ? `
+        <button class="btn-card-action btn-card-edit ${esCIA ? 'modificar' : ''}"
+            ${esCIA ? `
+                data-placa="${v.placa}"
+                data-numero_serie="${v.numero_serie}"
+                data-marca="${v.marca}"
+                data-modelo="${v.modelo}"
+                data-anio="${v.anio}"
+                data-color="${v.color}"
+                data-tipo="${v.tipo}"
+                data-km_actuales="${v.km_actuales}"
+                data-estado="${v.estado}"
+                data-fecha_ingreso="${v.fecha_ingreso}"
+                data-observaciones="${v.observaciones || ''}"
+                data-foto_url="${v.foto_url || ''}"
+                data-foto_lateral_url="${v.foto_lateral_url || ''}"
+                data-foto_trasera_url="${v.foto_trasera_url || ''}"
+                data-pdf_url="${v.pdf_url || ''}"
+                data-cert_inventario_url="${v.cert_inventario_url || ''}"
+                data-cert_sicoin_url="${v.cert_sicoin_url || ''}"
+                data-id_unidad="${v.id_unidad || ''}"
+            ` : `onclick="solicitarModificacion('${v.placa}')"`}>
+            <i class="bi bi-pencil-square"></i> ${esCIA ? 'Editar' : 'Solicitar cambio'}
+        </button>
+        <button class="btn-card-action btn-card-del ${esCIA ? 'eliminar' : ''}"
+            ${esCIA ? `data-placa="${v.placa}"` : `onclick="crearSolicitudEliminacion('${v.placa}')"`}>
+            <i class="bi bi-trash3"></i>
+        </button>
+    ` : ''}
+    <button class="btn-card-action"
+        style="background:rgba(232,184,75,.15);color:var(--accent);border:1px solid rgba(232,184,75,.2);"
+        onclick="abrirFicha('${v.placa}')">
+        <i class="bi bi-card-checklist"></i> Ficha
+    </button>
+</div>
             </div>`;
     }).join('');
 
-    cardsGrid.querySelectorAll('.modificar').forEach(btn => btn.addEventListener('click', traerDatos));
-    cardsGrid.querySelectorAll('.eliminar').forEach(btn => btn.addEventListener('click', eliminar));
+    if (esCIA) {
+        cardsGrid.querySelectorAll('.modificar').forEach(btn => btn.addEventListener('click', traerDatos));
+        cardsGrid.querySelectorAll('.eliminar').forEach(btn => btn.addEventListener('click', eliminar));
+    }
 };
 
 // ── FILTROS ───────────────────────────────────────────────────────────────────
@@ -2999,7 +3008,295 @@ const elegirSeguro = (opcion) => {
 };
 
 window.elegirSeguro = elegirSeguro;
+// ── SOLICITAR MODIFICACION (COMTE_PTN) ────────────────────────────────────────
+window.solicitarModificacion = async (placa) => {
+    const vehiculo = todosLosVehiculos.find(v => v.placa === placa);
+    if (!vehiculo) return;
 
+    const tipoSolicitud = await new Promise((resolve) => {
+        Swal.fire({
+            title: 'Solicitar modificación',
+            html: `
+            <div style="text-align:left;font-size:.85rem;">
+                <p style="color:#7c8398;margin-bottom:1rem;">
+                    <i class="bi bi-truck" style="color:#e8b84b;"></i>
+                    <strong style="color:#e8b84b;">${vehiculo.marca} ${vehiculo.modelo}</strong>
+                    — Catálogo ${placa}
+                </p>
+                <p style="color:#7c8398;margin-bottom:1rem;">¿Qué deseas modificar?</p>
+                <div style="display:flex;flex-direction:column;gap:.5rem;">
+                    <button id="btn-tipo-texto"
+                        style="background:#242837;border:1px solid #2e3347;border-radius:10px;
+                        padding:.85rem 1rem;cursor:pointer;text-align:left;color:#e8eaf0;
+                        display:flex;align-items:center;gap:.75rem;">
+                        <i class="bi bi-pencil-square" style="font-size:1.3rem;color:#e8b84b;"></i>
+                        <div>
+                            <div style="font-weight:600;font-size:.88rem;">Datos del vehículo</div>
+                            <div style="font-size:.75rem;color:#7c8398;">Marca, modelo, color, kilometraje, estado...</div>
+                        </div>
+                    </button>
+                    <button id="btn-tipo-unidad"
+                        style="background:#242837;border:1px solid #2e3347;border-radius:10px;
+                        padding:.85rem 1rem;cursor:pointer;text-align:left;color:#e8eaf0;
+                        display:flex;align-items:center;gap:.75rem;">
+                        <i class="bi bi-geo-alt-fill" style="font-size:1.3rem;color:#3a7bd5;"></i>
+                        <div>
+                            <div style="font-weight:600;font-size:.88rem;">Unidad asignada</div>
+                            <div style="font-size:.75rem;color:#7c8398;">Cambiar destacamento o unidad</div>
+                        </div>
+                    </button>
+                    <button id="btn-tipo-archivo"
+                        style="background:#242837;border:1px solid #2e3347;border-radius:10px;
+                        padding:.85rem 1rem;cursor:pointer;text-align:left;color:#e8eaf0;
+                        display:flex;align-items:center;gap:.75rem;">
+                        <i class="bi bi-file-earmark-arrow-up" style="font-size:1.3rem;color:#4caf7d;"></i>
+                        <div>
+                            <div style="font-weight:600;font-size:.88rem;">Fotos o documentos</div>
+                            <div style="font-size:.75rem;color:#7c8398;">Foto frontal, lateral, trasera, tarjeta PDF...</div>
+                        </div>
+                    </button>
+                </div>
+            </div>`,
+            background: '#1a1d27',
+            color: '#e8eaf0',
+            showCancelButton: true,
+            cancelButtonText: 'Cancelar',
+            cancelButtonColor: '#555',
+            showConfirmButton: false,
+            didOpen: () => {
+                document.getElementById('btn-tipo-texto').addEventListener('click', () => {
+                    Swal.close(); resolve('texto');
+                });
+                document.getElementById('btn-tipo-unidad').addEventListener('click', () => {
+                    Swal.close(); resolve('unidad');
+                });
+                document.getElementById('btn-tipo-archivo').addEventListener('click', () => {
+                    Swal.close(); resolve('archivo');
+                });
+            }
+        }).then(result => {
+            if (result.isDismissed) resolve(null);
+        });
+    });
+
+    if (!tipoSolicitud) return;
+
+    // ── PASO 2A: Datos del vehículo ───────────────────────────────────────────
+    if (tipoSolicitud === 'texto') {
+        const datosVehiculo = {
+            marca: vehiculo.marca,
+            modelo: vehiculo.modelo,
+            color: vehiculo.color,
+            km_actuales: vehiculo.km_actuales,
+            estado: vehiculo.estado,
+            observaciones: vehiculo.observaciones || ''
+        };
+
+        const { value: formValues, isConfirmed } = await Swal.fire({
+            title: 'Modificar datos del vehículo',
+            html: `
+                <div style="text-align:left;font-size:.85rem;">
+                    <p style="color:#7c8398;margin-bottom:1rem;">
+                        La solicitud será enviada al Comandante de Cía para su autorización.
+                    </p>
+                    <div style="margin-bottom:.75rem;">
+                        <label style="color:#e8b84b;font-size:.78rem;font-weight:600;">Campo a modificar</label>
+                        <select id="swal-campo" class="form-select"
+                            style="margin-top:.3rem;background:#242837;color:#e8eaf0;border:1px solid #2e3347;">
+                            <option value="">Seleccione...</option>
+                            <option value="marca">Marca</option>
+                            <option value="modelo">Modelo</option>
+                            <option value="color">Color</option>
+                            <option value="km_actuales">Kilometraje</option>
+                            <option value="estado">Estado</option>
+                            <option value="observaciones">Observaciones</option>
+                        </select>
+                    </div>
+                    <div id="swal-valor-actual-wrap" style="display:none;margin-bottom:.75rem;">
+                        <label style="color:#7c8398;font-size:.75rem;">Valor actual:</label>
+                        <div style="background:#1a1d27;border:1px solid #2e3347;border-radius:8px;
+                            padding:.5rem .75rem;margin-top:.3rem;color:#e8b84b;font-weight:600;">
+                            <i class="bi bi-arrow-right-circle"></i>
+                            <span id="swal-valor-actual"></span>
+                        </div>
+                    </div>
+                    <div>
+                        <label style="color:#e8b84b;font-size:.78rem;font-weight:600;">Nuevo valor</label>
+                        <input id="swal-valor" type="text" class="form-control"
+                            placeholder="Ingresa el nuevo valor..."
+                            style="margin-top:.3rem;background:#242837;color:#e8eaf0;border:1px solid #2e3347;">
+                    </div>
+                </div>`,
+            background: '#1a1d27',
+            color: '#e8eaf0',
+            showCancelButton: true,
+            confirmButtonText: 'Enviar solicitud',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#e8b84b',
+            cancelButtonColor: '#555',
+            didOpen: () => {
+                document.getElementById('swal-campo').addEventListener('change', function () {
+                    const campo = this.value;
+                    const wrap = document.getElementById('swal-valor-actual-wrap');
+                    const span = document.getElementById('swal-valor-actual');
+                    if (campo && datosVehiculo[campo] !== undefined) {
+                        span.textContent = datosVehiculo[campo];
+                        wrap.style.display = 'block';
+                    } else {
+                        wrap.style.display = 'none';
+                    }
+                });
+            },
+            preConfirm: () => {
+                const campo = document.getElementById('swal-campo').value;
+                const valor = document.getElementById('swal-valor').value.trim();
+                if (!campo) { Swal.showValidationMessage('Selecciona un campo'); return false; }
+                if (!valor) { Swal.showValidationMessage('Ingresa el nuevo valor'); return false; }
+                return { campo, valor };
+            }
+        });
+
+        if (!isConfirmed || !formValues) return;
+
+        const datos = {
+            tipo_solicitud: 'texto',
+            [formValues.campo]: {
+                antes: datosVehiculo[formValues.campo],
+                ahora: formValues.valor
+            }
+        };
+        await crearSolicitudModificacion(placa, datos);
+    }
+
+    // ── PASO 2B: Unidad asignada ──────────────────────────────────────────────
+    else if (tipoSolicitud === 'unidad') {
+        // Cargar unidades disponibles
+        let unidades = [];
+        try {
+            const r = await fetch(`${BASE}/API/unidades/lista`);
+            const d = await r.json();
+            unidades = d.datos || [];
+        } catch { }
+
+        const opcionesUnidades = unidades.map(u =>
+            `<option value="${u.id_unidad}" data-nombre="${u.unidad_destacamento}">
+                ${u.unidad_destacamento}
+            </option>`
+        ).join('');
+
+        const unidadActual = vehiculo.unidad_nombre || 'Sin asignar';
+
+        const { value: formValues, isConfirmed } = await Swal.fire({
+            title: 'Cambiar unidad asignada',
+            html: `
+                <div style="text-align:left;font-size:.85rem;">
+                    <div style="margin-bottom:.75rem;">
+                        <label style="color:#7c8398;font-size:.75rem;">Unidad actual:</label>
+                        <div style="background:#1a1d27;border:1px solid #2e3347;border-radius:8px;
+                            padding:.5rem .75rem;margin-top:.3rem;color:#e8b84b;font-weight:600;">
+                            <i class="bi bi-geo-alt-fill"></i> ${unidadActual}
+                        </div>
+                    </div>
+                    <div>
+                        <label style="color:#e8b84b;font-size:.78rem;font-weight:600;">Nueva unidad</label>
+                        <select id="swal-unidad" class="form-select"
+                            style="margin-top:.3rem;background:#242837;color:#e8eaf0;border:1px solid #2e3347;">
+                            <option value="">Seleccione unidad...</option>
+                            ${opcionesUnidades}
+                        </select>
+                    </div>
+                </div>`,
+            background: '#1a1d27',
+            color: '#e8eaf0',
+            showCancelButton: true,
+            confirmButtonText: 'Enviar solicitud',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#e8b84b',
+            cancelButtonColor: '#555',
+            preConfirm: () => {
+                const sel = document.getElementById('swal-unidad');
+                const id = sel.value;
+                const nombre = sel.options[sel.selectedIndex]?.dataset.nombre || '';
+                if (!id) { Swal.showValidationMessage('Selecciona una unidad'); return false; }
+                return { id, nombre };
+            }
+        });
+
+        if (!isConfirmed || !formValues) return;
+
+        const datos = {
+            tipo_solicitud: 'unidad',
+            id_unidad: {
+                antes: vehiculo.id_unidad || '—',
+                ahora: formValues.id
+            },
+            nombre_unidad: {
+                antes: unidadActual,
+                ahora: formValues.nombre
+            }
+        };
+        await crearSolicitudModificacion(placa, datos);
+    }
+
+    // ── PASO 2C: Archivos ─────────────────────────────────────────────────────
+    else if (tipoSolicitud === 'archivo') {
+        const { value: formValues, isConfirmed } = await Swal.fire({
+            title: 'Solicitar cambio de archivo',
+            html: `
+                <div style="text-align:left;font-size:.85rem;">
+                    <p style="color:#7c8398;margin-bottom:1rem;">
+                        Indica qué archivo necesita ser actualizado y describe el motivo.
+                    </p>
+                    <div style="margin-bottom:.75rem;">
+                        <label style="color:#e8b84b;font-size:.78rem;font-weight:600;">Archivo a cambiar</label>
+                        <select id="swal-archivo" class="form-select"
+                            style="margin-top:.3rem;background:#242837;color:#e8eaf0;border:1px solid #2e3347;">
+                            <option value="">Seleccione...</option>
+                            <option value="foto_frente">Foto frontal</option>
+                            <option value="foto_lateral">Foto lateral</option>
+                            <option value="foto_trasera">Foto trasera</option>
+                            <option value="tarjeta_pdf">Tarjeta de circulación (PDF)</option>
+                            <option value="cert_inventario">Certificación de inventario</option>
+                            <option value="cert_sicoin">Certificación SICOIN</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="color:#e8b84b;font-size:.78rem;font-weight:600;">Motivo del cambio</label>
+                        <textarea id="swal-motivo" class="form-control" rows="3"
+                            placeholder="Describe por qué necesita actualizarse este archivo..."
+                            style="margin-top:.3rem;background:#242837;color:#e8eaf0;
+                            border:1px solid #2e3347;border-radius:8px;resize:none;"></textarea>
+                    </div>
+                </div>`,
+            background: '#1a1d27',
+            color: '#e8eaf0',
+            showCancelButton: true,
+            confirmButtonText: 'Enviar solicitud',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#e8b84b',
+            cancelButtonColor: '#555',
+            preConfirm: () => {
+                const archivo = document.getElementById('swal-archivo').value;
+                const motivo = document.getElementById('swal-motivo').value.trim();
+                if (!archivo) { Swal.showValidationMessage('Selecciona un archivo'); return false; }
+                if (!motivo) { Swal.showValidationMessage('Describe el motivo'); return false; }
+                return { archivo, motivo };
+            }
+        });
+
+        if (!isConfirmed || !formValues) return;
+
+        const datos = {
+            tipo_solicitud: 'archivo',
+            campo: formValues.archivo,
+            descripcion: {
+                antes: 'Archivo actual',
+                ahora: formValues.motivo
+            }
+        };
+        await crearSolicitudModificacion(placa, datos);
+    }
+};
 // ── INIT ──────────────────────────────────────────────────────────────────────
 cargarUnidades();
 buscar();

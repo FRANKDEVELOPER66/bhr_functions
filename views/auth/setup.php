@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VEHICULOS BHR — Crear contraseña</title>
     <link rel="shortcut icon" href="<?= asset('images/BHR.png') ?>" type="image/x-icon">
+     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="<?= asset('build/styles.css') ?>">
     <style>
         * {
@@ -343,6 +344,43 @@
                 return;
             }
 
+            // ── Confirmación de responsabilidad ───────────────────────────────────────
+            const conf = await Swal.fire({
+                icon: 'warning',
+                title: '⚠️ Advertencia',
+                html: `
+            <div style="text-align:left;font-size:.88rem;line-height:1.6;">
+                <p style="color:#e8eaf0;margin-bottom:1rem;">
+                    Estás a punto de crear tu contraseña de acceso al sistema 
+                    <strong style="color:#e8b84b;">VEHÍCULOS BHR</strong>.
+                </p>
+                <div style="background:rgba(224,82,82,.1);border:1px solid rgba(224,82,82,.3);
+                    border-radius:8px;padding:1rem;margin-bottom:1rem;">
+                    <p style="color:#e05252;font-weight:700;margin-bottom:.5rem;">
+                        <i class="bi bi-shield-exclamation"></i> IMPORTANTE
+                    </p>
+                    <ul style="color:#c8cfe0;margin:0;padding-left:1.2rem;">
+                        <li>Esta contraseña es <strong>personal e intransferible</strong>.</li>
+                        <li>Recuérdala bien — el sistema <strong>no permite recuperación</strong> Sin Autorización de la Comandancia de esta Brigada Especial.</li>
+                        <li>Compartir tu acceso constituye una <strong>FALTA GRAVE</strong> sujeta al Reglamento de Sanciones Disciplinarias Vigente.</li>
+                    </ul>
+                </div>
+                <p style="color:#7c8398;font-size:.80rem;">
+                    Al confirmar, aceptas la responsabilidad total sobre el uso de este acceso.
+                </p>
+            </div>`,
+                showCancelButton: true,
+                confirmButtonText: '<i class="bi bi-check-circle-fill"></i> Entendido, crear contraseña',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#e8b84b',
+                cancelButtonColor: '#555',
+                background: '#1a1d27',
+                color: '#e8eaf0',
+                width: '520px'
+            });
+
+            if (!conf.isConfirmed) return;
+
             const btn = document.getElementById('btnGuardar');
             btn.disabled = true;
             btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando...';
@@ -371,6 +409,7 @@
                 btn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Crear contraseña';
             }
         });
+        
     </script>
 </body>
 

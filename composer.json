@@ -20,6 +20,7 @@
         "vlucas/phpdotenv": "^5.5",
         "phpseclib/phpseclib": "~3.0",
         "setasign/fpdi": "^2.6",
-        "setasign/fpdf": "^1.8"
+        "setasign/fpdf": "^1.8",
+        "resend/resend-php": "^0.1"
     }
 }
