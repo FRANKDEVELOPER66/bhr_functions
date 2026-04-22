@@ -578,74 +578,75 @@
 <body style="background:#0f1117;min-height:100vh;color:#e8eaf0;">
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarToggler">
-                <span class="navbar-toggler-icon"></span>
-            </button>
             <a class="navbar-brand" href="<?= $_ENV['APP_NAME'] ? '/' . $_ENV['APP_NAME'] : '' ?>/">
-                <img src="<?= asset('images/BHR.png') ?>" width="55px" alt="BHR">
+                <img src="<?= asset('images/BHR.png') ?>" width="45px" alt="BHR">
                 INICIO
             </a>
+
+            <!-- Campanita visible en móvil -->
+            <?php if (isset($_SESSION['auth_user'])): ?>
+                <button id="btnNotificaciones"
+                    style="position:relative;background:transparent;border:1px solid #2e3347;
+            border-radius:10px;color:#e8eaf0;padding:.4rem .75rem;cursor:pointer;
+            transition:all .25s;display:flex;align-items:center;gap:.4rem;"
+                    title="Notificaciones">
+                    <i class="bi bi-bell-fill" id="iconoCampana" style="font-size:1rem;transition:all .3s;"></i>
+                    <span id="textoNotif" style="font-size:.75rem;font-weight:600;display:none;"></span>
+                    <span id="badgeNotificaciones"
+                        style="display:none;position:absolute;top:-8px;right:-8px;
+                background:#e05252;color:#fff;border-radius:50%;
+                width:20px;height:20px;font-size:.65rem;font-weight:700;
+                align-items:center;justify-content:center;
+                box-shadow:0 0 8px rgba(224,82,82,.6);
+                animation:pulseRed 1.5s ease-in-out infinite;">0</span>
+                </button>
+            <?php endif; ?>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarToggler"
+                aria-controls="navbarToggler" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
             <div class="collapse navbar-collapse" id="navbarToggler">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0" style="margin:0;">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
                     <!-- Control de Vehículos -->
-                    <div class="nav-item dropdown">
+                    <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
                             <i class="bi bi-car-front"></i> Control de Vehículos
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-dark" style="margin:0;">
+                        <ul class="dropdown-menu dropdown-menu-dark">
                             <li>
-                                <a class="dropdown-item nav-link text-white"
-                                    href="<?= $_ENV['APP_NAME'] ? '/' . $_ENV['APP_NAME'] : '' ?>/vehiculos">
+                                <a class="dropdown-item" href="<?= $_ENV['APP_NAME'] ? '/' . $_ENV['APP_NAME'] : '' ?>/vehiculos">
                                     <i class="bi bi-car-front-fill"></i> Vehículos
                                 </a>
                             </li>
                         </ul>
-                    </div>
+                    </li>
 
                     <!-- Panel Admin — solo SUPERUSUARIO -->
                     <?php if (($_SESSION['auth_rol'] ?? '') === 'SUPERUSUARIO'): ?>
-                        <div class="nav-item dropdown">
+                        <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
                                 <i class="bi bi-shield-lock-fill" style="color:#e8b84b;"></i> Administración
                             </a>
-                            <ul class="dropdown-menu dropdown-menu-dark" style="margin:0;">
+                            <ul class="dropdown-menu dropdown-menu-dark">
                                 <li>
-                                    <a class="dropdown-item nav-link text-white"
-                                        href="<?= $_ENV['APP_NAME'] ? '/' . $_ENV['APP_NAME'] : '' ?>/usuarios">
+                                    <a class="dropdown-item" href="<?= $_ENV['APP_NAME'] ? '/' . $_ENV['APP_NAME'] : '' ?>/usuarios">
                                         <i class="bi bi-people-fill"></i> Gestión de Usuarios
                                     </a>
                                 </li>
                             </ul>
-                        </div>
+                        </li>
                     <?php endif; ?>
 
                 </ul>
 
-                <!-- Campanita -->
-                <?php if (isset($_SESSION['auth_user'])): ?>
-                    <button id="btnNotificaciones"
-                        style="position:relative;background:transparent;border:1px solid #2e3347;
-                    border-radius:10px;color:#e8eaf0;padding:.5rem .9rem;cursor:pointer;
-                    margin-right:.75rem;transition:all .25s;display:flex;align-items:center;gap:.5rem;"
-                        title="Notificaciones">
-                        <i class="bi bi-bell-fill" id="iconoCampana" style="font-size:1.1rem;transition:all .3s;"></i>
-                        <span id="textoNotif" style="font-size:.78rem;font-weight:600;display:none;"></span>
-                        <span id="badgeNotificaciones"
-                            style="display:none;position:absolute;top:-8px;right:-8px;
-                        background:#e05252;color:#fff;border-radius:50%;
-                        width:20px;height:20px;font-size:.65rem;font-weight:700;
-                        align-items:center;justify-content:center;
-                        box-shadow:0 0 8px rgba(224,82,82,.6);
-                        animation:pulseRed 1.5s ease-in-out infinite;">0</span>
-                    </button>
-                <?php endif; ?>
-
-                <div class="d-grid mb-lg-0 mb-2">
-                    <a href="<?= $_ENV['APP_NAME'] ? '/' . $_ENV['APP_NAME'] : '' ?>/logout" class="btn btn-danger">
-                        <i class="bi bi-box-arrow-right"></i> Salir
-                    </a>
-                </div>
+                <!-- Botón Salir -->
+                <a href="<?= $_ENV['APP_NAME'] ? '/' . $_ENV['APP_NAME'] : '' ?>/logout"
+                    class="btn btn-danger mb-2 mb-lg-0">
+                    <i class="bi bi-box-arrow-right"></i> Salir
+                </a>
             </div>
         </div>
     </nav>
