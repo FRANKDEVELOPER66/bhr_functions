@@ -47,17 +47,16 @@ class AuthController
             echo json_encode([
                 'codigo'  => 2,
                 'mensaje' => 'primer_ingreso',
-                'nombre' => mb_convert_encoding($usuario->grado . ' ' . $usuario->nombre_completo, 'UTF-8', 'UTF-8')
-            ]);
+                'nombre'  => $usuario->grado . ' ' . $usuario->nombre_completo
+            ], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
-        // Ya tiene contraseña — continuar con login normal
         echo json_encode([
             'codigo'  => 1,
             'mensaje' => 'ok',
-            'nombre' => mb_convert_encoding($usuario->grado . ' ' . $usuario->nombre_completo, 'UTF-8', 'UTF-8')
-        ]);
+            'nombre'  => $usuario->grado . ' ' . $usuario->nombre_completo
+        ], JSON_UNESCAPED_UNICODE);
     }
 
     // ── API: registrar correo y enviar token ──────────────────────────────────
@@ -220,17 +219,17 @@ class AuthController
         // Crear sesión
         $_SESSION['auth_user']   = $usuario->catalogo;
         $_SESSION['auth_rol']    = $usuario->rol;
-        $_SESSION['auth_plaza']  = mb_convert_encoding($usuario->plaza, 'UTF-8', 'UTF-8');
-        $_SESSION['auth_nombre'] = mb_convert_encoding($usuario->nombre_completo, 'UTF-8', 'UTF-8');
-        $_SESSION['auth_grado']  = mb_convert_encoding($usuario->grado, 'UTF-8', 'UTF-8');
-        $_SESSION['auth_arma']   = mb_convert_encoding($usuario->arma_servicio, 'UTF-8', 'UTF-8');
+        $_SESSION['auth_plaza']  = $usuario->plaza;
+        $_SESSION['auth_nombre'] = $usuario->nombre_completo;
+        $_SESSION['auth_grado']  = $usuario->grado;
+        $_SESSION['auth_arma']   = $usuario->arma_servicio;
         $_SESSION[$usuario->rol] = true;
 
         echo json_encode([
             'codigo'  => 1,
             'mensaje' => $usuario->saludo(),
             'rol'     => $usuario->rol
-        ]);
+        ], JSON_UNESCAPED_UNICODE);
     }
 
     // ── API: logout ───────────────────────────────────────────────────────────
