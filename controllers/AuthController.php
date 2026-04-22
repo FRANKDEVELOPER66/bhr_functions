@@ -246,7 +246,7 @@ class AuthController
         try {
             $apiKey = $_ENV['RESEND_API_KEY'];
             $data = json_encode([
-                'from'    => 'VEHICULOS BHR <onboarding@resend.dev>',
+                'from'    => 'VEHICULOS BHR <noreply@vehiculosbhr.com>',
                 'to'      => [$to],
                 'subject' => $subject,
                 'html'    => $html,
