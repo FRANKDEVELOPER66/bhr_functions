@@ -280,4 +280,9 @@ class AuthController
         header('Location: ' . $base . '/');
         exit;
     }
+
+    public static function enviarEmailPublico(string $to, string $subject, string $html): bool
+    {
+        return self::enviarEmail($to, $subject, $html);
+    }
 }

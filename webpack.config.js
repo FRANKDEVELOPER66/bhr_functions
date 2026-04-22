@@ -3,10 +3,11 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 module.exports = {
   mode: 'development',
   entry: {
-    'js/app' : './src/js/app.js',
-    'js/inicio' : './src/js/inicio.js',
-    'js/vehiculos/index' : './src/js/vehiculos/index.js',
-    'js/solicitudes' : './src/js/solicitudes.js',
+    'js/app': './src/js/app.js',
+    'js/inicio': './src/js/inicio.js',
+    'js/vehiculos/index': './src/js/vehiculos/index.js',
+    'js/solicitudes': './src/js/solicitudes.js',
+    'js/usuarios/index': './src/js/usuarios/index.js',
 
   },
   output: {
@@ -15,7 +16,7 @@ module.exports = {
   },
   plugins: [
     new MiniCssExtractPlugin({
-        filename: 'styles.css'
+      filename: 'styles.css'
     })
   ],
   module: {
@@ -23,11 +24,11 @@ module.exports = {
       {
         test: /\.(c|sc|sa)ss$/,
         use: [
-            {
-                loader: MiniCssExtractPlugin.loader
-            },
-            'css-loader',
-            'sass-loader'
+          {
+            loader: MiniCssExtractPlugin.loader
+          },
+          'css-loader',
+          'sass-loader'
         ]
       },
       {

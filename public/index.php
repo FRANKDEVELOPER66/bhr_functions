@@ -12,6 +12,7 @@ use Controllers\AccidentesController;
 use Controllers\AuthController;
 use Controllers\ChequeoController;
 use Controllers\SolicitudesController;
+use Controllers\UsuariosController;
 
 $router = new Router();
 $router->setBaseURL($_ENV['APP_NAME'] ? '/' . $_ENV['APP_NAME'] : '');
@@ -80,6 +81,14 @@ $router->post('/API/solicitudes/resolver',           [SolicitudesController::cla
 $router->get('/API/solicitudes/contar',              [SolicitudesController::class, 'contarAPI']);
 $router->get('/API/solicitudes/mis-notificaciones',  [SolicitudesController::class, 'misNotificacionesAPI']);
 $router->post('/API/solicitudes/marcar-leidas',      [SolicitudesController::class, 'marcarLeidasRevisorAPI']);
+
+// ── USUARIOS (SUPERUSUARIO) ───────────────────────────────────────────────────
+$router->get('/usuarios',                    [UsuariosController::class, 'index']);
+$router->get('/API/usuarios/listar',         [UsuariosController::class, 'listarAPI']);
+$router->post('/API/usuarios/crear',         [UsuariosController::class, 'crearAPI']);
+$router->post('/API/usuarios/actualizar',    [UsuariosController::class, 'actualizarAPI']);
+$router->post('/API/usuarios/toggle-activo', [UsuariosController::class, 'toggleActivoAPI']);
+$router->post('/API/usuarios/reset-password',[UsuariosController::class, 'resetPasswordAPI']);
 
 // ── EXPEDIENTE PDF ───────────────────────────────────────────────────────────
 $router->get('/vehiculos/expediente', [ExpedienteController::class, 'generarPDF']);
