@@ -20,6 +20,8 @@ try {
 
     $db = new PDO("mysql:host=$host;port=$port;dbname=$database;charset=utf8mb4", $user, $pass);
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $db->exec("SET NAMES utf8mb4");
+    $db->exec("SET CHARACTER SET utf8mb4");
 } catch (PDOException $e) {
     header('Content-Type: application/json');
     echo json_encode([

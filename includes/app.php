@@ -1,4 +1,7 @@
-<?php session_start();
+<?php
+header('Content-Type: text/html; charset=UTF-8');
+mb_internal_encoding('UTF-8');
+session_start();
 
 use Dotenv\Dotenv;
 use Model\ActiveRecord;
