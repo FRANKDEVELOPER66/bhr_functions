@@ -27,11 +27,17 @@ $router->post('/API/vehiculos/modificar', [VehiculosController::class, 'modifica
 $router->post('/API/vehiculos/eliminar',  [VehiculosController::class, 'eliminarAPI']);
 $router->get('/API/vehiculos/foto',       [VehiculosController::class, 'servirFoto']);
 
-// ── FICHA — SERVICIOS ────────────────────────────────────────────────────────
-$router->get('/API/vehiculos/ficha',               [FichaController::class, 'fichaAPI']);
-$router->get('/API/vehiculos/tipos-servicio',      [FichaController::class, 'tiposServicioAPI']);
-$router->post('/API/vehiculos/servicio/guardar',   [FichaController::class, 'guardarServicioAPI']);
-$router->post('/API/vehiculos/servicio/eliminar',  [FichaController::class, 'eliminarServicioAPI']);
+// ── FICHA ────────────────────────────────────────────────────────────────────
+$router->get('/API/vehiculos/ficha',                    [FichaController::class, 'fichaAPI']);
+$router->get('/API/vehiculos/tipos-servicio',           [FichaController::class, 'tiposServicioAPI']);
+
+// ── ÓRDENES DE SERVICIO ───────────────────────────────────────────────────────
+$router->post('/API/vehiculos/orden/crear',             [FichaController::class, 'crearOrdenAPI']);
+$router->post('/API/vehiculos/orden/agregar-item',      [FichaController::class, 'agregarItemAPI']);
+$router->post('/API/vehiculos/orden/eliminar-item',     [FichaController::class, 'eliminarItemAPI']);
+$router->post('/API/vehiculos/orden/completar',         [FichaController::class, 'completarOrdenAPI']);
+$router->post('/API/vehiculos/orden/eliminar',          [FichaController::class, 'eliminarOrdenAPI']);
+$router->get('/API/vehiculos/orden/obtener',            [FichaController::class, 'obtenerOrdenAPI']);
 
 // ── FICHA — REPARACIONES ─────────────────────────────────────────────────────
 $router->get('/API/vehiculos/tipos-reparacion',        [FichaController::class, 'tiposReparacionAPI']);
@@ -88,7 +94,7 @@ $router->get('/API/usuarios/listar',         [UsuariosController::class, 'listar
 $router->post('/API/usuarios/crear',         [UsuariosController::class, 'crearAPI']);
 $router->post('/API/usuarios/actualizar',    [UsuariosController::class, 'actualizarAPI']);
 $router->post('/API/usuarios/toggle-activo', [UsuariosController::class, 'toggleActivoAPI']);
-$router->post('/API/usuarios/reset-password',[UsuariosController::class, 'resetPasswordAPI']);
+$router->post('/API/usuarios/reset-password', [UsuariosController::class, 'resetPasswordAPI']);
 
 // ── EXPEDIENTE PDF ───────────────────────────────────────────────────────────
 $router->get('/vehiculos/expediente', [ExpedienteController::class, 'generarPDF']);

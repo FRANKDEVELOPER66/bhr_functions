@@ -21,6 +21,8 @@ class ExpedienteController
             return;
         }
 
+        ini_set('memory_limit', '256M');
+
         try {
             $vehiculo     = Vehiculos::traerConDetalle($placa);
             $servicios    = Servicios::traerPorPlaca($placa);
@@ -37,8 +39,12 @@ class ExpedienteController
                 $val = (string)($val ?? '');
             });
 
-            $fotoBase64 = !empty($vehiculo['foto_frente'])
+            $fotoBase64  = !empty($vehiculo['foto_frente'])
                 ? self::obtenerFotoBase64($vehiculo['foto_frente']) : '';
+            $fotoLateral = !empty($vehiculo['foto_lateral'])
+                ? self::obtenerFotoBase64($vehiculo['foto_lateral']) : '';
+            $fotoTrasera = !empty($vehiculo['foto_trasera'])
+                ? self::obtenerFotoBase64($vehiculo['foto_trasera']) : '';
 
             $cambiosLlantas = array_values(array_filter(
                 $servicios,
@@ -69,7 +75,10 @@ class ExpedienteController
                 'margin_footer'     => 8,
                 'default_font_size' => 10,
                 'default_font'      => 'dejavusans',
+                'img_dpi'           => 96,
+                'tempDir'           => sys_get_temp_dir(),
             ]);
+
             $mpdf->SetTitle("Expediente Vehículo {$placa}");
             $mpdf->SetAuthor('Brigada Humanitaria y de Rescate – Ejército de Guatemala');
             $mpdf->WriteHTML(self::estilosGlobales(), \Mpdf\HTMLParserMode::HEADER_CSS);
@@ -81,7 +90,7 @@ class ExpedienteController
             $mpdf->AddPage();
             $mpdf->WriteHTML(self::separador('FOTOGRAFÍA DEL VEHÍCULO'));
             $mpdf->AddPage();
-            $mpdf->WriteHTML(self::paginaFoto($vehiculo, $fotoBase64));
+            $mpdf->WriteHTML(self::paginaFoto($vehiculo, $fotoBase64, $fotoLateral, $fotoTrasera));
             $mpdf->AddPage();
             $mpdf->WriteHTML(self::separador('INFORMACIÓN DEL VEHÍCULO'));
             $mpdf->AddPage();
@@ -261,21 +270,9 @@ class ExpedienteController
 
     private static function obtenerFotoBase64(string $nombreArchivo): string
     {
-        try {
-            $url       = 'http://localhost/bhr_functions/API/vehiculos/foto?archivo=/' . urlencode($nombreArchivo);
-            $contenido = @file_get_contents($url);
-            if (!$contenido) return '';
-            $ext  = strtolower(pathinfo($nombreArchivo, PATHINFO_EXTENSION));
-            $mime = match ($ext) {
-                'jpg', 'jpeg' => 'image/jpeg',
-                'png' => 'image/png',
-                'webp' => 'image/webp',
-                default => 'image/jpeg'
-            };
-            return "data:{$mime};base64," . base64_encode($contenido);
-        } catch (\Throwable $e) {
-            return '';
-        }
+        if (empty($nombreArchivo)) return '';
+        $nombreLimpio = ltrim($nombreArchivo, '/');
+        return 'http://localhost/bhr_functions/API/vehiculos/foto?archivo=/' . $nombreLimpio;
     }
 
     private static function logoBase64(): string
@@ -461,9 +458,10 @@ class ExpedienteController
 
     private static function paginaCaratula(array $v, string $foto): string
     {
-        $fotoTag = $foto
+        $fotoTag = !empty($foto)
             ? '<img src="' . $foto . '" style="max-width:440px;max-height:340px;border:1.5pt solid #e8c89a;display:block;margin:0 auto;border-radius:3pt;">'
             : '<div style="border:1.5pt dashed #e8c89a;padding:60px 40px;color:#ccc;font-size:10pt;text-align:center;background:#fffaf5;border-radius:4pt;">Sin fotografía registrada</div>';
+
 
         $estadoBadge = match ($v['estado'] ?? '') {
             'Alta'   => '<span class="badge-alta"   style="font-size:10pt;padding:5px 18px;">● OPERATIVO – ALTA</span>',
@@ -548,7 +546,7 @@ class ExpedienteController
         $secciones = [
             ['01', 'CARÁTULA'],
             ['02', 'ÍNDICE'],
-            ['03', 'FOTOGRAFÍA DEL VEHÍCULO'],
+            ['03', 'FOTOGRAFÍAS DEL VEHÍCULO'],
             ['04', 'INFORMACIÓN DEL VEHÍCULO'],
             ['05', 'COPIA DE TARJETA DE CIRCULACIÓN'],
             ['06', 'CERTIFICACIÓN INVENTARIO'],
@@ -580,26 +578,53 @@ class ExpedienteController
         ' . self::pie($v['placa'], '02 – ÍNDICE');
     }
 
-    private static function paginaFoto(array $v, string $foto): string
+    private static function paginaFoto(array $v, string $foto, string $fotoLateral = '', string $fotoTrasera = ''): string
     {
-        $contenido = $foto
-            ? '<div style="text-align:center;margin-top:16px;">
-                <img src="' . $foto . '" style="max-width:520px;max-height:500px;
-                    border:2pt solid #e8c89a;border-radius:4pt;">
-                <div style="font-size:8pt;color:#C75B00;margin-top:10px;
-                    text-transform:uppercase;letter-spacing:1.5pt;font-weight:bold;">
-                    Vista Frontal &nbsp;·&nbsp; ' . htmlspecialchars($v['placa']) . '
+        $fotoTag = !empty($foto)
+            ? '<img src="' . $foto . '" style="max-width:520px;max-height:380px;border:2pt solid #e8c89a;border-radius:4pt;display:block;margin:0 auto;">'
+            : '<div class="caja-vacia" style="padding:40px;">Sin fotografía frontal registrada</div>';
+
+        $lateralTag = !empty($fotoLateral)
+            ? '<img src="' . $fotoLateral . '" style="max-width:100%;max-height:200px;border:1.5pt solid #e8c89a;border-radius:4pt;display:block;margin:0 auto;">'
+            : '<div class="caja-vacia" style="padding:20px;font-size:8pt;">Sin foto lateral registrada</div>';
+
+        $traseraTag = !empty($fotoTrasera)
+            ? '<img src="' . $fotoTrasera . '" style="max-width:100%;max-height:200px;border:1.5pt solid #e8c89a;border-radius:4pt;display:block;margin:0 auto;">'
+            : '<div class="caja-vacia" style="padding:20px;font-size:8pt;">Sin foto trasera registrada</div>';
+
+        $fotosExtra = '
+    <table width="100%" style="border-collapse:collapse;margin-top:14px;">
+        <tr>
+            <td style="width:50%;text-align:center;padding:8px 6px;">
+                ' . $lateralTag . '
+                <div style="font-size:7.5pt;color:#C75B00;margin-top:6px;
+                    text-transform:uppercase;letter-spacing:1pt;font-weight:bold;">
+                    Vista Lateral
                 </div>
-               </div>'
-            : '<div class="caja-vacia" style="margin-top:20px;padding:60px;">Sin fotografía registrada en el sistema</div>';
+            </td>
+            <td style="width:50%;text-align:center;padding:8px 6px;">
+                ' . $traseraTag . '
+                <div style="font-size:7.5pt;color:#C75B00;margin-top:6px;
+                    text-transform:uppercase;letter-spacing:1pt;font-weight:bold;">
+                    Vista Trasera
+                </div>
+            </td>
+        </tr>
+    </table>';
 
         return '
-        ' . self::encabezado('FOTOGRAFÍA DEL VEHÍCULO') . '
-        ' . self::fichaIdentificacion($v) . '
-        ' . $contenido . '
-        ' . self::pie($v['placa'], '03 – FOTOGRAFÍA');
+    ' . self::encabezado('FOTOGRAFÍA DEL VEHÍCULO') . '
+    ' . self::fichaIdentificacion($v) . '
+    <div style="text-align:center;margin-top:14px;">
+        ' . $fotoTag . '
+        <div style="font-size:7.5pt;color:#C75B00;margin-top:8px;
+            text-transform:uppercase;letter-spacing:1.5pt;font-weight:bold;">
+            Vista Frontal &nbsp;·&nbsp; ' . htmlspecialchars($v['placa']) . '
+        </div>
+    </div>
+    ' . $fotosExtra . '
+    ' . self::pie($v['placa'], '03 – FOTOGRAFÍA');
     }
-
     private static function paginaInfoVehiculo(array $v): string
     {
         $unidad = $v['unidad_nombre'] ?? '—';

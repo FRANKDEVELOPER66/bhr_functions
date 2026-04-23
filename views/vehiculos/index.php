@@ -739,7 +739,11 @@
     }
 
     .swal-over-modal {
-        z-index: 9999 !important;
+        z-index: 99999 !important;
+    }
+
+    .swal2-container {
+        z-index: 99999 !important;
     }
 
     .card-acciones {
@@ -1073,6 +1077,261 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
+    }
+
+    /* ── LIGHTBOX ── */
+    #bhr-lightbox {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: rgba(0, 0, 0, .92);
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    #bhr-lightbox.visible {
+        display: flex;
+    }
+
+    #bhr-lightbox #lbImagen {
+        max-width: 90vw;
+        max-height: 85vh;
+        object-fit: contain;
+        border-radius: 10px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
+    }
+
+    .lightbox-close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: rgba(255, 255, 255, .1);
+        border: 1px solid rgba(255, 255, 255, .15);
+        color: #fff;
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all .2s;
+        z-index: 1;
+    }
+
+    .lightbox-close:hover {
+        background: rgba(224, 82, 82, .4);
+        border-color: rgba(224, 82, 82, .5);
+    }
+
+    .lightbox-nav {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(255, 255, 255, .1);
+        border: 1px solid rgba(255, 255, 255, .15);
+        color: #fff;
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all .2s;
+        z-index: 1;
+    }
+
+    .lightbox-nav:hover {
+        background: rgba(232, 184, 75, .25);
+        border-color: rgba(232, 184, 75, .4);
+    }
+
+    .lightbox-nav.prev {
+        left: 1rem;
+    }
+
+    .lightbox-nav.next {
+        right: 1rem;
+    }
+
+    .lightbox-nav.hidden {
+        display: none;
+    }
+
+    .lightbox-caption {
+        position: absolute;
+        bottom: 1.25rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, .6);
+        color: #e8eaf0;
+        padding: .4rem 1rem;
+        border-radius: 20px;
+        font-size: .78rem;
+        white-space: nowrap;
+        backdrop-filter: blur(6px);
+        pointer-events: none;
+    }
+
+    /* ── TIPO SELECTOR ── */
+    .tipos-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        /* ← 5 columnas que llenan el ancho */
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .tipo-card {
+        background: var(--dark-2);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: all .3s ease;
+        animation: fadeInCard .4s ease both;
+        position: relative;
+    }
+
+    .tipo-card:hover {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(232, 184, 75, .25),
+            0 16px 40px rgba(0, 0, 0, .5);
+        transform: translateY(-6px) scale(1.02);
+    }
+
+    .tipo-card-ilustracion {
+        width: 100%;
+        aspect-ratio: 4/3;
+        /* ← más cuadrado */
+        overflow: hidden;
+        position: relative;
+    }
+
+    .tipo-card-ilustracion img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        transition: transform .4s ease;
+        filter: brightness(.9);
+    }
+
+    .tipo-card:hover .tipo-card-ilustracion img {
+        transform: scale(1.08);
+        filter: brightness(1.1);
+    }
+
+    /* Overlay dorado al hacer hover */
+    .tipo-card::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to bottom,
+                rgba(232, 184, 75, .08) 0%,
+                transparent 50%,
+                rgba(0, 0, 0, .3) 100%);
+        opacity: 0;
+        transition: opacity .3s ease;
+        pointer-events: none;
+        border-radius: 12px;
+    }
+
+    .tipo-card:hover::after {
+        opacity: 1;
+    }
+
+    .tipo-card-body {
+        padding: .85rem 1rem 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-top: 1px solid var(--border);
+        transition: background .3s ease;
+    }
+
+    .tipo-card:hover .tipo-card-body {
+        background: rgba(232, 184, 75, .05);
+    }
+
+    .tipo-card-nombre {
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-main);
+        letter-spacing: .5px;
+        transition: color .3s ease;
+    }
+
+    .tipo-card:hover .tipo-card-nombre {
+        color: var(--accent);
+    }
+
+    .tipo-card-count {
+        background: rgba(232, 184, 75, .15);
+        color: var(--accent);
+        border: 1px solid rgba(232, 184, 75, .3);
+        border-radius: 20px;
+        padding: .2rem .65rem;
+        font-size: .75rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .tipo-card-count.sin-vehiculos {
+        background: rgba(124, 131, 152, .1);
+        color: var(--text-muted);
+        border-color: var(--border);
+    }
+
+    @media (max-width: 768px) {
+        .tipos-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: .75rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .tipos-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    #btnVolverTipos {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        border: none;
+        color: var(--dark);
+        padding: .6rem 1.25rem;
+        border-radius: 10px;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: .5px;
+        cursor: pointer;
+        transition: all .3s ease;
+        white-space: nowrap;
+    }
+
+    #btnVolverTipos:hover {
+        transform: translateX(-4px);
+        box-shadow: 0 6px 20px rgba(232, 184, 75, .4);
+    }
+
+    #btnVolverTipos i {
+        font-size: 1rem;
+        transition: transform .3s ease;
+    }
+
+    #btnVolverTipos:hover i {
+        transform: translateX(-3px);
     }
 </style>
 
@@ -1409,39 +1668,32 @@
         </div>
     </div>
 
+    <!-- PANTALLA SELECTOR DE TIPO -->
+    <div id="contenedorTipos">
+        <div class="tipos-grid" id="tiposGrid"></div>
+    </div>
+
     <!-- VISTA DE CARTAS -->
-    <div id="contenedorTabla">
+    <div id="contenedorTabla" style="display:none;">
         <div class="filtros-container">
-            <label><i class="bi bi-funnel"></i> Filtrar:</label>
-            <select id="filtroTipo" class="filtro-select">
-                <option value="">Todos Tipos</option>
-                <option value="Automóvil">Automóvil</option>
-                <option value="Pickup">Pickup</option>
-                <option value="Camión">Camión</option>
-                <option value="Motocicleta">Motocicleta</option>
-                <option value="Cuatrimoto">Cuatrimoto</option>
-                <option value="Microbús">Microbús</option>
-                <option value="Blindado">Blindado</option>
-                <option value="Camioneta">Camioneta</option>
-                <option value="Otro">Otro</option>
-            </select>
-            <select id="filtroEstado" class="filtro-select">
-                <option value="">Estados</option>
-                <option value="Alta">Alta</option>
-                <option value="Baja">Baja</option>
-                <option value="Taller">Taller</option>
-            </select>
-            <!-- Pon esto: -->
-            <select id="filtroUnidad" class="filtro-select">
+            <button id="btnVolverTipos" class="btn-limpiar-filtros" style="white-space:nowrap;">
+                <i class="bi bi-arrow-left-circle"></i> Volver
+            </button>
+            <label id="labelTipoActual" style="font-family:'Rajdhani',sans-serif;font-size:1rem;
+            font-weight:700;color:var(--accent);letter-spacing:.5px;white-space:nowrap;">
+            </label>
+            <select id="filtroUnidad" class="filtro-select" style="min-width:180px;flex:1 1 180px;">
                 <option value="">Todas las unidades</option>
-                <!-- Se llena dinámicamente -->
             </select>
-            <input type="text" id="filtroBusqueda" class="filtro-search" placeholder="Buscar por placa, marca, modelo...">
-            <button id="btnLimpiarFiltros" class="btn-limpiar-filtros"><i class="bi bi-x-circle"></i> Limpiar</button>
-            <div class="contador-resultados">Mostrando <span id="contadorVisible">0</span> vehículo(s)</div>
+            <input type="text" id="filtroBusqueda" class="filtro-search"
+                placeholder="Buscar por placa, marca, modelo...">
+            <div class="contador-resultados">
+                Mostrando <span id="contadorVisible">0</span> vehículo(s)
+            </div>
         </div>
         <div class="cards-grid" id="cardsGrid">
-            <div class="empty-state"><i class="bi bi-truck"></i>
+            <div class="empty-state">
+                <i class="bi bi-truck"></i>
                 <p>Cargando vehículos...</p>
             </div>
         </div>
@@ -1620,26 +1872,148 @@
 
                 <!-- TAB SERVICIOS (sin cambios) -->
                 <div id="tabServicios" class="ficha-tab-content" style="display:none;">
-                    <button id="btnToggleFormServicio" onclick="toggleFormServicio()" style="margin-bottom:1.25rem;background:linear-gradient(135deg,var(--accent),var(--accent-2));border:none;color:var(--dark);padding:.7rem 1.5rem;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:.5rem;">
-                        <i class="bi bi-plus-circle"></i> Registrar Nuevo Servicio
-                    </button>
-                    <div id="formNuevoServicio" style="display:none;background:var(--dark-3);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
-                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;">
-                            <div><label class="form-label"><i class="bi bi-gear"></i> Tipo *</label><select id="svcTipo" class="form-select"></select></div>
-                            <div><label class="form-label"><i class="bi bi-calendar"></i> Fecha *</label><input type="date" id="svcFecha" readonly
-                                    style="width:100%;pointer-events:none;background:var(--dark-3);
-    border:1px solid var(--border);border-radius:8px;
-    color:var(--text-muted);opacity:.7;cursor:not-allowed;
-    padding:.65rem 1rem;font-size:.95rem;"></div>
-                            <div><label class="form-label"><i class="bi bi-speedometer"></i> KM al servicio *</label><input type="number" id="svcKm" class="form-control" placeholder="0" min="0"></div>
-                            <div><label class="form-label"><i class="bi bi-person"></i> Responsable</label><input type="text" id="svcResponsable" class="form-control" placeholder="Nombre..."></div>
-                            <div style="grid-column:2/-1;"><label class="form-label"><i class="bi bi-chat-text"></i> Observaciones</label><input type="text" id="svcObs" class="form-control" placeholder="Notas adicionales..."></div>
+
+                    <!-- Alerta: orden en proceso activa -->
+                    <div id="ordenEnProcesoAlert" style="display:none;margin-bottom:1.25rem;
+        background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.3);
+        border-radius:10px;padding:1rem 1.25rem;align-items:center;gap:.75rem;">
+                        <i class="bi bi-tools" style="color:var(--accent);font-size:1.4rem;flex-shrink:0;"></i>
+                        <div style="flex:1;">
+                            <div style="color:var(--accent);font-weight:700;font-size:.9rem;">
+                                Orden de servicio en proceso
+                            </div>
+                            <div id="ordenEnProcesoTexto" style="color:var(--text-muted);font-size:.82rem;"></div>
                         </div>
-                        <button onclick="guardarServicio()" style="margin-top:1rem;background:linear-gradient(135deg,var(--accent),var(--accent-2));border:none;color:var(--dark);padding:.7rem 1.5rem;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;">
-                            <i class="bi bi-save me-1"></i> Guardar Servicio
+                        <button onclick="abrirOrdenEnProceso()"
+                            style="background:rgba(232,184,75,.2);border:1px solid rgba(232,184,75,.4);
+            color:var(--accent);border-radius:8px;padding:.45rem .9rem;cursor:pointer;
+            font-size:.82rem;font-weight:600;white-space:nowrap;flex-shrink:0;">
+                            <i class="bi bi-pencil-square me-1"></i> Continuar orden
                         </button>
                     </div>
-                    <div id="tablaServiciosWrap"></div>
+
+                    <!-- Botón abrir nueva orden -->
+                    <button id="btnNuevaOrden" onclick="toggleFormNuevaOrden()"
+                        style="margin-bottom:1.25rem;background:linear-gradient(135deg,var(--accent),var(--accent-2));
+        border:none;color:var(--dark);padding:.7rem 1.5rem;border-radius:8px;
+        font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;
+        cursor:pointer;display:flex;align-items:center;gap:.5rem;">
+                        <i class="bi bi-plus-circle"></i> Nueva Orden de Servicio
+                    </button>
+
+                    <!-- PASO 1: Formulario nueva orden -->
+                    <div id="formNuevaOrden" style="display:none;background:var(--dark-3);
+        border:1px solid rgba(232,184,75,.3);border-radius:12px;
+        padding:1.25rem;margin-bottom:1.5rem;">
+                        <div style="font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:700;
+            color:var(--accent);margin-bottom:1rem;letter-spacing:.5px;">
+                            <i class="bi bi-clipboard-plus"></i> PASO 1 — Datos de ingreso al taller
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;">
+                            <div>
+                                <label class="form-label"><i class="bi bi-calendar"></i> Fecha de ingreso *</label>
+                                <input type="date" id="ordenFecha" class="form-control">
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-speedometer"></i> KM al ingreso *</label>
+                                <input type="number" id="ordenKm" class="form-control" placeholder="0" min="0">
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-person"></i> Responsable</label>
+                                <input type="text" id="ordenResponsable" class="form-control" placeholder="Mecánico encargado...">
+                            </div>
+                            <div style="grid-column:1/-1;">
+                                <label class="form-label"><i class="bi bi-chat-text"></i> Observaciones generales</label>
+                                <input type="text" id="ordenObs" class="form-control" placeholder="Motivo del ingreso...">
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:.75rem;margin-top:1rem;">
+                            <button onclick="crearOrden()"
+                                style="background:linear-gradient(135deg,var(--accent),var(--accent-2));
+                border:none;color:var(--dark);padding:.7rem 1.5rem;border-radius:8px;
+                font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;">
+                                <i class="bi bi-door-open me-1"></i> Abrir Orden
+                            </button>
+                            <button onclick="toggleFormNuevaOrden()"
+                                style="background:transparent;border:1.5px solid var(--border);
+                color:var(--text-muted);padding:.7rem 1.25rem;border-radius:8px;
+                font-family:'Rajdhani',sans-serif;font-weight:700;cursor:pointer;">
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- PASO 2: Panel de orden abierta (agregar items) -->
+                    <div id="panelOrdenAbierta" style="display:none;background:var(--dark-3);
+        border:1px solid rgba(232,184,75,.4);border-radius:12px;
+        padding:1.25rem;margin-bottom:1.5rem;">
+
+                        <!-- Header de la orden -->
+                        <div style="display:flex;align-items:center;justify-content:space-between;
+            margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem;">
+                            <div>
+                                <div style="font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:700;
+                    color:var(--accent);letter-spacing:.5px;">
+                                    <i class="bi bi-tools"></i> PASO 2 — Registrar servicios realizados
+                                </div>
+                                <div id="ordenHeaderInfo" style="font-size:.78rem;color:var(--text-muted);margin-top:.25rem;"></div>
+                            </div>
+                            <div style="display:flex;gap:.5rem;">
+                                <button onclick="completarOrden()"
+                                    id="btnCompletarOrden"
+                                    style="background:linear-gradient(135deg,var(--success),#2e7d52);
+                    border:none;color:#fff;padding:.6rem 1.25rem;border-radius:8px;
+                    font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.9rem;
+                    cursor:pointer;display:flex;align-items:center;gap:.4rem;">
+                                    <i class="bi bi-check-circle-fill"></i> Completar Orden
+                                </button>
+                                <button onclick="confirmarEliminarOrden()"
+                                    style="background:transparent;border:1px solid rgba(224,82,82,.3);
+                    color:var(--danger);padding:.6rem .9rem;border-radius:8px;cursor:pointer;
+                    font-size:.85rem;">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Items ya agregados -->
+                        <div id="itemsOrdenWrap" style="margin-bottom:1.25rem;"></div>
+
+                        <!-- Formulario agregar item -->
+                        <div style="background:var(--dark-2);border:1px solid var(--border);
+            border-radius:10px;padding:1rem;">
+                            <div style="font-size:.78rem;color:var(--accent);font-weight:600;
+                text-transform:uppercase;letter-spacing:.5px;margin-bottom:.75rem;">
+                                <i class="bi bi-plus-circle"></i> Agregar servicio a la orden
+                            </div>
+                            <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:.75rem;">
+                                <div>
+                                    <label class="form-label"><i class="bi bi-gear"></i> Tipo de servicio *</label>
+                                    <select id="itemTipo" class="form-select"></select>
+                                </div>
+                                <div>
+                                    <label class="form-label"><i class="bi bi-speedometer"></i> Próximo KM</label>
+                                    <input type="number" id="itemKmProximo" class="form-control"
+                                        placeholder="Auto" min="0">
+                                </div>
+                                <div style="grid-column:1/-1;">
+                                    <label class="form-label"><i class="bi bi-chat-text"></i> Observación</label>
+                                    <input type="text" id="itemObservacion" class="form-control"
+                                        placeholder="Detalle del servicio...">
+                                </div>
+                            </div>
+                            <button onclick="agregarItem()"
+                                style="margin-top:.75rem;background:rgba(232,184,75,.15);
+                border:1px solid rgba(232,184,75,.3);color:var(--accent);
+                padding:.6rem 1.25rem;border-radius:8px;font-family:'Rajdhani',sans-serif;
+                font-weight:700;font-size:.9rem;cursor:pointer;">
+                                <i class="bi bi-plus me-1"></i> Agregar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Historial de órdenes -->
+                    <div id="tablaOrdenesWrap"></div>
                 </div>
 
                 <!-- TAB REPARACIONES (sin cambios) -->
@@ -1650,11 +2024,7 @@
                     <div id="formNuevaReparacion" style="display:none;background:var(--dark-3);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
                         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;">
                             <div><label class="form-label"><i class="bi bi-wrench"></i> Tipo *</label><select id="repTipo" class="form-select"></select></div>
-                            <div><label class="form-label"><i class="bi bi-calendar"></i> Fecha Inicio *</label><input type="date" id="repFechaInicio" readonly
-                                    style="width:100%;pointer-events:none;background:var(--dark-3);
-    border:1px solid var(--border);border-radius:8px;
-    color:var(--text-muted);opacity:.7;cursor:not-allowed;
-    padding:.65rem 1rem;font-size:.95rem;"></div>
+                            <div><label class="form-label"><i class="bi bi-calendar"></i> Fecha Inicio *</label><input type="date" id="repFechaInicio" class="form-control"></div>
                             <div><label class="form-label"><i class="bi bi-calendar-check"></i> Fecha Fin</label><input type="date" id="repFechaFin" class="form-control"></div>
                             <div style="grid-column:1/-1;"><label class="form-label"><i class="bi bi-card-text"></i> Descripción *</label><input type="text" id="repDescripcion" class="form-control" placeholder="Detalle de la reparación..."></div>
                             <div><label class="form-label"><i class="bi bi-speedometer"></i> KM al momento *</label><input type="number" id="repKm" class="form-control" placeholder="0" min="0"></div>
@@ -1978,8 +2348,10 @@
     </div>
 
 </div><!-- fin container -->
-
 <script>
     const BASE = '<?= $_ENV["APP_NAME"] ? "/" . $_ENV["APP_NAME"] : "" ?>';
+    const AUTH_NOMBRE = '<?= isset($_SESSION["auth_grado"])
+                                ? htmlspecialchars($_SESSION["auth_grado"] . " " . ($_SESSION["auth_arma"] ?? "") . " " . $_SESSION["auth_nombre"])
+                                : "" ?>';
 </script>
 <script src="build/js/vehiculos/index.js" type="module"></script>

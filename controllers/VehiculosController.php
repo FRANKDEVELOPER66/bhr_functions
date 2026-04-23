@@ -140,9 +140,12 @@ class VehiculosController
             $db->commit();
             echo json_encode(['codigo' => 1, 'mensaje' => 'Vehículo registrado correctamente']);
         } catch (\Throwable $e) {
-            $db->rollBack();
-            http_response_code(500);
-            echo json_encode(['codigo' => 0, 'mensaje' => 'Error al registrar', 'detalle' => $e->getMessage()]);
+            if (isset($db) && $db->inTransaction()) $db->rollBack();
+            http_response_code(200); // ← 200 para que el JS lea el JSON
+            echo json_encode([
+                'codigo'  => 0,
+                'mensaje' => $e->getMessage()
+            ]);
         }
     }
 

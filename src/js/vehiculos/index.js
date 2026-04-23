@@ -2,8 +2,6 @@ import { Toast, validarFormulario } from "../funciones";
 import Swal from "sweetalert2";
 import { Dropdown } from "bootstrap";
 
-
-
 const BASE = document.querySelector('[data-base]')?.dataset.base ?? '';
 const ROL = document.documentElement.dataset.rol ?? '';
 const esCIA = ['COMTE_CIA', 'SUPERUSUARIO'].includes(ROL);
@@ -21,15 +19,8 @@ const tituloFormulario = document.getElementById('tituloFormulario');
 const inputPlaca = document.getElementById('placa');
 const inputPlacaOriginal = document.getElementById('placa_original');
 const cardsGrid = document.getElementById('cardsGrid');
-
-// Filtros
-const filtroTipo = document.getElementById('filtroTipo');
-const filtroEstado = document.getElementById('filtroEstado');
 const filtroBusqueda = document.getElementById('filtroBusqueda');
-const btnLimpiarFiltros = document.getElementById('btnLimpiarFiltros');
 const contadorVisible = document.getElementById('contadorVisible');
-
-// Archivos principales
 const inputFoto = document.getElementById('foto_frente');
 const areaFoto = document.getElementById('areaFoto');
 const fotoPreview = document.getElementById('fotoPreview');
@@ -38,18 +29,125 @@ const areaPdf = document.getElementById('areaPdf');
 const pdfNombre = document.getElementById('pdfNombre');
 const fotoActualContainer = document.getElementById('fotoActualContainer');
 const fotoActual = document.getElementById('fotoActual');
-
-// Asignación
 const selectUnidad = document.getElementById('id_unidad');
 const infoDestacamento = document.getElementById('infoDestacamento');
 const infoNombre = document.getElementById('infoNombreDestacamento');
 const infoUbicacion = document.getElementById('infoUbicacion');
 
-// Estado global
+// ── ESTADO GLOBAL ─────────────────────────────────────────────────────────────
 let todosLosVehiculos = [];
 let modoEdicion = false;
+let tipoSeleccionado = null;
+let ordenActualId = null;
+let tiposServicio = [];
+let tiposReparacion = [];
+// Al inicio del archivo, junto a las otras variables globales
+let _ordenIdRespaldo = null;
 
+// ── GRUPOS DE TIPOS ───────────────────────────────────────────────────────────
+const GRUPOS = [
+    { key: 'Pickup', label: 'Pickups', tipos: ['Pickup'] },
+    { key: 'Camión', label: 'Camiones', tipos: ['Camión'] },
+    { key: 'Motocicleta', label: 'Motocicletas', tipos: ['Motocicleta'] },
+    { key: 'Otros', label: 'Otros', tipos: ['Automóvil', 'Microbús', 'Blindado', 'Camioneta', 'Cuatrimoto', 'Otro'] },
+    { key: 'Todos', label: 'Todos', tipos: null },
+];
+const ACENTO = '#e8b84b';
 
+// ── SVG TIPOS ─────────────────────────────────────────────────────────────────
+const SVG_TIPOS = {
+    'Pickup': () => `<img src="${BASE}/images/tipos/pickup.png" style="width:100%;height:100%;object-fit:cover;display:block;">`,
+    'Camión': () => `<img src="${BASE}/images/tipos/camion.png" style="width:100%;height:100%;object-fit:cover;display:block;">`,
+    'Motocicleta': () => `<img src="${BASE}/images/tipos/moto.png"   style="width:100%;height:100%;object-fit:cover;display:block;">`,
+    'Otros': () => `<img src="${BASE}/images/tipos/otros.png"  style="width:100%;height:100%;object-fit:cover;display:block;">`,
+    'Todos': () => `<img src="${BASE}/images/tipos/todos.png"  style="width:100%;height:100%;object-fit:cover;display:block;">`,
+};
+
+// ── RENDER PANTALLA TIPOS ─────────────────────────────────────────────────────
+const renderTipos = (vehiculos) => {
+    const grid = document.getElementById('tiposGrid');
+    if (!grid) return;
+    grid.innerHTML = GRUPOS.map((grupo, i) => {
+        const count = grupo.tipos === null
+            ? vehiculos.length
+            : vehiculos.filter(v => grupo.tipos.includes(v.tipo)).length;
+        const svg = SVG_TIPOS[grupo.key]?.(ACENTO) ?? '';
+        return `
+        <div class="tipo-card" style="animation-delay:${i * 0.08}s"
+             onclick="seleccionarTipo('${grupo.key}')">
+            <div class="tipo-card-ilustracion"
+                 style="background:linear-gradient(145deg,#1a1d27,#0f1117);">
+                ${svg}
+            </div>
+            <div class="tipo-card-body">
+                <span class="tipo-card-nombre">${grupo.label}</span>
+                <span class="tipo-card-count ${count === 0 ? 'sin-vehiculos' : ''}">
+                    ${count === 0 ? 'Sin unidades' : count + (count === 1 ? ' unidad' : ' unidades')}
+                </span>
+            </div>
+        </div>`;
+    }).join('');
+};
+
+// ── SELECCIONAR TIPO ──────────────────────────────────────────────────────────
+const seleccionarTipo = (grupoKey) => {
+    tipoSeleccionado = grupoKey;
+    const grupo = GRUPOS.find(g => g.key === grupoKey);
+    document.getElementById('contenedorTipos').style.display = 'none';
+    document.getElementById('contenedorTabla').style.display = '';
+    const label = document.getElementById('labelTipoActual');
+    if (label && grupo) label.innerHTML = `<i class="bi bi-chevron-right"></i> ${grupo.label.toUpperCase()}`;
+    const fu = document.getElementById('filtroUnidad');
+    const fb = document.getElementById('filtroBusqueda');
+    if (fu) fu.value = '';
+    if (fb) fb.value = '';
+    mostrarLoader('Cargando vehículos...');
+    aplicarFiltros();
+    ocultarLoader();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+window.seleccionarTipo = seleccionarTipo;
+
+// ── VOLVER A TIPOS ────────────────────────────────────────────────────────────
+const volverATipos = () => {
+    tipoSeleccionado = null;
+    mostrarLoader('Volviendo...');
+    document.getElementById('contenedorTabla').style.display = 'none';
+    document.getElementById('contenedorTipos').style.display = '';
+    ocultarLoader();
+    const fu = document.getElementById('filtroUnidad');
+    const fb = document.getElementById('filtroBusqueda');
+    if (fu) fu.value = '';
+    if (fb) fb.value = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+document.getElementById('btnVolverTipos')?.addEventListener('click', volverATipos);
+
+// ── FILTROS ───────────────────────────────────────────────────────────────────
+const aplicarFiltros = () => {
+    const busq = (document.getElementById('filtroBusqueda')?.value ?? '').toLowerCase().trim();
+    const unidad = document.getElementById('filtroUnidad')?.value || '';
+    const grupo = GRUPOS.find(g => g.key === tipoSeleccionado);
+    const filtrados = todosLosVehiculos.filter(v => {
+        const matchTipo = !grupo || grupo.tipos === null || grupo.tipos.includes(v.tipo);
+        const matchUnidad = !unidad || String(v.id_unidad) === unidad;
+        const matchBusq = !busq
+            || (v.placa ?? '').toLowerCase().includes(busq)
+            || (v.marca ?? '').toLowerCase().includes(busq)
+            || (v.modelo ?? '').toLowerCase().includes(busq)
+            || (v.numero_serie ?? '').toLowerCase().includes(busq)
+            || (v.color ?? '').toLowerCase().includes(busq)
+            || (v.anio ?? '').toString().includes(busq)
+            || (v.estado ?? '').toLowerCase().includes(busq)
+            || (v.km_actuales ?? '').toString().includes(busq)
+            || (v.unidad_nombre ?? '').toLowerCase().includes(busq)
+            || (v.observaciones ?? '').toLowerCase().includes(busq);
+        return matchTipo && matchUnidad && matchBusq;
+    });
+    renderCartas(filtrados);
+};
+document.getElementById('filtroBusqueda')?.addEventListener('input', aplicarFiltros);
+document.getElementById('filtroUnidad')?.addEventListener('change', aplicarFiltros);
 
 // ── LOADER ────────────────────────────────────────────────────────────────────
 const mostrarLoader = (mensaje = 'Procesando...') => {
@@ -58,21 +156,17 @@ const mostrarLoader = (mensaje = 'Procesando...') => {
     if (msg) msg.textContent = mensaje;
     if (loader) loader.classList.add('visible');
 };
-
 const ocultarLoader = () => {
     const loader = document.getElementById('bhr-loader');
     if (loader) loader.classList.remove('visible');
 };
 
-// ── SELECT ÚNICO DE UNIDAD ────────────────────────────────────────────────────
-// ── CARGAR UNIDADES — agrega el llenado del filtro ───────────────────────────
+// ── CARGAR UNIDADES ───────────────────────────────────────────────────────────
 const cargarUnidades = async () => {
     try {
         const r = await fetch(`${BASE}/API/unidades/lista`);
         const d = await r.json();
         if (d.codigo !== 1) return;
-
-        // Select del formulario
         selectUnidad.innerHTML =
             '<option value="">— Sin asignar —</option>' +
             d.datos.map(u =>
@@ -83,8 +177,6 @@ const cargarUnidades = async () => {
                     ${u.unidad_destacamento}
                 </option>`
             ).join('');
-
-        // ← NUEVO: llenar el select del filtro
         const filtroUnidad = document.getElementById('filtroUnidad');
         if (filtroUnidad) {
             filtroUnidad.innerHTML =
@@ -93,303 +185,193 @@ const cargarUnidades = async () => {
                     `<option value="${u.id_unidad}">${u.unidad_destacamento}</option>`
                 ).join('');
         }
-
     } catch (err) {
         console.error('Error cargando unidades:', err);
     }
 };
-
 selectUnidad.addEventListener('change', () => {
     const opt = selectUnidad.options[selectUnidad.selectedIndex];
     const destacamento = opt.dataset.destacamento;
     const depto = opt.dataset.depto;
     const municipio = opt.dataset.municipio;
-
     if (!selectUnidad.value || !destacamento) {
         infoDestacamento.style.display = 'none';
         return;
     }
-
     infoNombre.textContent = destacamento;
     infoUbicacion.textContent = municipio ? `${municipio}, ${depto}` : depto;
     infoDestacamento.style.display = 'block';
 });
 
-// ── FILE UPLOAD PREVIEW — FOTO FRENTE ─────────────────────────────────────────
+// ── FILE UPLOAD — FOTO FRENTE ─────────────────────────────────────────────────
 inputFoto.addEventListener('change', async () => {
     const file = inputFoto.files[0];
     if (!file) return;
-
     const hayFotoActual = modoEdicion && fotoPreview.classList.contains('visible');
-
     if (hayFotoActual) {
         const confirm = await Swal.fire({
-            icon: 'question',
-            title: '¿Reemplazar foto?',
-            html: `Se reemplazará la foto actual por <strong>${file.name}</strong>.<br>
-                   <small style="color:var(--text-muted)">El cambio se aplicará al guardar.</small>`,
+            icon: 'question', title: '¿Reemplazar foto?',
+            html: `Se reemplazará la foto actual por <strong>${file.name}</strong>.`,
             showCancelButton: true,
             confirmButtonText: '<i class="bi bi-arrow-repeat"></i> Sí, reemplazar',
             cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#3a7bd5',
-            cancelButtonColor: '#e05252',
-            background: '#1a1d27',
-            color: '#e8eaf0'
+            confirmButtonColor: '#3a7bd5', cancelButtonColor: '#e05252',
+            background: '#1a1d27', color: '#e8eaf0'
         });
-
-        if (!confirm.isConfirmed) {
-            inputFoto.value = '';
-            return;
-        }
+        if (!confirm.isConfirmed) { inputFoto.value = ''; return; }
     }
-
     areaFoto.classList.add('has-file');
     areaFoto.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
-    areaFoto.querySelector('.upload-label').innerHTML = `
-        <span style="color:var(--success)">${file.name}</span><br>
-        <small>Nueva foto seleccionada</small>`;
-
+    areaFoto.querySelector('.upload-label').innerHTML = `<span style="color:var(--success)">${file.name}</span><br><small>Nueva foto seleccionada</small>`;
     const reader = new FileReader();
-    reader.onload = (e) => {
-        fotoPreview.src = e.target.result;
-        fotoPreview.classList.add('visible');
-    };
+    reader.onload = (e) => { fotoPreview.src = e.target.result; fotoPreview.classList.add('visible'); };
     reader.readAsDataURL(file);
 });
 
-// ── FOTO LATERAL ──────────────────────────────────────────────────────────────
+// ── FILE UPLOAD — FOTO LATERAL ────────────────────────────────────────────────
 const inputFotoLateral = document.getElementById('foto_lateral');
 const areaFotoLateral = document.getElementById('areaFotoLateral');
 const fotoLateralPreview = document.getElementById('fotoLateralPreview');
-
 if (inputFotoLateral) {
     inputFotoLateral.addEventListener('change', () => {
         const file = inputFotoLateral.files[0];
         if (!file) return;
         areaFotoLateral.classList.add('has-file');
         areaFotoLateral.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
-        areaFotoLateral.querySelector('.upload-label').innerHTML = `
-            <span style="color:var(--success)">${file.name}</span><br>
-            <small>Foto lateral seleccionada</small>`;
+        areaFotoLateral.querySelector('.upload-label').innerHTML = `<span style="color:var(--success)">${file.name}</span><br><small>Foto lateral seleccionada</small>`;
         const reader = new FileReader();
-        reader.onload = (e) => {
-            fotoLateralPreview.src = e.target.result;
-            fotoLateralPreview.classList.add('visible');
-        };
+        reader.onload = (e) => { fotoLateralPreview.src = e.target.result; fotoLateralPreview.classList.add('visible'); };
         reader.readAsDataURL(file);
     });
 }
 
-// ── FOTO TRASERA ──────────────────────────────────────────────────────────────
+// ── FILE UPLOAD — FOTO TRASERA ────────────────────────────────────────────────
 const inputFotoTrasera = document.getElementById('foto_trasera');
 const areaFotoTrasera = document.getElementById('areaFotoTrasera');
 const fotoTraseraPreview = document.getElementById('fotoTraseraPreview');
-
 if (inputFotoTrasera) {
     inputFotoTrasera.addEventListener('change', () => {
         const file = inputFotoTrasera.files[0];
         if (!file) return;
         areaFotoTrasera.classList.add('has-file');
         areaFotoTrasera.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
-        areaFotoTrasera.querySelector('.upload-label').innerHTML = `
-            <span style="color:var(--success)">${file.name}</span><br>
-            <small>Foto trasera seleccionada</small>`;
+        areaFotoTrasera.querySelector('.upload-label').innerHTML = `<span style="color:var(--success)">${file.name}</span><br><small>Foto trasera seleccionada</small>`;
         const reader = new FileReader();
-        reader.onload = (e) => {
-            fotoTraseraPreview.src = e.target.result;
-            fotoTraseraPreview.classList.add('visible');
-        };
+        reader.onload = (e) => { fotoTraseraPreview.src = e.target.result; fotoTraseraPreview.classList.add('visible'); };
         reader.readAsDataURL(file);
     });
 }
 
-// ── CERT INVENTARIO ───────────────────────────────────────────────────────────
+// ── FILE UPLOAD — CERT INVENTARIO ─────────────────────────────────────────────
 const inputCertInventario = document.getElementById('cert_inventario');
 const areaCertInventario = document.getElementById('areaCertInventario');
-
 if (inputCertInventario) {
     inputCertInventario.addEventListener('change', () => {
         const file = inputCertInventario.files[0];
         if (!file) return;
         areaCertInventario.classList.add('has-file');
         areaCertInventario.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
-        areaCertInventario.querySelector('.upload-label').innerHTML = `
-            <span style="color:var(--success)">${file.name}</span><br>
-            <small>PDF seleccionado</small>`;
+        areaCertInventario.querySelector('.upload-label').innerHTML = `<span style="color:var(--success)">${file.name}</span><br><small>PDF seleccionado</small>`;
         const nombreEl = document.getElementById('certInventarioNombre');
-        if (nombreEl) {
-            nombreEl.style.display = 'block';
-            nombreEl.querySelector('span').textContent = file.name;
-        }
+        if (nombreEl) { nombreEl.style.display = 'block'; nombreEl.querySelector('span').textContent = file.name; }
     });
 }
 
-// ── CERT SICOIN ───────────────────────────────────────────────────────────────
+// ── FILE UPLOAD — CERT SICOIN ─────────────────────────────────────────────────
 const inputCertSicoin = document.getElementById('cert_sicoin');
 const areaCertSicoin = document.getElementById('areaCertSicoin');
-
 if (inputCertSicoin) {
     inputCertSicoin.addEventListener('change', () => {
         const file = inputCertSicoin.files[0];
         if (!file) return;
         areaCertSicoin.classList.add('has-file');
         areaCertSicoin.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
-        areaCertSicoin.querySelector('.upload-label').innerHTML = `
-            <span style="color:var(--success)">${file.name}</span><br>
-            <small>PDF seleccionado</small>`;
+        areaCertSicoin.querySelector('.upload-label').innerHTML = `<span style="color:var(--success)">${file.name}</span><br><small>PDF seleccionado</small>`;
         const nombreEl = document.getElementById('certSicoinNombre');
-        if (nombreEl) {
-            nombreEl.style.display = 'block';
-            nombreEl.querySelector('span').textContent = file.name;
-        }
+        if (nombreEl) { nombreEl.style.display = 'block'; nombreEl.querySelector('span').textContent = file.name; }
     });
 }
 
-// ── TARJETA PDF ───────────────────────────────────────────────────────────────
+// ── FILE UPLOAD — TARJETA PDF ─────────────────────────────────────────────────
 inputPdf.addEventListener('change', async () => {
     const file = inputPdf.files[0];
     if (!file) return;
-
     const pdfPreview = document.getElementById('pdfPreviewIframe');
     const hayPdfActual = modoEdicion && pdfPreview && pdfPreview.style.display !== 'none';
-
     if (hayPdfActual) {
         const confirm = await Swal.fire({
-            icon: 'question',
-            title: '¿Reemplazar PDF?',
-            html: `Se reemplazará la tarjeta actual por <strong>${file.name}</strong>.<br>
-                   <small style="color:var(--text-muted)">El cambio se aplicará al guardar.</small>`,
+            icon: 'question', title: '¿Reemplazar PDF?',
+            html: `Se reemplazará la tarjeta actual por <strong>${file.name}</strong>.`,
             showCancelButton: true,
             confirmButtonText: '<i class="bi bi-arrow-repeat"></i> Sí, reemplazar',
             cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#3a7bd5',
-            cancelButtonColor: '#e05252',
-            background: '#1a1d27',
-            color: '#e8eaf0'
+            confirmButtonColor: '#3a7bd5', cancelButtonColor: '#e05252',
+            background: '#1a1d27', color: '#e8eaf0'
         });
-
-        if (!confirm.isConfirmed) {
-            inputPdf.value = '';
-            return;
-        }
-
+        if (!confirm.isConfirmed) { inputPdf.value = ''; return; }
         pdfPreview.style.display = 'none';
         pdfPreview.src = '';
     }
-
     areaPdf.classList.add('has-file');
     areaPdf.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
-    areaPdf.querySelector('.upload-label').innerHTML = `
-        <span style="color:var(--success)">${file.name}</span><br>
-        <small>Nuevo PDF seleccionado</small>`;
+    areaPdf.querySelector('.upload-label').innerHTML = `<span style="color:var(--success)">${file.name}</span><br><small>Nuevo PDF seleccionado</small>`;
     pdfNombre.style.display = 'block';
     pdfNombre.querySelector('span').textContent = file.name;
 });
 
-// ── PDF PÓLIZA (formulario nuevo vehículo) ────────────────────────────────────
+// ── FILE UPLOAD — PÓLIZA ──────────────────────────────────────────────────────
 const inputPoliza = document.getElementById('archivo_poliza');
 const areaPoliza = document.getElementById('areaPoliza');
-
 if (inputPoliza && areaPoliza) {
     inputPoliza.addEventListener('change', () => {
         const file = inputPoliza.files[0];
         if (!file) return;
         areaPoliza.classList.add('has-file');
         areaPoliza.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
-        areaPoliza.querySelector('.upload-label').innerHTML = `
-            <span style="color:var(--success)">${file.name}</span><br>
-            <small>PDF seleccionado</small>`;
+        areaPoliza.querySelector('.upload-label').innerHTML = `<span style="color:var(--success)">${file.name}</span><br><small>PDF seleccionado</small>`;
     });
 }
 
 // ── RESET ARCHIVOS ────────────────────────────────────────────────────────────
 const resetArchivos = () => {
-    // Foto frente
     areaFoto.classList.remove('has-file');
     fotoPreview.classList.remove('visible');
     fotoPreview.src = '';
     areaFoto.querySelector('.upload-icon i').className = 'bi bi-image';
-    areaFoto.querySelector('.upload-label').innerHTML = `
-        <span>Haz clic</span> o arrastra la foto aquí<br>
-        <small>JPG, PNG, WEBP — máx. 5 MB</small>`;
-
-    // Tarjeta PDF
+    areaFoto.querySelector('.upload-label').innerHTML = `<span>Haz clic</span> o arrastra la foto aquí<br><small>JPG, PNG, WEBP — máx. 5 MB</small>`;
     areaPdf.classList.remove('has-file');
     pdfNombre.style.display = 'none';
     areaPdf.querySelector('.upload-icon i').className = 'bi bi-file-pdf';
-    areaPdf.querySelector('.upload-label').innerHTML = `
-        <span>Haz clic</span> o arrastra el PDF aquí<br>
-        <small>Solo PDF — máx. 10 MB</small>`;
-
+    areaPdf.querySelector('.upload-label').innerHTML = `<span>Haz clic</span> o arrastra el PDF aquí<br><small>Solo PDF — máx. 10 MB</small>`;
     fotoActualContainer.style.display = 'none';
-
     const pdfPreview = document.getElementById('pdfPreviewIframe');
-    if (pdfPreview) {
-        pdfPreview.style.display = 'none';
-        pdfPreview.src = '';
-    }
-
-    // Póliza seguro
+    if (pdfPreview) { pdfPreview.style.display = 'none'; pdfPreview.src = ''; }
     const areaPolizaR = document.getElementById('areaPoliza');
     const inputPolizaR = document.getElementById('archivo_poliza');
-    if (areaPolizaR) {
-        areaPolizaR.classList.remove('has-file');
-        areaPolizaR.querySelector('.upload-icon i').className = 'bi bi-file-pdf';
-        areaPolizaR.querySelector('.upload-label').innerHTML = `
-            <span>Haz clic</span> para subir la póliza<br>
-            <small>Solo PDF — máx. 10 MB</small>`;
-    }
+    if (areaPolizaR) { areaPolizaR.classList.remove('has-file'); areaPolizaR.querySelector('.upload-icon i').className = 'bi bi-file-pdf'; areaPolizaR.querySelector('.upload-label').innerHTML = `<span>Haz clic</span> para subir la póliza<br><small>Solo PDF — máx. 10 MB</small>`; }
     if (inputPolizaR) inputPolizaR.value = '';
-
-    // Foto lateral
     const areaFotoLateralR = document.getElementById('areaFotoLateral');
     const fotoLateralPreviewR = document.getElementById('fotoLateralPreview');
     const inputFotoLateralR = document.getElementById('foto_lateral');
-    if (areaFotoLateralR) {
-        areaFotoLateralR.classList.remove('has-file');
-        areaFotoLateralR.querySelector('.upload-icon i').className = 'bi bi-image';
-        areaFotoLateralR.querySelector('.upload-label').innerHTML = `
-            <span>Haz clic</span> o arrastra<br><small>JPG, PNG, WEBP — máx. 5 MB</small>`;
-    }
+    if (areaFotoLateralR) { areaFotoLateralR.classList.remove('has-file'); areaFotoLateralR.querySelector('.upload-icon i').className = 'bi bi-image'; areaFotoLateralR.querySelector('.upload-label').innerHTML = `<span>Haz clic</span> o arrastra<br><small>JPG, PNG, WEBP — máx. 5 MB</small>`; }
     if (fotoLateralPreviewR) { fotoLateralPreviewR.src = ''; fotoLateralPreviewR.classList.remove('visible'); }
     if (inputFotoLateralR) inputFotoLateralR.value = '';
-
-    // Foto trasera
     const areaFotoTraseraR = document.getElementById('areaFotoTrasera');
     const fotoTraseraPreviewR = document.getElementById('fotoTraseraPreview');
     const inputFotoTraseraR = document.getElementById('foto_trasera');
-    if (areaFotoTraseraR) {
-        areaFotoTraseraR.classList.remove('has-file');
-        areaFotoTraseraR.querySelector('.upload-icon i').className = 'bi bi-image';
-        areaFotoTraseraR.querySelector('.upload-label').innerHTML = `
-            <span>Haz clic</span> o arrastra<br><small>JPG, PNG, WEBP — máx. 5 MB</small>`;
-    }
+    if (areaFotoTraseraR) { areaFotoTraseraR.classList.remove('has-file'); areaFotoTraseraR.querySelector('.upload-icon i').className = 'bi bi-image'; areaFotoTraseraR.querySelector('.upload-label').innerHTML = `<span>Haz clic</span> o arrastra<br><small>JPG, PNG, WEBP — máx. 5 MB</small>`; }
     if (fotoTraseraPreviewR) { fotoTraseraPreviewR.src = ''; fotoTraseraPreviewR.classList.remove('visible'); }
     if (inputFotoTraseraR) inputFotoTraseraR.value = '';
-
-    // Cert inventario
     const areaCertInventarioR = document.getElementById('areaCertInventario');
     const inputCertInventarioR = document.getElementById('cert_inventario');
     const certInventarioNombreR = document.getElementById('certInventarioNombre');
-    if (areaCertInventarioR) {
-        areaCertInventarioR.classList.remove('has-file');
-        areaCertInventarioR.querySelector('.upload-icon i').className = 'bi bi-file-pdf';
-        areaCertInventarioR.querySelector('.upload-label').innerHTML = `
-            <span>Haz clic</span> o arrastra<br><small>Solo PDF — máx. 10 MB</small>`;
-    }
+    if (areaCertInventarioR) { areaCertInventarioR.classList.remove('has-file'); areaCertInventarioR.querySelector('.upload-icon i').className = 'bi bi-file-pdf'; areaCertInventarioR.querySelector('.upload-label').innerHTML = `<span>Haz clic</span> o arrastra<br><small>Solo PDF — máx. 10 MB</small>`; }
     if (certInventarioNombreR) certInventarioNombreR.style.display = 'none';
     if (inputCertInventarioR) inputCertInventarioR.value = '';
-
-    // Cert SICOIN
     const areaCertSicoinR = document.getElementById('areaCertSicoin');
     const inputCertSicoinR = document.getElementById('cert_sicoin');
     const certSicoinNombreR = document.getElementById('certSicoinNombre');
-    if (areaCertSicoinR) {
-        areaCertSicoinR.classList.remove('has-file');
-        areaCertSicoinR.querySelector('.upload-icon i').className = 'bi bi-file-pdf';
-        areaCertSicoinR.querySelector('.upload-label').innerHTML = `
-            <span>Haz clic</span> o arrastra<br><small>Solo PDF — máx. 10 MB</small>`;
-    }
+    if (areaCertSicoinR) { areaCertSicoinR.classList.remove('has-file'); areaCertSicoinR.querySelector('.upload-icon i').className = 'bi bi-file-pdf'; areaCertSicoinR.querySelector('.upload-label').innerHTML = `<span>Haz clic</span> o arrastra<br><small>Solo PDF — máx. 10 MB</small>`; }
     if (certSicoinNombreR) certSicoinNombreR.style.display = 'none';
     if (inputCertSicoinR) inputCertSicoinR.value = '';
 };
@@ -399,6 +381,7 @@ const resetAsignacion = () => {
     infoDestacamento.style.display = 'none';
 };
 
+// ── MOSTRAR / OCULTAR FORMULARIO ──────────────────────────────────────────────
 const mostrarFormulario = () => {
     modoEdicion = false;
     contenedorFormulario.style.display = '';
@@ -408,18 +391,14 @@ const mostrarFormulario = () => {
     formulario.reset();
     resetArchivos();
     resetAsignacion();
-
     inputPlaca.readOnly = false;
     inputPlaca.style.opacity = '1';
     inputPlacaOriginal.value = '';
-
     btnGuardar.parentElement.style.display = '';
     btnModificar.parentElement.style.display = 'none';
-
     btnFlotante.classList.add('activo');
     btnFlotante.innerHTML = '<i class="bi bi-skip-backward"></i>';
     btnFlotante.setAttribute('title', 'Volver');
-
     document.getElementById('btnSeguroSi').classList.remove('sel-si');
     document.getElementById('btnSeguroNo').classList.remove('sel-no');
     document.getElementById('panelFormSeguro').style.display = 'none';
@@ -434,48 +413,37 @@ const ocultarFormulario = () => {
         contenedorFormulario.classList.remove('slide-up');
         contenedorTabla.style.display = '';
     }, 300);
-
     btnFlotante.classList.remove('activo');
     btnFlotante.innerHTML = '<i class="bi bi-plus"></i>';
     btnFlotante.setAttribute('title', 'Nuevo Vehículo');
 };
 
 btnFlotante.addEventListener('click', () => {
-    contenedorFormulario.style.display === 'none'
-        ? mostrarFormulario()
-        : ocultarFormulario();
+    contenedorFormulario.style.display === 'none' ? mostrarFormulario() : ocultarFormulario();
 });
 
 // ── RENDER CARTAS ─────────────────────────────────────────────────────────────
 const estadoBadge = (estado) => {
-    const map = { Alta: 'estado-Alta', Baja: 'estado-Baja', Taller: 'estado-Taller' };
-    return `<span class="card-estado ${map[estado] || ''}">${estado}</span>`;
+    const map = {
+        Alta: { bg: '#1a3d2b', color: '#4caf7d', border: '#2d6b45' },
+        Baja: { bg: '#3d1a1a', color: '#e05252', border: '#6b2d2d' },
+        Taller: { bg: '#3d300a', color: '#e8b84b', border: '#6b520f' },
+    };
+    const s = map[estado] || { bg: '#242837', color: '#7c8398', border: '#2e3347' };
+    return `<span class="card-estado" style="background:${s.bg};color:${s.color};border:1.5px solid ${s.border};font-weight:700;letter-spacing:.5px;font-size:.7rem;padding:.25rem .65rem;border-radius:20px;position:absolute;top:10px;right:10px;font-family:'Inter',sans-serif;">${estado}</span>`;
 };
 
 const renderCartas = (vehiculos) => {
     if (!vehiculos.length) {
-        cardsGrid.innerHTML = `
-            <div class="empty-state">
-                <i class="bi bi-search"></i>
-                <p>No se encontraron vehículos con los filtros aplicados</p>
-            </div>`;
+        cardsGrid.innerHTML = `<div class="empty-state"><i class="bi bi-search"></i><p>No se encontraron vehículos con los filtros aplicados</p></div>`;
         contadorVisible.textContent = '0';
         return;
     }
-
     contadorVisible.textContent = vehiculos.length;
-
     cardsGrid.innerHTML = vehiculos.map((v, i) => {
         const fotoHTML = v.foto_url
-            ? `<img src="${v.foto_url}" alt="${v.placa}" loading="lazy"
-                onerror="this.parentElement.innerHTML='<div class=\\'no-foto\\'><i class=\\'bi bi-image-slash\\'></i><span>Sin foto</span></div>'">`
+            ? `<img src="${v.foto_url}" alt="${v.placa}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'no-foto\\'><i class=\\'bi bi-image-slash\\'></i><span>Sin foto</span></div>'">`
             : `<div class="no-foto"><i class="bi bi-truck-front"></i><span>Sin foto</span></div>`;
-
-        const pdfBadge = v.pdf_url
-            ? `<a href="${v.pdf_url}" target="_blank" class="card-pdf-badge" title="Ver tarjeta">
-                   <i class="bi bi-file-earmark-pdf-fill"></i>
-               </a>` : '';
-
         let seguroBadge = '';
         if (v.seguro_estado === 'vigente') {
             seguroBadge = `<span style="position:absolute;bottom:.5rem;left:.5rem;background:rgba(76,175,125,.85);color:#fff;font-size:.65rem;font-weight:600;padding:.2rem .55rem;border-radius:20px;backdrop-filter:blur(4px);display:flex;align-items:center;gap:.3rem;"><i class="bi bi-shield-check"></i> Vigente</span>`;
@@ -484,118 +452,54 @@ const renderCartas = (vehiculos) => {
         } else {
             seguroBadge = `<span style="position:absolute;bottom:.5rem;left:.5rem;background:rgba(30,33,48,.85);color:#888;font-size:.65rem;font-weight:600;padding:.2rem .55rem;border-radius:20px;border:1px solid rgba(150,150,150,.25);backdrop-filter:blur(4px);display:flex;align-items:center;gap:.3rem;"><i class="bi bi-shield-slash"></i> Sin seguro</span>`;
         }
-
         const unidadHTML = v.unidad_nombre
-            ? `<div class="card-unidad"><i class="bi bi-people-fill"></i>${v.unidad_nombre}</div>
-               <div class="card-unidad"><i class="bi bi-geo-alt-fill"></i>${v.destacamento_depto || ''}</div>` : '';
-
+            ? `<div class="card-unidad"><i class="bi bi-people-fill"></i>${v.unidad_nombre}</div><div class="card-unidad"><i class="bi bi-geo-alt-fill"></i>${v.destacamento_depto || ''}</div>` : '';
         return `
-            <div class="vehicle-card" style="animation-delay:${i * 0.05}s">
-                <div class="card-foto">
-                    ${fotoHTML}
-                    ${estadoBadge(v.estado)}
-                    ${pdfBadge}
-                    ${seguroBadge}
-                </div>
-                <div class="card-info">
-                    <div class="card-placa">${v.placa}</div>
-                    <div class="card-vehiculo">${v.marca} ${v.modelo}</div>
-                    <div class="card-tipo">
-                        <i class="bi bi-truck" style="color:var(--accent)"></i>
-                        ${v.tipo} · ${v.anio}
-                    </div>
-                    ${unidadHTML}
-                </div>
-                <div class="card-acciones">
-    ${!esBHR ? `
-        <button class="btn-card-action btn-card-edit ${esCIA ? 'modificar' : ''}"
-            ${esCIA ? `
-                data-placa="${v.placa}"
-                data-numero_serie="${v.numero_serie}"
-                data-marca="${v.marca}"
-                data-modelo="${v.modelo}"
-                data-anio="${v.anio}"
-                data-color="${v.color}"
-                data-tipo="${v.tipo}"
-                data-km_actuales="${v.km_actuales}"
-                data-estado="${v.estado}"
-                data-fecha_ingreso="${v.fecha_ingreso}"
-                data-observaciones="${v.observaciones || ''}"
-                data-foto_url="${v.foto_url || ''}"
-                data-foto_lateral_url="${v.foto_lateral_url || ''}"
-                data-foto_trasera_url="${v.foto_trasera_url || ''}"
-                data-pdf_url="${v.pdf_url || ''}"
-                data-cert_inventario_url="${v.cert_inventario_url || ''}"
-                data-cert_sicoin_url="${v.cert_sicoin_url || ''}"
-                data-id_unidad="${v.id_unidad || ''}"
-            ` : `onclick="solicitarModificacion('${v.placa}')"`}>
-            <i class="bi bi-pencil-square"></i> ${esCIA ? 'Editar' : 'Solicitar cambio'}
-        </button>
-        <button class="btn-card-action btn-card-del ${esCIA ? 'eliminar' : ''}"
-            ${esCIA ? `data-placa="${v.placa}"` : `onclick="crearSolicitudEliminacion('${v.placa}')"`}>
-            <i class="bi bi-trash3"></i>
-        </button>
-    ` : ''}
-    <button class="btn-card-action"
-        style="background:rgba(232,184,75,.15);color:var(--accent);border:1px solid rgba(232,184,75,.2);"
-        onclick="abrirFicha('${v.placa}')">
-        <i class="bi bi-card-checklist"></i> Ficha
-    </button>
-</div>
-            </div>`;
+        <div class="vehicle-card" style="animation-delay:${i * 0.05}s">
+            <div class="card-foto">
+                ${fotoHTML}
+                ${estadoBadge(v.estado)}
+                ${seguroBadge}
+            </div>
+            <div class="card-info">
+                <div class="card-placa">${v.placa}</div>
+                <div class="card-vehiculo">${v.marca} ${v.modelo}</div>
+                <div class="card-tipo"><i class="bi bi-truck" style="color:var(--accent)"></i> ${v.tipo} · ${v.anio}</div>
+                ${unidadHTML}
+            </div>
+            <div class="card-acciones">
+                ${!esBHR ? `
+                <button class="btn-card-action btn-card-edit ${esCIA ? 'modificar' : ''}"
+                    ${esCIA ? `
+                        data-placa="${v.placa}" data-numero_serie="${v.numero_serie}"
+                        data-marca="${v.marca}" data-modelo="${v.modelo}" data-anio="${v.anio}"
+                        data-color="${v.color}" data-tipo="${v.tipo}" data-km_actuales="${v.km_actuales}"
+                        data-estado="${v.estado}" data-fecha_ingreso="${v.fecha_ingreso}"
+                        data-observaciones="${v.observaciones || ''}"
+                        data-foto_url="${v.foto_url || ''}" data-foto_lateral_url="${v.foto_lateral_url || ''}"
+                        data-foto_trasera_url="${v.foto_trasera_url || ''}" data-pdf_url="${v.pdf_url || ''}"
+                        data-cert_inventario_url="${v.cert_inventario_url || ''}"
+                        data-cert_sicoin_url="${v.cert_sicoin_url || ''}" data-id_unidad="${v.id_unidad || ''}"
+                    ` : `onclick="solicitarModificacion('${v.placa}')"`}>
+                    <i class="bi bi-pencil-square"></i> ${esCIA ? 'Editar' : 'Solicitar cambio'}
+                </button>
+                <button class="btn-card-action btn-card-del ${esCIA ? 'eliminar' : ''}"
+                    ${esCIA ? `data-placa="${v.placa}"` : `onclick="crearSolicitudEliminacion('${v.placa}')"`}>
+                    <i class="bi bi-trash3"></i>
+                </button>` : ''}
+                <button class="btn-card-action"
+                    style="background:rgba(232,184,75,.15);color:var(--accent);border:1px solid rgba(232,184,75,.2);"
+                    onclick="abrirFicha('${v.placa}')">
+                    <i class="bi bi-card-checklist"></i> Ficha
+                </button>
+            </div>
+        </div>`;
     }).join('');
-
     if (esCIA) {
         cardsGrid.querySelectorAll('.modificar').forEach(btn => btn.addEventListener('click', traerDatos));
         cardsGrid.querySelectorAll('.eliminar').forEach(btn => btn.addEventListener('click', eliminar));
     }
 };
-
-// ── FILTROS ───────────────────────────────────────────────────────────────────
-// ── FILTROS ───────────────────────────────────────────────────────────────────
-const aplicarFiltros = () => {
-    const tipo = filtroTipo.value.toLowerCase();
-    const estado = filtroEstado.value.toLowerCase();
-    const busq = filtroBusqueda.value.toLowerCase().trim();
-    const unidad = document.getElementById('filtroUnidad')?.value || '';
-
-    const filtrados = todosLosVehiculos.filter(v => {
-        const matchTipo = !tipo || v.tipo.toLowerCase() === tipo;
-        const matchEstado = !estado || v.estado.toLowerCase() === estado;
-        const matchUnidad = !unidad || String(v.id_unidad) === unidad;
-        const matchBusq = !busq
-            || (v.placa ?? '').toLowerCase().includes(busq)
-            || (v.marca ?? '').toLowerCase().includes(busq)
-            || (v.modelo ?? '').toLowerCase().includes(busq)
-            || (v.numero_serie ?? '').toLowerCase().includes(busq)
-            || (v.color ?? '').toLowerCase().includes(busq)
-            || (v.tipo ?? '').toLowerCase().includes(busq)
-            || (v.anio ?? '').toString().includes(busq)
-            || (v.estado ?? '').toLowerCase().includes(busq)
-            || (v.km_actuales ?? '').toString().includes(busq)
-            || (v.unidad_nombre ?? '').toLowerCase().includes(busq)
-            || (v.destacamento_nombre ?? '').toLowerCase().includes(busq)
-            || (v.destacamento_depto ?? '').toLowerCase().includes(busq)
-            || (v.observaciones ?? '').toLowerCase().includes(busq);
-
-        return matchTipo && matchEstado && matchUnidad && matchBusq;
-    });
-
-    renderCartas(filtrados);
-};
-
-filtroTipo.addEventListener('change', aplicarFiltros);
-filtroEstado.addEventListener('change', aplicarFiltros);
-filtroBusqueda.addEventListener('input', aplicarFiltros);
-document.getElementById('filtroUnidad')?.addEventListener('change', aplicarFiltros);
-btnLimpiarFiltros.addEventListener('click', () => {
-    filtroTipo.value = '';
-    filtroEstado.value = '';
-    filtroBusqueda.value = '';
-    const fu = document.getElementById('filtroUnidad');
-    if (fu) fu.value = '';
-    renderCartas(todosLosVehiculos);
-});
 
 // ── BUSCAR ────────────────────────────────────────────────────────────────────
 const buscar = async () => {
@@ -604,14 +508,11 @@ const buscar = async () => {
         const respuesta = await fetch(`${BASE}/API/vehiculos/buscar`, { method: 'GET' });
         const data = await respuesta.json();
         todosLosVehiculos = data.datos || [];
-        aplicarFiltros();
+        renderTipos(todosLosVehiculos);
+        if (tipoSeleccionado) aplicarFiltros();
     } catch (error) {
         console.error('Error al buscar vehículos:', error);
-        cardsGrid.innerHTML = `
-            <div class="empty-state">
-                <i class="bi bi-wifi-off"></i>
-                <p>Error al cargar los vehículos</p>
-            </div>`;
+        cardsGrid.innerHTML = `<div class="empty-state"><i class="bi bi-wifi-off"></i><p>Error al cargar los vehículos</p></div>`;
     } finally {
         ocultarLoader();
     }
@@ -620,8 +521,6 @@ const buscar = async () => {
 // ── GUARDAR ───────────────────────────────────────────────────────────────────
 const guardar = async (e) => {
     e.preventDefault();
-
-    // ── VALIDACIONES ──────────────────────────────────────────────────────────
     const placa = document.getElementById('placa').value.trim().toUpperCase();
     const serie = document.getElementById('numero_serie').value.trim().toUpperCase();
     const marca = document.getElementById('marca').value.trim();
@@ -633,178 +532,62 @@ const guardar = async (e) => {
     const fechaIngreso = document.getElementById('fecha_ingreso').value;
     const km = document.getElementById('km_actuales').value;
 
-    // Catálogo — solo números, mínimo 1 carácter
-    if (!placa) {
-        Swal.fire({ icon: 'warning', title: 'Catálogo requerido', text: 'El campo catálogo no puede estar vacío.', background: '#1a1d27', color: '#e8eaf0' });
-        document.getElementById('placa').focus();
-        return;
-    }
-    if (!/^[0-9]+$/.test(placa)) {
-        Swal.fire({ icon: 'warning', title: 'Catálogo inválido', text: 'El catálogo solo puede contener números.', background: '#1a1d27', color: '#e8eaf0' });
-        document.getElementById('placa').focus();
-        return;
-    }
-
-    // Número de serie
-    if (!serie) {
-        Swal.fire({ icon: 'warning', title: 'Número de serie requerido', text: 'El número de serie / VIN no puede estar vacío.', background: '#1a1d27', color: '#e8eaf0' });
-        document.getElementById('numero_serie').focus();
-        return;
-    }
-
-    // Marca
-    if (!marca) {
-        Swal.fire({ icon: 'warning', title: 'Marca requerida', text: 'Ingresa la marca del vehículo.', background: '#1a1d27', color: '#e8eaf0' });
-        document.getElementById('marca').focus();
-        return;
-    }
-
-    // Modelo
-    if (!modelo) {
-        Swal.fire({ icon: 'warning', title: 'Modelo requerido', text: 'Ingresa el modelo del vehículo.', background: '#1a1d27', color: '#e8eaf0' });
-        document.getElementById('modelo').focus();
-        return;
-    }
-
-    // Año
-    if (!anio) {
-        Swal.fire({ icon: 'warning', title: 'Año requerido', text: 'Ingresa el año del vehículo.', background: '#1a1d27', color: '#e8eaf0' });
-        document.getElementById('anio').focus();
-        return;
-    }
+    if (!placa) { Swal.fire({ icon: 'warning', title: 'Catálogo requerido', text: 'El campo catálogo no puede estar vacío.', background: '#1a1d27', color: '#e8eaf0' }); document.getElementById('placa').focus(); return; }
+    if (!/^[0-9]+$/.test(placa)) { Swal.fire({ icon: 'warning', title: 'Catálogo inválido', text: 'El catálogo solo puede contener números.', background: '#1a1d27', color: '#e8eaf0' }); document.getElementById('placa').focus(); return; }
+    if (!serie) { Swal.fire({ icon: 'warning', title: 'Número de serie requerido', text: 'El número de serie / VIN no puede estar vacío.', background: '#1a1d27', color: '#e8eaf0' }); document.getElementById('numero_serie').focus(); return; }
+    if (!marca) { Swal.fire({ icon: 'warning', title: 'Marca requerida', text: 'Ingresa la marca del vehículo.', background: '#1a1d27', color: '#e8eaf0' }); document.getElementById('marca').focus(); return; }
+    if (!modelo) { Swal.fire({ icon: 'warning', title: 'Modelo requerido', text: 'Ingresa el modelo del vehículo.', background: '#1a1d27', color: '#e8eaf0' }); document.getElementById('modelo').focus(); return; }
+    if (!anio) { Swal.fire({ icon: 'warning', title: 'Año requerido', text: 'Ingresa el año del vehículo.', background: '#1a1d27', color: '#e8eaf0' }); document.getElementById('anio').focus(); return; }
     const anioNum = parseInt(anio);
     const anioActual = new Date().getFullYear();
-    if (isNaN(anioNum) || anioNum < 1900 || anioNum > anioActual + 1) {
-        Swal.fire({ icon: 'warning', title: 'Año inválido', text: `El año debe estar entre 1900 y ${anioActual + 1}.`, background: '#1a1d27', color: '#e8eaf0' });
-        document.getElementById('anio').focus();
-        return;
-    }
+    if (isNaN(anioNum) || anioNum < 1900 || anioNum > anioActual + 1) { Swal.fire({ icon: 'warning', title: 'Año inválido', text: `El año debe estar entre 1900 y ${anioActual + 1}.`, background: '#1a1d27', color: '#e8eaf0' }); document.getElementById('anio').focus(); return; }
+    if (!color) { Swal.fire({ icon: 'warning', title: 'Color requerido', text: 'Ingresa el color del vehículo.', background: '#1a1d27', color: '#e8eaf0' }); document.getElementById('color').focus(); return; }
+    if (!tipo) { Swal.fire({ icon: 'warning', title: 'Tipo requerido', text: 'Selecciona el tipo de vehículo.', background: '#1a1d27', color: '#e8eaf0' }); document.getElementById('tipo').focus(); return; }
+    if (!fechaIngreso) { Swal.fire({ icon: 'warning', title: 'Fecha requerida', text: 'Selecciona la fecha de ingreso.', background: '#1a1d27', color: '#e8eaf0' }); document.getElementById('fecha_ingreso').focus(); return; }
+    if (km === '' || isNaN(parseInt(km)) || parseInt(km) < 0) { Swal.fire({ icon: 'warning', title: 'Kilometraje inválido', text: 'El kilometraje no puede ser negativo.', background: '#1a1d27', color: '#e8eaf0' }); document.getElementById('km_actuales').focus(); return; }
 
-    // Color
-    if (!color) {
-        Swal.fire({ icon: 'warning', title: 'Color requerido', text: 'Ingresa el color del vehículo.', background: '#1a1d27', color: '#e8eaf0' });
-        document.getElementById('color').focus();
-        return;
-    }
-
-    // Tipo
-    if (!tipo) {
-        Swal.fire({ icon: 'warning', title: 'Tipo requerido', text: 'Selecciona el tipo de vehículo.', background: '#1a1d27', color: '#e8eaf0' });
-        document.getElementById('tipo').focus();
-        return;
-    }
-
-    // Fecha de ingreso
-    if (!fechaIngreso) {
-        Swal.fire({ icon: 'warning', title: 'Fecha requerida', text: 'Selecciona la fecha de ingreso.', background: '#1a1d27', color: '#e8eaf0' });
-        document.getElementById('fecha_ingreso').focus();
-        return;
-    }
-
-    // KM — mínimo 0
-    if (km === '' || isNaN(parseInt(km)) || parseInt(km) < 0) {
-        Swal.fire({ icon: 'warning', title: 'Kilometraje inválido', text: 'El kilometraje no puede ser negativo.', background: '#1a1d27', color: '#e8eaf0' });
-        document.getElementById('km_actuales').focus();
-        return;
-    }
-
-    // Seguro — validar si eligió "Sí tiene seguro"
     const tieneSeguro = document.getElementById('btnSeguroSi').classList.contains('sel-si');
     const noTieneSeguro = document.getElementById('btnSeguroNo').classList.contains('sel-no');
-
-    if (!tieneSeguro && !noTieneSeguro) {
-        Swal.fire({ icon: 'warning', title: 'Seguro requerido', text: 'Indica si el vehículo tiene o no seguro.', background: '#1a1d27', color: '#e8eaf0' });
-        return;
-    }
+    if (!tieneSeguro && !noTieneSeguro) { Swal.fire({ icon: 'warning', title: 'Seguro requerido', text: 'Indica si el vehículo tiene o no seguro.', background: '#1a1d27', color: '#e8eaf0' }); return; }
 
     if (tieneSeguro) {
         const aseguradora = document.getElementById('seg_aseguradora').value.trim();
         const poliza = document.getElementById('seg_numero_poliza').value.trim();
-        const cobertura = document.getElementById('seg_tipo_cobertura').value;
         const inicio = document.getElementById('seg_fecha_inicio').value;
         const venc = document.getElementById('seg_fecha_vencimiento').value;
         const prima = document.getElementById('seg_prima_anual').value;
         const agente = document.getElementById('seg_agente_contacto').value.trim();
         const telefono = document.getElementById('seg_telefono_agente').value.trim();
-
-        if (!aseguradora) {
-            Swal.fire({ icon: 'warning', title: 'Aseguradora requerida', text: 'Ingresa el nombre de la aseguradora.', background: '#1a1d27', color: '#e8eaf0' });
-            document.getElementById('seg_aseguradora').focus();
-            return;
-        }
-        if (!poliza) {
-            Swal.fire({ icon: 'warning', title: 'Póliza requerida', text: 'Ingresa el número de póliza.', background: '#1a1d27', color: '#e8eaf0' });
-            document.getElementById('seg_numero_poliza').focus();
-            return;
-        }
-        if (!inicio) {
-            Swal.fire({ icon: 'warning', title: 'Fecha inicio requerida', text: 'Selecciona la fecha de inicio del seguro.', background: '#1a1d27', color: '#e8eaf0' });
-            document.getElementById('seg_fecha_inicio').focus();
-            return;
-        }
-        if (!venc) {
-            Swal.fire({ icon: 'warning', title: 'Fecha vencimiento requerida', text: 'Selecciona la fecha de vencimiento del seguro.', background: '#1a1d27', color: '#e8eaf0' });
-            document.getElementById('seg_fecha_vencimiento').focus();
-            return;
-        }
-        if (venc <= inicio) {
-            Swal.fire({ icon: 'warning', title: 'Fechas inválidas', text: 'La fecha de vencimiento debe ser posterior a la fecha de inicio.', background: '#1a1d27', color: '#e8eaf0' });
-            document.getElementById('seg_fecha_vencimiento').focus();
-            return;
-        }
-        if (!prima || isNaN(parseFloat(prima)) || parseFloat(prima) < 0) {
-            Swal.fire({ icon: 'warning', title: 'Prima requerida', text: 'Ingresa la prima anual del seguro (puede ser 0).', background: '#1a1d27', color: '#e8eaf0' });
-            document.getElementById('seg_prima_anual').focus();
-            return;
-        }
-        if (!agente) {
-            Swal.fire({ icon: 'warning', title: 'Agente requerido', text: 'Ingresa el nombre del agente de contacto.', background: '#1a1d27', color: '#e8eaf0' });
-            document.getElementById('seg_agente_contacto').focus();
-            return;
-        }
-        if (!telefono) {
-            Swal.fire({ icon: 'warning', title: 'Teléfono requerido', text: 'Ingresa el teléfono del agente.', background: '#1a1d27', color: '#e8eaf0' });
-            document.getElementById('seg_telefono_agente').focus();
-            return;
-        }
+        if (!aseguradora) { Swal.fire({ icon: 'warning', title: 'Aseguradora requerida', text: 'Ingresa el nombre de la aseguradora.', background: '#1a1d27', color: '#e8eaf0' }); document.getElementById('seg_aseguradora').focus(); return; }
+        if (!poliza) { Swal.fire({ icon: 'warning', title: 'Póliza requerida', text: 'Ingresa el número de póliza.', background: '#1a1d27', color: '#e8eaf0' }); document.getElementById('seg_numero_poliza').focus(); return; }
+        if (!inicio) { Swal.fire({ icon: 'warning', title: 'Fecha inicio requerida', text: 'Selecciona la fecha de inicio del seguro.', background: '#1a1d27', color: '#e8eaf0' }); document.getElementById('seg_fecha_inicio').focus(); return; }
+        if (!venc) { Swal.fire({ icon: 'warning', title: 'Fecha vencimiento requerida', text: 'Selecciona la fecha de vencimiento del seguro.', background: '#1a1d27', color: '#e8eaf0' }); document.getElementById('seg_fecha_vencimiento').focus(); return; }
+        if (venc <= inicio) { Swal.fire({ icon: 'warning', title: 'Fechas inválidas', text: 'La fecha de vencimiento debe ser posterior a la de inicio.', background: '#1a1d27', color: '#e8eaf0' }); document.getElementById('seg_fecha_vencimiento').focus(); return; }
+        if (!prima || isNaN(parseFloat(prima)) || parseFloat(prima) < 0) { Swal.fire({ icon: 'warning', title: 'Prima requerida', text: 'Ingresa la prima anual (puede ser 0).', background: '#1a1d27', color: '#e8eaf0' }); document.getElementById('seg_prima_anual').focus(); return; }
+        if (!agente) { Swal.fire({ icon: 'warning', title: 'Agente requerido', text: 'Ingresa el nombre del agente de contacto.', background: '#1a1d27', color: '#e8eaf0' }); document.getElementById('seg_agente_contacto').focus(); return; }
+        if (!telefono) { Swal.fire({ icon: 'warning', title: 'Teléfono requerido', text: 'Ingresa el teléfono del agente.', background: '#1a1d27', color: '#e8eaf0' }); document.getElementById('seg_telefono_agente').focus(); return; }
     }
 
-    // ── CONSTRUIR FORM DATA ───────────────────────────────────────────────────
     const body = new FormData();
-
-    body.append('placa', placa);
-    body.append('numero_serie', serie);
-    body.append('marca', marca);
-    body.append('modelo', modelo);
-    body.append('anio', anio);
-    body.append('color', color);
-    body.append('tipo', tipo);
-    body.append('estado', estado);
-    body.append('fecha_ingreso', fechaIngreso);
-    body.append('km_actuales', km);
-    body.append('observaciones', document.getElementById('observaciones').value);
+    body.append('placa', placa); body.append('numero_serie', serie); body.append('marca', marca);
+    body.append('modelo', modelo); body.append('anio', anio); body.append('color', color);
+    body.append('tipo', tipo); body.append('estado', estado); body.append('fecha_ingreso', fechaIngreso);
+    body.append('km_actuales', km); body.append('observaciones', document.getElementById('observaciones').value);
     body.append('id_unidad', document.getElementById('id_unidad').value);
 
-    // Archivos opcionales
     const foto = document.getElementById('foto_frente');
     if (foto?.files.length > 0) body.append('foto_frente', foto.files[0]);
-
-    const fotoLateral = document.getElementById('foto_lateral');
-    if (fotoLateral?.files.length > 0) body.append('foto_lateral', fotoLateral.files[0]);
-
-    const fotoTrasera = document.getElementById('foto_trasera');
-    if (fotoTrasera?.files.length > 0) body.append('foto_trasera', fotoTrasera.files[0]);
-
+    const fotoLat = document.getElementById('foto_lateral');
+    if (fotoLat?.files.length > 0) body.append('foto_lateral', fotoLat.files[0]);
+    const fotoTras = document.getElementById('foto_trasera');
+    if (fotoTras?.files.length > 0) body.append('foto_trasera', fotoTras.files[0]);
     const tarjeta = document.getElementById('tarjeta_pdf');
     if (tarjeta?.files.length > 0) body.append('tarjeta_pdf', tarjeta.files[0]);
+    const certInv = document.getElementById('cert_inventario');
+    if (certInv?.files.length > 0) body.append('cert_inventario', certInv.files[0]);
+    const certSic = document.getElementById('cert_sicoin');
+    if (certSic?.files.length > 0) body.append('cert_sicoin', certSic.files[0]);
 
-    const certInventario = document.getElementById('cert_inventario');
-    if (certInventario?.files.length > 0) body.append('cert_inventario', certInventario.files[0]);
-
-    const certSicoin = document.getElementById('cert_sicoin');
-    if (certSicoin?.files.length > 0) body.append('cert_sicoin', certSicoin.files[0]);
-
-    // Seguro
     if (tieneSeguro) {
         body.append('seg_aseguradora', document.getElementById('seg_aseguradora').value.trim());
         body.append('seg_numero_poliza', document.getElementById('seg_numero_poliza').value.trim());
@@ -815,51 +598,46 @@ const guardar = async (e) => {
         body.append('seg_agente_contacto', document.getElementById('seg_agente_contacto').value.trim());
         body.append('seg_telefono_agente', document.getElementById('seg_telefono_agente').value.trim());
         body.append('seg_observaciones', document.getElementById('seg_observaciones').value);
-
         const pdfPoliza = document.getElementById('archivo_poliza');
         if (pdfPoliza?.files.length > 0) {
-            if (pdfPoliza.files[0].type !== 'application/pdf') {
-                Swal.fire({ icon: 'warning', title: 'Archivo inválido', text: 'La póliza debe ser PDF.', background: '#1a1d27', color: '#e8eaf0' });
-                return;
-            }
+            if (pdfPoliza.files[0].type !== 'application/pdf') { Swal.fire({ icon: 'warning', title: 'Archivo inválido', text: 'La póliza debe ser PDF.', background: '#1a1d27', color: '#e8eaf0' }); return; }
             body.append('archivo_poliza', pdfPoliza.files[0]);
         }
     }
+
     try {
         mostrarLoader('Registrando vehículo...');
         const r = await fetch(`${BASE}/API/vehiculos/guardar`, { method: 'POST', body });
         const d = await r.json();
-        Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
-        if (d.codigo === 1) { cancelar(); buscar(); }
+        if (d.codigo === 1) {
+            Toast.fire({ icon: 'success', title: d.mensaje });
+            cancelar(); buscar();
+        } else {
+            Swal.fire({ icon: 'error', title: 'No se pudo registrar', text: d.mensaje || 'Error desconocido', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e05252' });
+        }
     } catch (err) {
-        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+        Swal.fire({ icon: 'error', title: 'Error de conexión', text: 'No se pudo conectar con el servidor.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e05252' });
     } finally {
         ocultarLoader();
     }
 };
 
-// ── HELPER para mostrar archivo existente en edición ──────────────────────────
+// ── HELPER ARCHIVO EXISTENTE ──────────────────────────────────────────────────
 const _mostrarArchivoExistente = (url, areaId, labelTexto, tipo = 'foto') => {
     if (!url || url === 'null' || url === '') return;
     const area = document.getElementById(areaId);
     if (!area) return;
     area.classList.add('has-file');
-    area.querySelector('.upload-icon i').className = tipo === 'foto' ? 'bi bi-check-circle-fill' : 'bi bi-check-circle-fill';
-    area.querySelector('.upload-label').innerHTML = `
-        <span style="color:var(--success)">${labelTexto}</span><br>
-        <small>Sube uno nuevo para reemplazarlo</small>`;
+    area.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
+    area.querySelector('.upload-label').innerHTML = `<span style="color:var(--success)">${labelTexto}</span><br><small>Sube uno nuevo para reemplazarlo</small>`;
 };
 
-// ── TRAER DATOS ───────────────────────────────────────────────────────────────
+// ── TRAER DATOS (edición) ─────────────────────────────────────────────────────
 const traerDatos = (e) => {
     modoEdicion = true;
     const d = e.currentTarget.dataset;
-
-    inputPlaca.value = d.placa;
-    inputPlaca.readOnly = true;
-    inputPlaca.style.opacity = '.6';
+    inputPlaca.value = d.placa; inputPlaca.readOnly = true; inputPlaca.style.opacity = '.6';
     inputPlacaOriginal.value = d.placa;
-
     formulario.numero_serie.value = d.numero_serie;
     formulario.marca.value = d.marca;
     formulario.modelo.value = d.modelo;
@@ -870,79 +648,54 @@ const traerDatos = (e) => {
     formulario.estado.value = d.estado;
     formulario.fecha_ingreso.value = d.fecha_ingreso;
     formulario.observaciones.value = d.observaciones;
-
     resetArchivos();
-
-    // Foto frente
     if (d.foto_url && d.foto_url !== 'null' && d.foto_url !== '') {
         areaFoto.classList.add('has-file');
         areaFoto.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
-        areaFoto.querySelector('.upload-label').innerHTML = `
-            <span style="color:var(--success)">Foto cargada</span><br>
-            <small>Sube una nueva para reemplazarla</small>`;
-        fotoPreview.src = d.foto_url;
-        fotoPreview.classList.add('visible');
+        areaFoto.querySelector('.upload-label').innerHTML = `<span style="color:var(--success)">Foto cargada</span><br><small>Sube una nueva para reemplazarla</small>`;
+        fotoPreview.src = d.foto_url; fotoPreview.classList.add('visible');
     }
-
-    // Foto lateral
     if (d.foto_lateral_url && d.foto_lateral_url !== 'null' && d.foto_lateral_url !== '') {
         _mostrarArchivoExistente(d.foto_lateral_url, 'areaFotoLateral', 'Foto lateral cargada', 'foto');
         const prev = document.getElementById('fotoLateralPreview');
         if (prev) { prev.src = d.foto_lateral_url; prev.classList.add('visible'); }
     }
-
-    // Foto trasera
     if (d.foto_trasera_url && d.foto_trasera_url !== 'null' && d.foto_trasera_url !== '') {
         _mostrarArchivoExistente(d.foto_trasera_url, 'areaFotoTrasera', 'Foto trasera cargada', 'foto');
         const prev = document.getElementById('fotoTraseraPreview');
         if (prev) { prev.src = d.foto_trasera_url; prev.classList.add('visible'); }
     }
-
-    // Tarjeta PDF
     if (d.pdf_url && d.pdf_url !== 'null' && d.pdf_url !== '') {
         areaPdf.classList.add('has-file');
         areaPdf.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
-        areaPdf.querySelector('.upload-label').innerHTML = `
-            <span style="color:var(--success)">PDF cargado</span><br>
-            <small>Sube uno nuevo para reemplazarlo</small>`;
+        areaPdf.querySelector('.upload-label').innerHTML = `<span style="color:var(--success)">PDF cargado</span><br><small>Sube uno nuevo para reemplazarlo</small>`;
         let pdfPreviewEl = document.getElementById('pdfPreviewIframe');
         if (!pdfPreviewEl) {
             pdfPreviewEl = document.createElement('iframe');
             pdfPreviewEl.id = 'pdfPreviewIframe';
-            pdfPreviewEl.style.cssText = `width:100%;height:180px;border:2px solid var(--border);
-                border-radius:8px;margin-top:.75rem;background:var(--dark-3);`;
+            pdfPreviewEl.style.cssText = `width:100%;height:180px;border:2px solid var(--border);border-radius:8px;margin-top:.75rem;background:var(--dark-3);`;
             areaPdf.parentElement.appendChild(pdfPreviewEl);
         }
-        pdfPreviewEl.src = d.pdf_url;
-        pdfPreviewEl.style.display = 'block';
+        pdfPreviewEl.src = d.pdf_url; pdfPreviewEl.style.display = 'block';
     }
-
-    // Cert inventario
     if (d.cert_inventario_url && d.cert_inventario_url !== 'null' && d.cert_inventario_url !== '') {
         _mostrarArchivoExistente(d.cert_inventario_url, 'areaCertInventario', 'Cert. Inventario cargado', 'pdf');
         const nombreEl = document.getElementById('certInventarioNombre');
         if (nombreEl) { nombreEl.style.display = 'block'; nombreEl.querySelector('span').textContent = 'Archivo cargado'; }
     }
-
-    // Cert SICOIN
     if (d.cert_sicoin_url && d.cert_sicoin_url !== 'null' && d.cert_sicoin_url !== '') {
         _mostrarArchivoExistente(d.cert_sicoin_url, 'areaCertSicoin', 'Cert. SICOIN cargado', 'pdf');
         const nombreEl = document.getElementById('certSicoinNombre');
         if (nombreEl) { nombreEl.style.display = 'block'; nombreEl.querySelector('span').textContent = 'Archivo cargado'; }
     }
-
-    // Unidad
     selectUnidad.value = d.id_unidad || '';
     selectUnidad.dispatchEvent(new Event('change'));
-
     tituloFormulario.textContent = 'Modificar Vehículo';
     contenedorFormulario.style.display = '';
     contenedorFormulario.classList.add('slide-down');
     contenedorTabla.style.display = 'none';
-
     btnGuardar.parentElement.style.display = 'none';
     btnModificar.parentElement.style.display = '';
-
     btnFlotante.classList.add('activo');
     btnFlotante.innerHTML = '<i class="bi bi-x"></i>';
     btnFlotante.setAttribute('title', 'Cerrar');
@@ -950,11 +703,8 @@ const traerDatos = (e) => {
 
 // ── CANCELAR ──────────────────────────────────────────────────────────────────
 const cancelar = () => {
-    formulario.reset();
-    resetArchivos();
-    resetAsignacion();
-    inputPlaca.readOnly = false;
-    inputPlaca.style.opacity = '1';
+    formulario.reset(); resetArchivos(); resetAsignacion();
+    inputPlaca.readOnly = false; inputPlaca.style.opacity = '1';
     ocultarFormulario();
     btnGuardar.parentElement.style.display = '';
     btnModificar.parentElement.style.display = 'none';
@@ -967,60 +717,32 @@ const cancelar = () => {
 
 // ── MODIFICAR ─────────────────────────────────────────────────────────────────
 const modificar = async () => {
-    const camposRequeridos = ['placa', 'numero_serie', 'marca', 'modelo',
-        'anio', 'color', 'tipo', 'estado', 'fecha_ingreso'];
-
+    const camposRequeridos = ['placa', 'numero_serie', 'marca', 'modelo', 'anio', 'color', 'tipo', 'estado', 'fecha_ingreso'];
     let campoVacio = false;
     for (const campo of camposRequeridos) {
         const el = document.getElementById(campo);
-        if (!el || !el.value.trim()) {
-            campoVacio = true;
-            if (el) el.style.borderColor = 'var(--danger)';
-        } else {
-            if (el) el.style.borderColor = '';
-        }
+        if (!el || !el.value.trim()) { campoVacio = true; if (el) el.style.borderColor = 'var(--danger)'; }
+        else { if (el) el.style.borderColor = ''; }
     }
-
     if (campoVacio) {
-        Swal.fire({
-            title: 'Campos vacíos',
-            text: 'Debe llenar todos los campos obligatorios marcados en rojo',
-            icon: 'info',
-            background: '#1a1d27',
-            color: '#e8eaf0',
-            confirmButtonColor: '#e8b84b'
-        });
+        Swal.fire({ title: 'Campos vacíos', text: 'Debe llenar todos los campos obligatorios marcados en rojo', icon: 'info', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b' });
         return;
     }
-
     try {
         mostrarLoader('Guardando cambios...');
         const body = new FormData(formulario);
         body.set('placa', inputPlacaOriginal.value);
-
         const fotoLateral = document.getElementById('foto_lateral');
         if (fotoLateral && fotoLateral.files.length > 0) body.set('foto_lateral', fotoLateral.files[0]);
-
         const fotoTrasera = document.getElementById('foto_trasera');
         if (fotoTrasera && fotoTrasera.files.length > 0) body.set('foto_trasera', fotoTrasera.files[0]);
-
         const certInventario = document.getElementById('cert_inventario');
         if (certInventario && certInventario.files.length > 0) body.set('cert_inventario', certInventario.files[0]);
-
         const certSicoin = document.getElementById('cert_sicoin');
         if (certSicoin && certSicoin.files.length > 0) body.set('cert_sicoin', certSicoin.files[0]);
-
         const respuesta = await fetch(`${BASE}/API/vehiculos/modificar`, { method: 'POST', body });
         const data = await respuesta.json();
-
-        if (data.codigo == 1) {
-            formulario.reset();
-            resetArchivos();
-            resetAsignacion();
-            buscar();
-            cancelar();
-        }
-
+        if (data.codigo == 1) { formulario.reset(); resetArchivos(); resetAsignacion(); buscar(); cancelar(); }
         Toast.fire({ icon: data.codigo == 1 ? 'success' : 'error', title: data.mensaje });
     } catch (error) {
         console.error(error);
@@ -1033,22 +755,14 @@ const modificar = async () => {
 // ── ELIMINAR ──────────────────────────────────────────────────────────────────
 const eliminar = async (e) => {
     const placa = e.currentTarget.dataset.placa;
-
     const confirmacion = await Swal.fire({
-        icon: 'warning',
-        title: '¿Eliminar vehículo?',
+        icon: 'warning', title: '¿Eliminar vehículo?',
         html: `Se eliminará el vehículo con placa <strong>${placa}</strong> y sus archivos.<br>Esta acción no se puede deshacer.`,
-        showCancelButton: true,
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#e05252',
-        cancelButtonColor: '#3a7bd5',
-        background: '#1a1d27',
-        color: '#e8eaf0'
+        showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#e05252', cancelButtonColor: '#3a7bd5',
+        background: '#1a1d27', color: '#e8eaf0'
     });
-
     if (!confirmacion.isConfirmed) return;
-
     try {
         const body = new FormData();
         body.append('placa', placa);
@@ -1062,35 +776,166 @@ const eliminar = async (e) => {
     }
 };
 
+// ── SEGURO EN FORMULARIO NUEVO ────────────────────────────────────────────────
+let vehiculoTieneSeguro = false;
+const elegirSeguro = (opcion) => {
+    const btnSi = document.getElementById('btnSeguroSi');
+    const btnNo = document.getElementById('btnSeguroNo');
+    const panel = document.getElementById('panelFormSeguro');
+    const aviso = document.getElementById('avisoSinSeguro');
+    btnSi.classList.remove('sel-si'); btnNo.classList.remove('sel-no');
+    if (opcion === 'si') { btnSi.classList.add('sel-si'); panel.style.display = 'block'; aviso.style.display = 'none'; vehiculoTieneSeguro = true; }
+    else { btnNo.classList.add('sel-no'); panel.style.display = 'none'; aviso.style.display = 'flex'; vehiculoTieneSeguro = false; }
+};
+window.elegirSeguro = elegirSeguro;
+
+// ── AUTO-UPPERCASE ────────────────────────────────────────────────────────────
+document.getElementById('placa').addEventListener('input', function () { this.value = this.value.toUpperCase(); });
+document.getElementById('numero_serie').addEventListener('input', function () { this.value = this.value.toUpperCase(); });
+
+// ── EVENT LISTENERS FORMULARIO ────────────────────────────────────────────────
+formulario.addEventListener('submit', guardar);
+btnCancelar.addEventListener('click', cancelar);
+btnModificar.addEventListener('click', modificar);
 // ════════════════════════════════════════════════════════════════════════════
 // ── MODAL FICHA ───────────────────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
 
 let fichaPlacaActual = '';
-let tiposServicio = [];
-let tiposReparacion = [];
+let fichaTipoVehiculo = '';
 let reparacionEditandoId = null;
 
+// ── CARGAR TIPOS SERVICIO ─────────────────────────────────────────────────────
 const cargarTiposServicio = async () => {
-    const sel = document.getElementById('svcTipo');
-    if (sel.options.length > 1) return;
     if (tiposServicio.length) {
-        sel.innerHTML = '<option value="">Seleccione tipo...</option>' +
-            tiposServicio.map(t => `<option value="${t.id_tipo_servicio}" data-km="${t.intervalo_km || ''}" data-dias="${t.intervalo_dias || ''}">${t.nombre}</option>`).join('');
+        // ya cargados, solo re-asignar listener
+        const sel = document.getElementById('itemTipo');
+        if (sel) sel.onchange = _onTipoServicioChange;
         return;
     }
-    const r = await fetch(`${BASE}/API/vehiculos/tipos-servicio`);
-    const d = await r.json();
-    if (d.codigo === 1) {
-        tiposServicio = d.datos;
-        sel.innerHTML = '<option value="">Seleccione tipo...</option>' +
-            tiposServicio.map(t => `<option value="${t.id_tipo_servicio}" data-km="${t.intervalo_km || ''}" data-dias="${t.intervalo_dias || ''}">${t.nombre}</option>`).join('');
+    try {
+        const r = await fetch(`${BASE}/API/vehiculos/tipos-servicio`);
+        const d = await r.json();
+        if (d.codigo === 1) {
+            tiposServicio = d.datos;
+            const sel = document.getElementById('itemTipo');
+            if (sel) {
+                sel.innerHTML = '<option value="">Seleccione tipo...</option>' +
+                    tiposServicio.map(t =>
+                        `<option value="${t.id_tipo_servicio}">${t.nombre}</option>`
+                    ).join('');
+                // ← listener dinámico
+                sel.onchange = _onTipoServicioChange;
+            }
+        }
+    } catch (err) { console.error('Error cargando tipos servicio:', err); }
+};
+// ── KM PRÓXIMO DINÁMICO ───────────────────────────────────────────────────────
+// Servicios con intervalo fijo (km que se suma al actual)
+const KM_INTERVALOS = {
+    'Cambio de aceite y filtro': 5000,
+    'Cambio de filtro de aire': null,   // mecánico decide
+    'Cambio de filtro de combustible': null,
+    'Cambio de filtro de transmisión': null,
+    'Cambio de líquido de frenos': null,
+    'Cambio de líquido de dirección': null,
+    'Cambio de líquido refrigerante': null,
+    'Cambio de bujías': null,
+    'Cambio de batería': null,
+    'Cambio de correa de distribución': null,
+    'Cambio de pastillas de freno': null,
+    'Alineación y balanceo': 0,     // 0 = no aplica KM
+    'Revisión de suspensión': 0,
+    'Revisión de frenos': 0,
+    'Revisión general': 0,
+    'Servicio Mayor': 10000,
+    'Servicio Menor': 5000,
+};
+
+// Tipos que NO usan próximo KM (se desactiva el input)
+const SIN_KM_PROXIMO = new Set([
+    'Alineación y balanceo',
+    'Revisión de suspensión',
+    'Revisión de frenos',
+    'Revisión general',
+    'Cambio de batería',
+    'Limpieza de inyectores',
+]);
+
+const _resetKmProximo = () => {
+    const input = document.getElementById('itemKmProximo');
+    if (!input) return;
+    input.value = '';
+    input.disabled = false;
+    input.readOnly = false;
+    input.placeholder = 'Opcional';
+    input.style.opacity = '1';
+    input.style.background = '';
+    input.title = '';
+};
+
+const _onTipoServicioChange = () => {
+    const sel = document.getElementById('itemTipo');
+    const input = document.getElementById('itemKmProximo');
+    if (!sel || !input) return;
+
+    const nombreTipo = sel.options[sel.selectedIndex]?.text || '';
+    const kmActual = parseInt(
+        document.getElementById('ordenKm')?.value ||
+        document.getElementById('repKm')?.value || '0'
+    );
+
+    const tipoData = tiposServicio.find(t => t.nombre === nombreTipo);
+    const intervalo = tipoData?.intervalo_km
+        ? parseInt(tipoData.intervalo_km)
+        : (KM_INTERVALOS[nombreTipo] ?? null);
+
+    if (!nombreTipo) {
+        // Sin selección — reset limpio
+        input.value = '';
+        input.disabled = false;
+        input.readOnly = false;
+        input.placeholder = 'Opcional';
+        input.style.opacity = '1';
+        input.style.background = '';
+        input.title = '';
+
+    } else if (SIN_KM_PROXIMO.has(nombreTipo)) {
+        // No aplica — desactivado, valor vacío que el PHP guardará como NULL
+        input.value = '';
+        input.disabled = true;
+        input.readOnly = true;
+        input.placeholder = 'No aplica para este servicio';
+        input.style.opacity = '.35';
+        input.style.background = 'rgba(255,255,255,.03)';
+        input.title = 'Este tipo de servicio no requiere KM próximo';
+
+    } else if (intervalo && intervalo > 0 && kmActual > 0) {
+        // Cálculo automático — readonly para que no lo editen
+        input.value = kmActual + intervalo;
+        input.disabled = false;
+        input.readOnly = true;
+        input.placeholder = '';
+        input.style.opacity = '.75';
+        input.style.background = 'rgba(232,184,75,.06)';
+        input.title = `Calculado automáticamente: ${kmActual.toLocaleString()} km + ${intervalo.toLocaleString()} km intervalo`;
+
+    } else {
+        // Mecánico decide — editable libre
+        input.value = '';
+        input.disabled = false;
+        input.readOnly = false;
+        input.placeholder = 'Ingrese KM próximo';
+        input.style.opacity = '1';
+        input.style.background = '';
+        input.title = '';
     }
 };
 
+// ── CARGAR TIPOS REPARACION ───────────────────────────────────────────────────
 const cargarTiposReparacion = async () => {
     const sel = document.getElementById('repTipo');
-    if (sel.options.length > 1) return;
+    if (!sel || sel.options.length > 1) return;
     if (tiposReparacion.length) {
         sel.innerHTML = '<option value="">Seleccione tipo...</option>' +
             tiposReparacion.map(t => `<option value="${t.id_tipo_reparacion}">${t.nombre}</option>`).join('');
@@ -1105,33 +950,17 @@ const cargarTiposReparacion = async () => {
     }
 };
 
-const toggleFormServicio = () => {
-    const form = document.getElementById('formNuevoServicio');
-    const btn = document.getElementById('btnToggleFormServicio');
-    const visible = form.style.display !== 'none';
-    form.style.display = visible ? 'none' : 'block';
-    btn.innerHTML = visible
-        ? '<i class="bi bi-plus-circle"></i> Registrar Nuevo Servicio'
-        : '<i class="bi bi-x-circle"></i> Cancelar';
-};
-
+// ── RESET FORM SERVICIO ───────────────────────────────────────────────────────
 const resetFormServicio = () => {
-    const form = document.getElementById('formNuevoServicio');
-    const btn = document.getElementById('btnToggleFormServicio');
+    const form = document.getElementById('formNuevaOrden');
+    const btn = document.getElementById('btnNuevaOrden');
     if (form) form.style.display = 'none';
-    if (btn) btn.innerHTML = '<i class="bi bi-plus-circle"></i> Registrar Nuevo Servicio';
+    if (btn) btn.innerHTML = '<i class="bi bi-plus-circle"></i> Nueva Orden de Servicio';
+    const panel = document.getElementById('panelOrdenAbierta');
+    if (panel) panel.style.display = 'none';
 };
 
-const toggleFormReparacion = () => {
-    const form = document.getElementById('formNuevaReparacion');
-    const btn = document.getElementById('btnToggleFormReparacion');
-    const visible = form.style.display !== 'none';
-    form.style.display = visible ? 'none' : 'block';
-    btn.innerHTML = visible
-        ? '<i class="bi bi-plus-circle"></i> Registrar Nueva Reparación'
-        : '<i class="bi bi-x-circle"></i> Cancelar';
-};
-
+// ── RESET FORM REPARACION ─────────────────────────────────────────────────────
 const resetFormReparacion = () => {
     const form = document.getElementById('formNuevaReparacion');
     const btn = document.getElementById('btnToggleFormReparacion');
@@ -1145,7 +974,14 @@ const resetFormReparacion = () => {
     }
 };
 
+// ── ABRIR FICHA ───────────────────────────────────────────────────────────────
+
+let _fichaLoading = false;
+
 const abrirFicha = async (placa) => {
+    if (_fichaLoading) return;
+    _fichaLoading = true;
+
     fichaPlacaActual = placa;
     fichaTipoVehiculo = '';
 
@@ -1171,8 +1007,13 @@ const abrirFicha = async (placa) => {
     await cargarTiposServicio();
     await cargarTiposReparacion();
 
-    const svcFechaEl = document.getElementById('svcFecha');
-    if (svcFechaEl) svcFechaEl.value = new Date().toISOString().split('T')[0];
+    const ordenKmEl = document.getElementById('ordenKm');
+    const ordenFechaEl = document.getElementById('ordenFecha');
+    const hoy = new Date().toISOString().split('T')[0];
+    if (ordenFechaEl) ordenFechaEl.value = hoy;
+
+    const repFechaEl = document.getElementById('repFechaInicio');
+    if (repFechaEl) { repFechaEl.value = hoy; repFechaEl.max = hoy; }
 
     try {
         const r = await fetch(`${BASE}/API/vehiculos/ficha?placa=${placa}`);
@@ -1185,49 +1026,28 @@ const abrirFicha = async (placa) => {
         if (fichaPlacaEl) fichaPlacaEl.textContent = v.placa;
         if (fichaVehiculoEl) fichaVehiculoEl.textContent = `${v.marca} ${v.modelo} · ${v.anio}`;
 
-        // ── Foto frente ───────────────────────────────────────────────────────
+        // ── Fotos ─────────────────────────────────────────────────────────
         const img = document.getElementById('fichaFoto');
         const noFoto = document.getElementById('fichaNoFoto');
-        if (img && noFoto) {
-            if (v.foto_url) {
-                img.src = v.foto_url;
-                img.style.display = 'block';
-                noFoto.style.display = 'none';
-            } else {
-                img.style.display = 'none';
-                noFoto.style.display = 'flex';
-            }
-        }
-
-        // ── Foto lateral ──────────────────────────────────────────────────────
         const imgLateral = document.getElementById('fichaFotoLateral');
         const noImgLateral = document.getElementById('fichaNoFotoLateral');
-        if (imgLateral && noImgLateral) {
-            if (v.foto_lateral_url) {
-                imgLateral.src = v.foto_lateral_url;
-                imgLateral.style.display = 'block';
-                noImgLateral.style.display = 'none';
-            } else {
-                imgLateral.style.display = 'none';
-                noImgLateral.style.display = 'flex';
-            }
-        }
-
-        // ── Foto trasera ──────────────────────────────────────────────────────
         const imgTrasera = document.getElementById('fichaFotoTrasera');
         const noImgTrasera = document.getElementById('fichaNoFotoTrasera');
+
+        if (img && noFoto) {
+            if (v.foto_url) { img.src = v.foto_url; img.style.display = 'block'; noFoto.style.display = 'none'; }
+            else { img.style.display = 'none'; noFoto.style.display = 'flex'; }
+        }
+        if (imgLateral && noImgLateral) {
+            if (v.foto_lateral_url) { imgLateral.src = v.foto_lateral_url; imgLateral.style.display = 'block'; noImgLateral.style.display = 'none'; }
+            else { imgLateral.style.display = 'none'; noImgLateral.style.display = 'flex'; }
+        }
         if (imgTrasera && noImgTrasera) {
-            if (v.foto_trasera_url) {
-                imgTrasera.src = v.foto_trasera_url;
-                imgTrasera.style.display = 'block';
-                noImgTrasera.style.display = 'none';
-            } else {
-                imgTrasera.style.display = 'none';
-                noImgTrasera.style.display = 'flex';
-            }
+            if (v.foto_trasera_url) { imgTrasera.src = v.foto_trasera_url; imgTrasera.style.display = 'block'; noImgTrasera.style.display = 'none'; }
+            else { imgTrasera.style.display = 'none'; noImgTrasera.style.display = 'flex'; }
         }
 
-        // ── Lightbox fotos vehículo ───────────────────────────────────────────
+        // ── Lightbox ──────────────────────────────────────────────────────
         const fotosVehiculo = [];
         if (v.foto_url) fotosVehiculo.push({ url: v.foto_url, caption: 'Vista Frontal — ' + v.placa });
         if (v.foto_lateral_url) fotosVehiculo.push({ url: v.foto_lateral_url, caption: 'Vista Lateral — ' + v.placa });
@@ -1239,37 +1059,22 @@ const abrirFicha = async (placa) => {
         }
         if (imgLateral && v.foto_lateral_url) {
             imgLateral.style.cursor = 'zoom-in';
-            imgLateral.onclick = () => abrirLightbox(fotosVehiculo,
-                fotosVehiculo.findIndex(f => f.url === v.foto_lateral_url));
+            imgLateral.onclick = () => abrirLightbox(fotosVehiculo, fotosVehiculo.findIndex(f => f.url === v.foto_lateral_url));
         }
         if (imgTrasera && v.foto_trasera_url) {
             imgTrasera.style.cursor = 'zoom-in';
-            imgTrasera.onclick = () => abrirLightbox(fotosVehiculo,
-                fotosVehiculo.findIndex(f => f.url === v.foto_trasera_url));
+            imgTrasera.onclick = () => abrirLightbox(fotosVehiculo, fotosVehiculo.findIndex(f => f.url === v.foto_trasera_url));
         }
 
-        // ── Tarjeta PDF ───────────────────────────────────────────────────────
+        // ── PDFs ──────────────────────────────────────────────────────────
         const pdfBtn = document.getElementById('fichaPdfBtn');
-        if (pdfBtn) {
-            if (v.pdf_url) { pdfBtn.href = v.pdf_url; pdfBtn.style.display = ''; }
-            else { pdfBtn.style.display = 'none'; }
-        }
-
-        // ── Cert inventario ───────────────────────────────────────────────────
         const certInvBtn = document.getElementById('fichaCertInventarioBtn');
-        if (certInvBtn) {
-            if (v.cert_inventario_url) { certInvBtn.href = v.cert_inventario_url; certInvBtn.style.display = 'block'; }
-            else { certInvBtn.style.display = 'none'; }
-        }
-
-        // ── Cert SICOIN ───────────────────────────────────────────────────────
         const certSicBtn = document.getElementById('fichaCertSicoinBtn');
-        if (certSicBtn) {
-            if (v.cert_sicoin_url) { certSicBtn.href = v.cert_sicoin_url; certSicBtn.style.display = 'block'; }
-            else { certSicBtn.style.display = 'none'; }
-        }
+        if (pdfBtn) { if (v.pdf_url) { pdfBtn.href = v.pdf_url; pdfBtn.style.display = ''; } else { pdfBtn.style.display = 'none'; } }
+        if (certInvBtn) { if (v.cert_inventario_url) { certInvBtn.href = v.cert_inventario_url; certInvBtn.style.display = 'block'; } else { certInvBtn.style.display = 'none'; } }
+        if (certSicBtn) { if (v.cert_sicoin_url) { certSicBtn.href = v.cert_sicoin_url; certSicBtn.style.display = 'block'; } else { certSicBtn.style.display = 'none'; } }
 
-        // ── Datos generales ───────────────────────────────────────────────────
+        // ── Datos generales ───────────────────────────────────────────────
         const _set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
         _set('fd-placa', v.placa);
         _set('fd-serie', v.numero_serie);
@@ -1282,10 +1087,8 @@ const abrirFicha = async (placa) => {
         _set('fd-ingreso', v.fecha_ingreso);
         _set('fd-obs', v.observaciones || '—');
         _set('fd-unidad', v.unidad_nombre || '—');
-        _set('fd-destacamento', v.destacamento_nombre
-            ? `${v.destacamento_nombre} (${v.destacamento_depto})` : '—');
+        _set('fd-destacamento', v.destacamento_nombre ? `${v.destacamento_nombre} (${v.destacamento_depto})` : '—');
 
-        // ── Estado con color ──────────────────────────────────────────────────
         const estadoEl = document.getElementById('fd-estado');
         if (estadoEl) {
             const colores = { Alta: '#4caf7d', Baja: '#e05252', Taller: '#e8b84b' };
@@ -1293,7 +1096,21 @@ const abrirFicha = async (placa) => {
             estadoEl.style.color = colores[v.estado] || 'inherit';
         }
 
-        // ── Alertas de servicio ───────────────────────────────────────────────
+        // ── KM orden — readonly con valor actual ──────────────────────────
+        if (ordenKmEl) {
+            ordenKmEl.value = v.km_actuales;
+            ordenKmEl.readOnly = true;
+            ordenKmEl.style.opacity = '.7';
+            ordenKmEl.style.cursor = 'not-allowed';
+            ordenKmEl.style.background = 'rgba(255,255,255,.03)';
+            ordenKmEl.title = `KM actual del vehículo: ${Number(v.km_actuales).toLocaleString()} km`;
+        }
+
+        // ── KM reparacion ─────────────────────────────────────────────────
+        const repKmEl = document.getElementById('repKm');
+        if (repKmEl) repKmEl.value = v.km_actuales;
+
+        // ── Alertas próximo servicio ──────────────────────────────────────
         const fichaAlertaEl = document.getElementById('fichaAlerta');
         const fichaProximoEl = document.getElementById('fichaProximo');
         if (fichaAlertaEl) fichaAlertaEl.style.display = 'none';
@@ -1306,12 +1123,12 @@ const abrirFicha = async (placa) => {
                     fichaAlertaEl.style.display = 'flex';
                     const textoEl = document.getElementById('fichaAlertaTexto');
                     if (textoEl) textoEl.textContent =
-                        `${ps.tipo_nombre} — venció a los ${Number(ps.km_proximo_servicio).toLocaleString()} km. KM actual: ${Number(v.km_actuales).toLocaleString()} km`;
+                        `${ps.tipo_nombre} — venció a los ${Number(ps.km_proximo).toLocaleString()} km. KM actual: ${Number(v.km_actuales).toLocaleString()} km`;
                 }
             } else {
                 if (fichaProximoEl) {
                     fichaProximoEl.style.display = 'flex';
-                    let texto = `${ps.tipo_nombre} a los ${Number(ps.km_proximo_servicio).toLocaleString()} km`;
+                    let texto = `${ps.tipo_nombre} a los ${Number(ps.km_proximo).toLocaleString()} km`;
                     if (ps.fecha_proximo) texto += ` · Fecha límite: ${ps.fecha_proximo}`;
                     const textoEl = document.getElementById('fichaProximoTexto');
                     if (textoEl) textoEl.textContent = texto;
@@ -1319,40 +1136,54 @@ const abrirFicha = async (placa) => {
             }
         }
 
-        // ── KM para servicios y reparaciones ─────────────────────────────────
-        const svcKmEl = document.getElementById('svcKm');
-        const repKmEl = document.getElementById('repKm');
-        const repFechaEl = document.getElementById('repFechaInicio');
-        if (svcKmEl) svcKmEl.value = v.km_actuales;
-        if (repKmEl) repKmEl.value = v.km_actuales;
-        if (repFechaEl) repFechaEl.value = new Date().toISOString().split('T')[0];
-
-        // ── Badges ────────────────────────────────────────────────────────────
+        // ── Badges ────────────────────────────────────────────────────────
         const _badge = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-        _badge('badgeServicios', d.servicios.length);
+        _badge('badgeServicios', (d.ordenes || []).length);
         _badge('badgeReparaciones', d.reparaciones.length);
         _badge('badgeSeguro', (d.seguros || []).length);
         _badge('badgeAccidentes', (d.accidentes || []).length);
 
-        // ── Render tabs ───────────────────────────────────────────────────────
-        renderTablaServicios(d.servicios);
+        // ── Render tabs ───────────────────────────────────────────────────
+        renderTablaServicios(d.ordenes || []);
         renderTablaReparaciones(d.reparaciones);
         renderTablaSeguros(d.seguros || []);
         renderTablaAccidentes(d.accidentes || []);
         await cargarChequeos();
+
+        // ── Orden en proceso ──────────────────────────────────────────────
+        const ordenAlerta = document.getElementById('ordenEnProcesoAlert');
+        if (d.orden_en_proceso) {
+            ordenActualId = parseInt(d.orden_en_proceso.id_orden);
+            _ordenIdRespaldo = parseInt(d.orden_en_proceso.id_orden);
+            const textoEl = document.getElementById('ordenEnProcesoTexto');
+            if (textoEl) textoEl.innerHTML =
+                `Abierta el ${d.orden_en_proceso.fecha_ingreso} · 
+                ${Number(d.orden_en_proceso.km_al_ingreso).toLocaleString()} km · 
+                ${d.orden_en_proceso.total_items || 0} servicio(s)`;
+            if (ordenAlerta) ordenAlerta.style.display = 'flex';
+        } else {
+            ordenActualId = null;
+            _ordenIdRespaldo = null;
+            if (ordenAlerta) ordenAlerta.style.display = 'none';
+        }
 
     } catch (err) {
         console.error('Error en abrirFicha:', err);
         Toast.fire({ icon: 'error', title: 'Error al cargar la ficha' });
     } finally {
         ocultarLoader();
+        _fichaLoading = false;
     }
 };
 
 const cerrarFicha = () => {
     document.getElementById('modalFicha').style.display = 'none';
     document.body.style.overflow = '';
-    fichaPlacaActual = '';  // ← solo aquí
+    fichaPlacaActual = '';
+    ordenActualId = null;
+    _ordenIdRespaldo = null;
+    // ── Refrescar cartas al cerrar para reflejar cambios de estado ────────
+    buscar();
 };
 
 document.getElementById('modalFicha').addEventListener('click', (e) => {
@@ -1360,7 +1191,6 @@ document.getElementById('modalFicha').addEventListener('click', (e) => {
 });
 
 const switchTab = (btn, tab) => {
-    // ── Resetear formulario del tab que se abandona ───────────────────────────
     const tabActivo = document.querySelector('.ficha-tab.activo')?.dataset?.tab;
     if (tabActivo && tabActivo !== tab) {
         if (tabActivo === 'servicios') resetFormServicio();
@@ -1368,93 +1198,202 @@ const switchTab = (btn, tab) => {
         if (tabActivo === 'seguro') resetFormSeguro();
         if (tabActivo === 'accidentes') resetFormAccidente();
     }
-
     document.querySelectorAll('.ficha-tab').forEach(b => b.classList.remove('activo'));
     document.querySelectorAll('.ficha-tab-content').forEach(c => c.style.display = 'none');
     btn.classList.add('activo');
     document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).style.display = 'block';
 };
 
-// ── RENDER SERVICIOS ──────────────────────────────────────────────────────────
-const renderTablaServicios = (servicios) => {
-    const wrap = document.getElementById('tablaServiciosWrap');
-    if (!servicios.length) {
-        wrap.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--text-muted);"><i class="bi bi-tools" style="font-size:2.5rem;opacity:.2;display:block;margin-bottom:.75rem;"></i><p>No hay servicios registrados aún</p></div>`;
+// ════════════════════════════════════════════════════════════════════════════
+// ── ÓRDENES DE SERVICIO ───────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── TOGGLE FORM NUEVA ORDEN ───────────────────────────────────────────────────
+const toggleFormNuevaOrden = () => {
+    // ── Bloqueo: ya existe orden en proceso ───────────────────────────────
+    if (ordenActualId) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Orden en proceso',
+            html: `Ya existe una orden de servicio abierta para este vehículo.<br><br>
+                <span style="font-size:.82rem;color:#7c8398;">
+                    Use el botón <strong style="color:#e8b84b;">"Continuar orden"</strong> 
+                    para retomar la orden activa.
+                </span>`,
+            confirmButtonText: 'Entendido',
+            confirmButtonColor: '#e8b84b',
+            background: '#1a1d27', color: '#e8eaf0',
+            customClass: { container: 'swal-over-modal' }
+        });
         return;
     }
-    wrap.innerHTML = servicios.map(s => `
-        <div class="svc-row">
-            <div><div class="svc-label">Tipo</div><div class="svc-val">${s.tipo_nombre}</div></div>
-            <div><div class="svc-val">${s.fecha_realizado.split('-').reverse().join('/')}</div></div>
-            <div><div class="svc-label">KM Realizado</div><div class="svc-val">${Number(s.km_al_servicio).toLocaleString()} km</div></div>
-            <div><div class="svc-label">Próximo KM</div><div class="svc-val" style="color:${s.km_proximo_servicio ? 'var(--accent)' : 'var(--text-muted)'}">${s.km_proximo_servicio ? Number(s.km_proximo_servicio).toLocaleString() + ' km' : '—'}</div></div>
-            <div style="display:flex;gap:.4rem;align-items:center;">
-                <button onclick="eliminarServicio(${s.id_servicio})" style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);color:var(--danger);border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;" title="Eliminar"><i class="bi bi-trash3"></i></button>
-            </div>
-        </div>
-        ${s.responsable ? `<div style="font-size:.75rem;color:var(--text-muted);margin-top:-.4rem;margin-bottom:.4rem;padding-left:.25rem;"><i class="bi bi-person"></i> ${s.responsable}${s.observaciones ? ' · ' + s.observaciones : ''}</div>` : ''}
-    `).join('');
+
+    const form = document.getElementById('formNuevaOrden');
+    const btn = document.getElementById('btnNuevaOrden');
+    const visible = form.style.display !== 'none';
+    form.style.display = visible ? 'none' : 'block';
+    btn.innerHTML = visible
+        ? '<i class="bi bi-plus-circle"></i> Nueva Orden de Servicio'
+        : '<i class="bi bi-x-circle"></i> Cancelar';
 };
 
-const guardarServicio = async (forzar = false) => {
-    const tipo = document.getElementById('svcTipo').value;
-    const fecha = document.getElementById('svcFecha').value;
-    const km = document.getElementById('svcKm').value;
-    const responsable = document.getElementById('svcResponsable').value.trim();
-
-    if (!tipo) {
-        Swal.fire({ icon: 'info', title: 'Seleccione el tipo de servicio', text: 'Debe seleccionar un tipo antes de guardar.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
+// ── CREAR ORDEN ───────────────────────────────────────────────────────────────
+const crearOrden = async () => {
+    if (ordenActualId) {
+        Swal.fire({
+            icon: 'warning', title: 'Orden en proceso',
+            html: `Ya existe una orden abierta para este vehículo.<br><br>
+                <span style="font-size:.82rem;color:#7c8398;">
+                    Use <strong style="color:#e8b84b;">"Continuar orden"</strong> para retomar la orden activa.
+                </span>`,
+            confirmButtonText: 'Entendido', confirmButtonColor: '#e8b84b',
+            background: '#1a1d27', color: '#e8eaf0',
+            customClass: { container: 'swal-over-modal' }
+        });
         return;
     }
+
+    const fecha = document.getElementById('ordenFecha').value;
+    const km = document.getElementById('ordenKm').value;
+    const responsable = document.getElementById('ordenResponsable').value.trim();
+    const obs = document.getElementById('ordenObs').value.trim();
+
+    if (!fecha) {
+        Swal.fire({
+            icon: 'warning', title: 'Fecha requerida',
+            text: 'Selecciona la fecha de ingreso al taller.',
+            background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+    if (km === '' || parseInt(km) < 0) {
+        Swal.fire({
+            icon: 'warning', title: 'KM requerido',
+            text: 'Ingresa el kilometraje al momento del ingreso.',
+            background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+
+    const btnCrear = document.getElementById('btnConfirmarOrden');
+    if (btnCrear) { btnCrear.disabled = true; btnCrear.style.opacity = '.5'; }
     if (!responsable) {
-        Swal.fire({ icon: 'info', title: 'Ingrese el responsable', text: 'Debe indicar quién realizó el servicio.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
+        Swal.fire({
+            icon: 'warning', title: 'Responsable requerido',
+            text: 'Indica quién está a cargo del ingreso al taller.',
+            background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
         return;
     }
-    if (!fecha || !km) {
-        Swal.fire({ icon: 'info', title: 'Faltan datos obligatorios', text: 'La fecha y el KM son requeridos.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        return;
-    }
-
-    const body = new FormData();
-    body.append('placa', fichaPlacaActual);
-    body.append('id_tipo_servicio', tipo);
-    body.append('fecha_realizado', fecha);
-    body.append('km_al_servicio', km);
-    body.append('responsable', responsable);
-    body.append('observaciones', document.getElementById('svcObs').value);
-    if (forzar) body.append('forzar', '1');
 
     try {
-        mostrarLoader('Guardando servicio...');
-        const r = await fetch(`${BASE}/API/vehiculos/servicio/guardar`, { method: 'POST', body });
+        mostrarLoader('Abriendo orden de servicio...');
+        const body = new FormData();
+        body.append('placa', fichaPlacaActual);
+        body.append('fecha_ingreso', fecha);
+        body.append('km_al_ingreso', km);
+        body.append('responsable', responsable);
+        body.append('observaciones', obs);
+
+        const r = await fetch(`${BASE}/API/vehiculos/orden/crear`, { method: 'POST', body });
         const d = await r.json();
 
-        if (d.codigo === 0 && d.bloqueo_duro) {
-            Swal.fire({ icon: 'error', title: 'Registro bloqueado', text: d.mensaje, background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e05252', customClass: { container: 'swal-over-modal' } });
-            return;
-        }
-
-        if (d.codigo === 2) {
-            const conf = await Swal.fire({
-                icon: 'warning', title: '¿Registrar de todas formas?',
-                html: `${d.mensaje}<br><br><small style="color:#888;">Último servicio: <strong>${d.ultimo_km ? Number(d.ultimo_km).toLocaleString() + ' km' : '—'}</strong></small>`,
-                showCancelButton: true, confirmButtonText: 'Sí, registrar', cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#e8b84b', cancelButtonColor: '#555',
-                background: '#1a1d27', color: '#e8eaf0', customClass: { container: 'swal-over-modal' }
+        if (d.codigo !== 1) {
+            Swal.fire({
+                icon: 'error', title: 'No se pudo abrir la orden',
+                text: d.mensaje, background: '#1a1d27', color: '#e8eaf0',
+                confirmButtonColor: '#e05252',
+                customClass: { container: 'swal-over-modal' }
             });
-            if (conf.isConfirmed) await guardarServicio(true);
             return;
         }
 
-        Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
-        if (d.codigo === 1) {
-            document.getElementById('svcTipo').value = '';
-            document.getElementById('svcResponsable').value = '';
-            document.getElementById('svcObs').value = '';
-            resetFormServicio();
-            await abrirFicha(fichaPlacaActual);
-            switchTab(document.querySelector('.ficha-tab[data-tab="servicios"]'), 'servicios');
+        ordenActualId = parseInt(d.id_orden);
+        _ordenIdRespaldo = parseInt(d.id_orden);
+
+        document.getElementById('formNuevaOrden').style.display = 'none';
+        document.getElementById('btnNuevaOrden').innerHTML =
+            '<i class="bi bi-plus-circle"></i> Nueva Orden de Servicio';
+
+        _mostrarPanelOrden(d.orden);
+        // ── Actualizar badge estado en la carta del grid ──────────────────────
+        setTimeout(() => {
             buscar();
+            // Actualizar badge en la carta específica si está visible
+            document.querySelectorAll('.vehicle-card').forEach(carta => {
+                const btnFicha = carta.querySelector(`[onclick="abrirFicha('${fichaPlacaActual}')"]`);
+                if (btnFicha) {
+                    const estadoCarta = carta.querySelector('.card-estado');
+                    if (estadoCarta) {
+                        estadoCarta.textContent = 'Taller';
+                        estadoCarta.style.background = '#3d300a';
+                        estadoCarta.style.color = '#e8b84b';
+                        estadoCarta.style.border = '1.5px solid #6b520f';
+                    }
+                }
+            });
+        }, 500);
+
+        const ordenAlerta = document.getElementById('ordenEnProcesoAlert');
+        if (ordenAlerta) ordenAlerta.style.display = 'none';
+
+        // ── Actualizar estado en tab Info ─────────────────────────────────
+        const estadoEl = document.getElementById('fd-estado');
+        if (estadoEl) { estadoEl.textContent = 'Taller'; estadoEl.style.color = '#e8b84b'; }
+
+        // ── Actualizar badge servicios ─────────────────────────────────────
+        const badge = document.getElementById('badgeServicios');
+        if (badge) badge.textContent = parseInt(badge.textContent || '0') + 1;
+
+        // ── Actualizar cartas en segundo plano ────────────────────────────
+        setTimeout(() => buscar(), 500);
+
+        Swal.fire({
+            position: 'top-end', icon: 'success', title: 'Orden abierta',
+            html: `<span style="font-size:.85rem;color:#7c8398;">El vehículo está en <strong style="color:#e8b84b;">Taller</strong></span>`,
+            showConfirmButton: false, timer: 2000, timerProgressBar: true,
+            background: '#1a1d27', color: '#e8eaf0'
+        });
+
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    } finally {
+        ocultarLoader();
+        if (btnCrear) { btnCrear.disabled = false; btnCrear.style.opacity = '1'; }
+    }
+};
+
+// ── MOSTRAR PANEL ORDEN ABIERTA ───────────────────────────────────────────────
+const _mostrarPanelOrden = (orden) => {
+    ordenActualId = parseInt(orden.id_orden);
+    _ordenIdRespaldo = parseInt(orden.id_orden);
+    const panel = document.getElementById('panelOrdenAbierta');
+    const info = document.getElementById('ordenHeaderInfo');
+    panel.style.display = 'block';
+    info.innerHTML = `
+        <i class="bi bi-calendar3"></i> ${orden.fecha_ingreso}
+        &nbsp;·&nbsp; <i class="bi bi-speedometer"></i> ${Number(orden.km_al_ingreso).toLocaleString()} km
+        ${orden.responsable ? `&nbsp;·&nbsp; <i class="bi bi-person"></i> ${orden.responsable}` : ''}
+        &nbsp;·&nbsp; <span style="color:var(--accent);">
+            ${orden.total_items || (orden.items?.length ?? 0)} servicio(s) registrado(s)
+        </span>`;
+    _renderItemsOrden(orden.items || []);
+};
+
+// ── ABRIR ORDEN EN PROCESO ────────────────────────────────────────────────────
+const abrirOrdenEnProceso = async () => {
+    if (!ordenActualId) return;
+    try {
+        mostrarLoader('Cargando orden...');
+        const r = await fetch(`${BASE}/API/vehiculos/orden/obtener?id=${ordenActualId}`);
+        const d = await r.json();
+        if (d.codigo === 1) {
+            _mostrarPanelOrden(d.datos);
+            const ordenAlerta = document.getElementById('ordenEnProcesoAlert');
+            if (ordenAlerta) ordenAlerta.style.display = 'none';
         }
     } catch (err) {
         Toast.fire({ icon: 'error', title: 'Error de conexión' });
@@ -1463,22 +1402,420 @@ const guardarServicio = async (forzar = false) => {
     }
 };
 
-const eliminarServicio = async (id) => {
-    const conf = await Swal.fire({ icon: 'warning', title: '¿Eliminar servicio?', text: 'Esta acción no se puede deshacer.', showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#e05252', cancelButtonColor: '#3a7bd5', background: '#1a1d27', color: '#e8eaf0', customClass: { container: 'swal-over-modal' } });
-    if (!conf.isConfirmed) return;
-    const body = new FormData();
-    body.append('id_servicio', id);
-    const r = await fetch(`${BASE}/API/vehiculos/servicio/eliminar`, { method: 'POST', body });
-    const d = await r.json();
-    Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
-    if (d.codigo === 1) { await abrirFicha(fichaPlacaActual); switchTab(document.querySelector('.ficha-tab[data-tab="servicios"]'), 'servicios'); }
+// ── RENDER ITEMS DE ORDEN ─────────────────────────────────────────────────────
+const _renderItemsOrden = (items) => {
+    const wrap = document.getElementById('itemsOrdenWrap');
+    if (!items.length) {
+        wrap.innerHTML = `
+            <div style="text-align:center;padding:1.5rem;color:var(--text-muted);
+                border:1px dashed var(--border);border-radius:8px;font-size:.85rem;">
+                <i class="bi bi-inbox" style="font-size:1.5rem;opacity:.3;display:block;margin-bottom:.5rem;"></i>
+                Aún no hay servicios en esta orden
+            </div>`;
+        return;
+    }
+    wrap.innerHTML = items.map(item => `
+        <div style="display:flex;align-items:center;gap:.75rem;background:var(--dark-2);
+            border:1px solid var(--border);border-radius:8px;padding:.65rem .85rem;margin-bottom:.4rem;">
+            <i class="bi bi-check-circle-fill" style="color:#4caf7d;flex-shrink:0;"></i>
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:.85rem;font-weight:600;color:var(--text-main);">${item.tipo_nombre}</div>
+                ${item.observacion
+            ? `<div style="font-size:.75rem;color:var(--text-muted);">${item.observacion}</div>`
+            : ''}
+            </div>
+            ${item.km_proximo
+            ? `<div style="font-size:.75rem;color:var(--accent);white-space:nowrap;flex-shrink:0;">
+                    <i class="bi bi-speedometer"></i> próx. ${Number(item.km_proximo).toLocaleString()} km
+                   </div>`
+            : ''}
+            <button onclick="eliminarItemOrden(${item.id_item})"
+                style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
+                color:var(--danger);border-radius:6px;padding:.3rem .5rem;
+                cursor:pointer;font-size:.8rem;flex-shrink:0;">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>`
+    ).join('');
 };
 
-// ── RENDER REPARACIONES ───────────────────────────────────────────────────────
+// ── AGREGAR ITEM ──────────────────────────────────────────────────────────────
+const agregarItem = async () => {
+    if (!ordenActualId && _ordenIdRespaldo) {
+        ordenActualId = _ordenIdRespaldo;
+    }
+
+    const tipoSel = document.getElementById('itemTipo');
+    const tipo = tipoSel?.value;
+    const kmProximo = document.getElementById('itemKmProximo').value;
+    const observacion = document.getElementById('itemObservacion').value.trim();
+
+    if (!tipo) {
+        Swal.fire({
+            icon: 'warning', title: 'Tipo de servicio requerido',
+            text: 'Selecciona el tipo de servicio antes de agregar.',
+            background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+    if (!ordenActualId) {
+        Swal.fire({
+            icon: 'error', title: 'Sin orden activa',
+            text: 'No hay una orden de servicio abierta.',
+            background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e05252',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+
+    try {
+        mostrarLoader('Agregando servicio...');
+        const body = new FormData();
+        body.append('id_orden', ordenActualId);
+        body.append('id_tipo_servicio', tipo);
+        const inputKm = document.getElementById('itemKmProximo');
+        if (inputKm && !inputKm.disabled && kmProximo) {
+            body.append('km_proximo', kmProximo);
+        }
+        if (observacion) body.append('observacion', observacion);
+
+        const r = await fetch(`${BASE}/API/vehiculos/orden/agregar-item`, { method: 'POST', body });
+
+        if (!r.ok) {
+            const texto = await r.text();
+            console.error('Error agregar-item:', r.status, texto);
+            Swal.fire({
+                icon: 'error', title: `Error ${r.status}`,
+                text: 'No se pudo agregar el servicio. Revisá la consola.',
+                background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e05252',
+                customClass: { container: 'swal-over-modal' }
+            });
+            return;
+        }
+
+        const d = await r.json();
+
+        if (d.codigo !== 1) {
+            Swal.fire({
+                icon: 'error', title: 'No se pudo agregar',
+                text: d.mensaje || 'Verifica los datos e intenta de nuevo.',
+                background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e05252',
+                customClass: { container: 'swal-over-modal' }
+            });
+            return;
+        }
+
+        // Limpiar campos
+        tipoSel.value = '';
+        document.getElementById('itemObservacion').value = '';
+        _resetKmProximo();
+
+        // Recargar panel orden
+        try {
+            const rOrden = await fetch(`${BASE}/API/vehiculos/orden/obtener?id=${ordenActualId}`);
+            if (rOrden.ok) {
+                const dOrden = await rOrden.json();
+                if (dOrden.codigo === 1) _mostrarPanelOrden(dOrden.datos);
+            }
+        } catch (e) {
+            console.warn('No se pudo recargar panel orden:', e);
+        }
+
+        Swal.fire({
+            position: 'top-end', icon: 'success', title: 'Servicio agregado',
+            showConfirmButton: false, timer: 1000, timerProgressBar: true,
+            background: '#1a1d27', color: '#e8eaf0'
+        });
+
+    } catch (err) {
+        console.error('agregarItem error:', err);
+        Swal.fire({
+            icon: 'error', title: 'Error de conexión',
+            text: err.message || 'Verifica tu conexión e intenta de nuevo.',
+            background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e05252',
+            customClass: { container: 'swal-over-modal' }
+        });
+    } finally {
+        ocultarLoader();
+    }
+};
+// ── ELIMINAR ITEM ─────────────────────────────────────────────────────────────
+const eliminarItemOrden = async (idItem) => {
+    try {
+        const body = new FormData();
+        body.append('id_item', idItem);
+        const r = await fetch(`${BASE}/API/vehiculos/orden/eliminar-item`, { method: 'POST', body });
+        const d = await r.json();
+        if (d.codigo === 1) {
+            const rOrden = await fetch(`${BASE}/API/vehiculos/orden/obtener?id=${ordenActualId}`);
+            const dOrden = await rOrden.json();
+            if (dOrden.codigo === 1) _mostrarPanelOrden(dOrden.datos);
+        }
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    }
+};
+
+// ── COMPLETAR ORDEN ───────────────────────────────────────────────────────────
+const completarOrden = async () => {
+    const conf = await Swal.fire({
+        icon: 'warning',
+        title: '¿Finalizar Orden de Servicio?',
+        html: `
+            <div style="text-align:left;font-size:.88rem;color:#c8cfe0;line-height:1.7;">
+                <p>Está a punto de cerrar definitivamente esta orden de servicio.</p>
+                <p>Verifique que <strong style="color:#e8eaf0;">todos los servicios han sido realizados</strong> 
+                antes de continuar.</p>
+                <div style="background:rgba(224,82,82,.1);border:1px solid rgba(224,82,82,.3);
+                    border-radius:8px;padding:.75rem 1rem;margin-top:.75rem;
+                    display:flex;align-items:flex-start;gap:.6rem;">
+                    <i class="bi bi-exclamation-triangle-fill" style="color:#e05252;margin-top:.1rem;flex-shrink:0;"></i>
+                    <span style="font-size:.82rem;color:#e05252;">
+                        Esta acción es <strong>irreversible</strong>. El vehículo saldrá del taller 
+                        y quedará operativo en estado <strong>Alta</strong>.
+                    </span>
+                </div>
+            </div>`,
+        showCancelButton: true,
+        confirmButtonText: '<i class="bi bi-check-circle-fill"></i> Sí, finalizar orden',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#4caf7d',
+        cancelButtonColor: '#555',
+        background: '#1a1d27',
+        color: '#e8eaf0',
+        customClass: { container: 'swal-over-modal' }
+    });
+    if (!conf.isConfirmed) return;
+
+    try {
+        mostrarLoader('Completando orden...');
+        const body = new FormData();
+        body.append('id_orden', ordenActualId);
+        const r = await fetch(`${BASE}/API/vehiculos/orden/completar`, { method: 'POST', body });
+        const d = await r.json();
+
+        if (d.codigo !== 1) {
+            Swal.fire({
+                icon: 'error', title: 'Error', text: d.mensaje,
+                background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e05252',
+                customClass: { container: 'swal-over-modal' }
+            });
+            return;
+        }
+
+        const placaCompletada = fichaPlacaActual;
+
+        ordenActualId = null;
+        _ordenIdRespaldo = null;
+
+        document.getElementById('panelOrdenAbierta').style.display = 'none';
+        document.getElementById('ordenEnProcesoAlert').style.display = 'none';
+
+        // ── Actualizar estado en tab Info ─────────────────────────────────
+        const estadoEl = document.getElementById('fd-estado');
+        if (estadoEl) { estadoEl.textContent = 'Alta'; estadoEl.style.color = '#4caf7d'; }
+
+        // ── Recargar ficha para mostrar historial actualizado ─────────────
+        await abrirFicha(placaCompletada);
+        switchTab(document.querySelector('.ficha-tab[data-tab="servicios"]'), 'servicios');
+
+        // ── Actualizar carta en el grid ───────────────────────────────────
+        setTimeout(() => {
+            buscar();
+            document.querySelectorAll('.vehicle-card').forEach(carta => {
+                const btnFicha = carta.querySelector(`[onclick="abrirFicha('${placaCompletada}')"]`);
+                if (btnFicha) {
+                    const estadoCarta = carta.querySelector('.card-estado');
+                    if (estadoCarta) {
+                        estadoCarta.textContent = 'Alta';
+                        estadoCarta.style.background = '#1a3d2b';
+                        estadoCarta.style.color = '#4caf7d';
+                        estadoCarta.style.border = '1.5px solid #2d6b45';
+                    }
+                }
+            });
+        }, 500);
+
+        Swal.fire({
+            position: 'top-end', icon: 'success', title: 'Orden completada',
+            html: `<span style="font-size:.85rem;color:#7c8398;">El vehículo está operativo en estado <strong style="color:#4caf7d;">Alta</strong></span>`,
+            showConfirmButton: false, timer: 2500, timerProgressBar: true,
+            background: '#1a1d27', color: '#e8eaf0'
+        });
+
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    } finally {
+        ocultarLoader();
+    }
+};
+
+// ── ELIMINAR ORDEN ────────────────────────────────────────────────────────────
+const confirmarEliminarOrden = async () => {
+    const conf = await Swal.fire({
+        icon: 'warning', title: '¿Eliminar orden de servicio?',
+        text: 'Se eliminarán todos los servicios registrados en esta orden.',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#e05252', cancelButtonColor: '#555',
+        background: '#1a1d27', color: '#e8eaf0',
+        customClass: { container: 'swal-over-modal' }
+    });
+    if (!conf.isConfirmed) return;
+
+    try {
+        mostrarLoader('Eliminando orden...');
+        const body = new FormData();
+        body.append('id_orden', ordenActualId);
+        const r = await fetch(`${BASE}/API/vehiculos/orden/eliminar`, { method: 'POST', body });
+        const d = await r.json();
+
+        ordenActualId = null;
+        _ordenIdRespaldo = null;
+        document.getElementById('panelOrdenAbierta').style.display = 'none';
+        document.getElementById('ordenEnProcesoAlert').style.display = 'none';
+
+        await abrirFicha(fichaPlacaActual);
+        switchTab(document.querySelector('.ficha-tab[data-tab="servicios"]'), 'servicios');
+        buscar();
+
+        Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
+
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    } finally {
+        ocultarLoader();
+    }
+};
+
+// ── RENDER HISTORIAL ÓRDENES ──────────────────────────────────────────────────
+const renderTablaServicios = (ordenes) => {
+    const wrap = document.getElementById('tablaOrdenesWrap');
+    if (!ordenes || !ordenes.length) {
+        wrap.innerHTML = `
+            <div style="text-align:center;padding:2rem;color:var(--text-muted);">
+                <i class="bi bi-tools" style="font-size:2.5rem;opacity:.2;display:block;margin-bottom:.75rem;"></i>
+                <p>No hay órdenes de servicio registradas</p>
+            </div>`;
+        return;
+    }
+    wrap.innerHTML = ordenes.map(o => {
+        const esEnProceso = o.estado === 'En proceso';
+        const estadoColor = esEnProceso ? '#e8b84b' : '#4caf7d';
+        const estadoBg = esEnProceso ? 'rgba(232,184,75,.15)' : 'rgba(76,175,125,.15)';
+        return `
+        <div class="svc-row" style="grid-template-columns:1fr 1fr 1fr 1fr auto;
+            ${esEnProceso ? 'border-color:rgba(232,184,75,.3);' : ''}">
+            <div><div class="svc-label">Fecha ingreso</div><div class="svc-val">${o.fecha_ingreso}</div></div>
+            <div><div class="svc-label">KM</div><div class="svc-val">${Number(o.km_al_ingreso).toLocaleString()} km</div></div>
+            <div><div class="svc-label">Servicios</div><div class="svc-val">${o.total_items || 0} servicio(s)</div></div>
+            <div><div class="svc-label">Estado</div><div class="svc-val">
+                <span style="background:${estadoBg};color:${estadoColor};border:1px solid ${estadoColor}44;
+                    padding:.2rem .65rem;border-radius:20px;font-size:.72rem;font-weight:700;">
+                    ${o.estado}
+                </span>
+            </div></div>
+            <div style="display:flex;gap:.4rem;align-items:center;">
+                <button onclick="verOrden(${o.id_orden})"
+                    style="background:rgba(111,66,193,.15);border:1px solid rgba(111,66,193,.3);
+                    color:#a78bfa;border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </div>
+        </div>
+        ${o.responsable ? `<div style="font-size:.75rem;color:var(--text-muted);margin-top:-.4rem;margin-bottom:.4rem;padding-left:.25rem;"><i class="bi bi-person"></i> ${o.responsable}${o.observaciones ? ' · ' + o.observaciones : ''}</div>` : ''}`;
+    }).join('');
+};
+
+// ── VER ORDEN ─────────────────────────────────────────────────────────────────
+const verOrden = async (idOrden) => {
+    try {
+        mostrarLoader('Cargando orden...');
+        const r = await fetch(`${BASE}/API/vehiculos/orden/obtener?id=${idOrden}`);
+        const d = await r.json();
+        if (d.codigo !== 1) return;
+
+        const o = d.datos;
+        const coloresResultado = {
+            'Realizado': '#4caf7d', 'Revisado': '#5b9bd5',
+            'Pendiente': '#e8b84b', 'No aplica': '#7c8398'
+        };
+        const filasItems = (o.items || []).map((item, i) => {
+            const color = coloresResultado[item.resultado] || '#7c8398';
+            return `
+            <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:.5rem .75rem;color:var(--text-muted);font-size:.8rem;">${String(i + 1).padStart(2, '0')}</td>
+                <td style="padding:.5rem .75rem;font-size:.85rem;font-weight:600;color:var(--text-main);">${item.tipo_nombre}</td>
+                <td style="padding:.5rem .75rem;text-align:center;">
+                    <span style="color:${color};font-weight:700;font-size:.82rem;">${item.resultado}</span>
+                </td>
+                <td style="padding:.5rem .75rem;font-size:.78rem;color:var(--accent);">
+                    ${item.km_proximo ? Number(item.km_proximo).toLocaleString() + ' km' : '—'}
+                </td>
+                <td style="padding:.5rem .75rem;font-size:.78rem;color:var(--text-muted);">${item.observacion || ''}</td>
+            </tr>`;
+        }).join('');
+
+        await Swal.fire({
+            title: `<span style="font-family:Rajdhani,sans-serif;font-size:1.1rem;">
+                <i class="bi bi-tools" style="color:var(--accent);"></i>
+                Orden de Servicio — ${o.fecha_ingreso}
+            </span>`,
+            html: `
+            <div style="text-align:left;font-size:.82rem;margin-bottom:1rem;color:#7c8398;">
+                <i class="bi bi-speedometer"></i> ${Number(o.km_al_ingreso).toLocaleString()} km
+                ${o.responsable ? ` &nbsp;·&nbsp; <i class="bi bi-person"></i> ${o.responsable}` : ''}
+                ${o.observaciones ? `<br><i class="bi bi-chat-text"></i> ${o.observaciones}` : ''}
+            </div>
+            <div style="overflow-x:auto;max-height:350px;overflow-y:auto;">
+                <table style="width:100%;border-collapse:collapse;">
+                    <thead>
+                        <tr style="background:#1a1d27;position:sticky;top:0;">
+                            <th style="padding:.5rem;text-align:left;color:#7c8398;font-size:.7rem;">No.</th>
+                            <th style="padding:.5rem;text-align:left;color:#7c8398;font-size:.7rem;">Servicio</th>
+                            <th style="padding:.5rem;text-align:center;color:#7c8398;font-size:.7rem;">Resultado</th>
+                            <th style="padding:.5rem;text-align:left;color:#7c8398;font-size:.7rem;">Próx. KM</th>
+                            <th style="padding:.5rem;text-align:left;color:#7c8398;font-size:.7rem;">Obs.</th>
+                        </tr>
+                    </thead>
+                    <tbody>${filasItems}</tbody>
+                </table>
+            </div>`,
+            background: '#1a1d27', color: '#e8eaf0',
+            confirmButtonColor: '#6f42c1', confirmButtonText: 'Cerrar',
+            width: '700px', customClass: { container: 'swal-over-modal' }
+        });
+
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    } finally {
+        ocultarLoader();
+    }
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// ── REPARACIONES ──────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+
+const toggleFormReparacion = () => {
+    const form = document.getElementById('formNuevaReparacion');
+    const btn = document.getElementById('btnToggleFormReparacion');
+    const visible = form.style.display !== 'none';
+    form.style.display = visible ? 'none' : 'block';
+    btn.innerHTML = visible
+        ? '<i class="bi bi-plus-circle"></i> Registrar Nueva Reparación'
+        : '<i class="bi bi-x-circle"></i> Cancelar';
+};
+
 const renderTablaReparaciones = (reparaciones) => {
     const wrap = document.getElementById('tablaReparacionesWrap');
     if (!reparaciones.length) {
-        wrap.innerHTML = `<div style="text-align:center;padding:3rem;color:var(--text-muted);"><i class="bi bi-wrench-adjustable" style="font-size:3rem;opacity:.2;display:block;margin-bottom:1rem;"></i><p>No hay reparaciones registradas</p></div>`;
+        wrap.innerHTML = `
+            <div style="text-align:center;padding:3rem;color:var(--text-muted);">
+                <i class="bi bi-wrench-adjustable" style="font-size:3rem;opacity:.2;display:block;margin-bottom:1rem;"></i>
+                <p>No hay reparaciones registradas</p>
+            </div>`;
         return;
     }
     wrap.innerHTML = reparaciones.map(r => `
@@ -1489,12 +1826,23 @@ const renderTablaReparaciones = (reparaciones) => {
             <div><div class="svc-label">Fin</div><div class="svc-val">${r.fecha_fin || '—'}</div></div>
             <div><div class="svc-label">Costo</div><div class="svc-val">${r.costo ? 'Q ' + Number(r.costo).toLocaleString() : '—'}</div></div>
             <div style="display:flex;gap:.4rem;align-items:center;">
-                <button onclick="editarReparacion(${JSON.stringify(r).replace(/"/g, '&quot;')})" style="background:rgba(58,123,213,.15);border:1px solid rgba(58,123,213,.3);color:#5b9bd5;border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;" title="Editar"><i class="bi bi-pencil-square"></i></button>
-                <button onclick="eliminarReparacion(${r.id_reparacion})" style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);color:var(--danger);border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;" title="Eliminar"><i class="bi bi-trash3"></i></button>
+                <button onclick="editarReparacion(${JSON.stringify(r).replace(/"/g, '&quot;')})"
+                    style="background:rgba(58,123,213,.15);border:1px solid rgba(58,123,213,.3);color:#5b9bd5;border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+                <button onclick="eliminarReparacion(${r.id_reparacion})"
+                    style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);color:var(--danger);border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;">
+                    <i class="bi bi-trash3"></i>
+                </button>
             </div>
         </div>
-        <div style="font-size:.75rem;color:var(--text-muted);margin-top:-.4rem;margin-bottom:.6rem;padding-left:.25rem;">${r.descripcion}${r.proveedor ? ' · <i class="bi bi-shop"></i> ' + r.proveedor : ''}${r.responsable ? ' · <i class="bi bi-person"></i> ' + r.responsable : ''}${r.km_al_momento ? ' · <i class="bi bi-speedometer"></i> ' + Number(r.km_al_momento).toLocaleString() + ' km' : ''}</div>
-    `).join('');
+        <div style="font-size:.75rem;color:var(--text-muted);margin-top:-.4rem;margin-bottom:.6rem;padding-left:.25rem;">
+            ${r.descripcion}
+            ${r.proveedor ? ' · <i class="bi bi-shop"></i> ' + r.proveedor : ''}
+            ${r.responsable ? ' · <i class="bi bi-person"></i> ' + r.responsable : ''}
+            ${r.km_al_momento ? ' · <i class="bi bi-speedometer"></i> ' + Number(r.km_al_momento).toLocaleString() + ' km' : ''}
+        </div>`
+    ).join('');
 };
 
 const guardarReparacion = async (forzar = false) => {
@@ -1503,22 +1851,10 @@ const guardarReparacion = async (forzar = false) => {
     const fecha = document.getElementById('repFechaInicio').value;
     const km = document.getElementById('repKm').value;
 
-    if (!tipo) {
-        Swal.fire({ icon: 'info', title: 'Seleccione el tipo de reparación', text: 'Debe seleccionar un tipo antes de guardar.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        return;
-    }
-    if (!desc) {
-        Swal.fire({ icon: 'info', title: 'Ingrese una descripción', text: 'Debe describir la reparación a realizar.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        return;
-    }
-    if (!km || parseInt(km) <= 0) {
-        Swal.fire({ icon: 'info', title: 'Ingrese el KM al momento', text: 'El kilometraje al momento de la reparación es obligatorio.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        return;
-    }
-    if (!fecha) {
-        Swal.fire({ icon: 'info', title: 'Faltan datos obligatorios', text: 'La fecha de inicio es requerida.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        return;
-    }
+    if (!tipo) { Swal.fire({ icon: 'info', title: 'Seleccione el tipo', text: 'Debe seleccionar un tipo antes de guardar.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); return; }
+    if (!desc) { Swal.fire({ icon: 'info', title: 'Ingrese una descripción', text: 'Debe describir la reparación.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); return; }
+    if (!km || parseInt(km) <= 0) { Swal.fire({ icon: 'info', title: 'Ingrese el KM', text: 'El kilometraje es obligatorio.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); return; }
+    if (!fecha) { Swal.fire({ icon: 'info', title: 'Fecha requerida', text: 'La fecha de inicio es requerida.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); return; }
 
     const body = new FormData();
     body.append('placa', fichaPlacaActual);
@@ -1550,11 +1886,10 @@ const guardarReparacion = async (forzar = false) => {
             Swal.fire({ icon: 'error', title: 'Registro bloqueado', text: d.mensaje, background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e05252', customClass: { container: 'swal-over-modal' } });
             return;
         }
-
         if (d.codigo === 2) {
             const conf = await Swal.fire({
                 icon: 'warning', title: '¿Registrar de todas formas?',
-                html: `${d.mensaje}<br><br><small style="color:#888;">Último KM registrado: <strong>${d.ultimo_km ? Number(d.ultimo_km).toLocaleString() + ' km' : '—'}</strong></small>`,
+                html: `${d.mensaje}<br><br><small style="color:#888;">Último KM: <strong>${d.ultimo_km ? Number(d.ultimo_km).toLocaleString() + ' km' : '—'}</strong></small>`,
                 showCancelButton: true, confirmButtonText: 'Sí, registrar', cancelButtonText: 'Cancelar',
                 confirmButtonColor: '#e8b84b', cancelButtonColor: '#555',
                 background: '#1a1d27', color: '#e8eaf0', customClass: { container: 'swal-over-modal' }
@@ -1566,10 +1901,8 @@ const guardarReparacion = async (forzar = false) => {
         Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
         if (d.codigo === 1) {
             reparacionEditandoId = null;
-            ['repTipo', 'repDescripcion', 'repFechaFin', 'repCosto',
-                'repProveedor', 'repResponsable', 'repObs'].forEach(id => {
-                    document.getElementById(id).value = '';
-                });
+            ['repTipo', 'repDescripcion', 'repFechaFin', 'repCosto', 'repProveedor', 'repResponsable', 'repObs']
+                .forEach(id => { document.getElementById(id).value = ''; });
             document.getElementById('repEstado').value = 'En proceso';
             resetFormReparacion();
             await abrirFicha(fichaPlacaActual);
@@ -1601,38 +1934,46 @@ const editarReparacion = async (r) => {
     document.getElementById('repEstado').value = r.estado;
     document.getElementById('repObs').value = r.observaciones || '';
     const btnGuardarRep = document.querySelector('#formNuevaReparacion button[onclick="guardarReparacion()"]');
-    if (btnGuardarRep) { btnGuardarRep.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Actualizar Reparación'; btnGuardarRep.style.background = 'linear-gradient(135deg,#3a7bd5,#2563b0)'; }
-    // Ocultar la fila que se está editando
+    if (btnGuardarRep) {
+        btnGuardarRep.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Actualizar Reparación';
+        btnGuardarRep.style.background = 'linear-gradient(135deg,#3a7bd5,#2563b0)';
+    }
     document.querySelectorAll('#tablaReparacionesWrap .svc-row').forEach(fila => {
         if (fila.innerHTML.includes(`eliminarReparacion(${r.id_reparacion})`)) {
             fila.style.opacity = '.3';
             fila.style.pointerEvents = 'none';
-            // También ocultar la fila de descripción que viene después
             const siguiente = fila.nextElementSibling;
-            if (siguiente && !siguiente.classList.contains('svc-row')) {
-                siguiente.style.opacity = '.3';
-            }
+            if (siguiente && !siguiente.classList.contains('svc-row')) siguiente.style.opacity = '.3';
         }
     });
     form.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
 const eliminarReparacion = async (id) => {
-    const conf = await Swal.fire({ icon: 'warning', title: '¿Eliminar reparación?', text: 'Esta acción no se puede deshacer.', showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#e05252', cancelButtonColor: '#3a7bd5', background: '#1a1d27', color: '#e8eaf0', customClass: { container: 'swal-over-modal' } });
+    const conf = await Swal.fire({
+        icon: 'warning', title: '¿Eliminar reparación?', text: 'Esta acción no se puede deshacer.',
+        showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#e05252', cancelButtonColor: '#3a7bd5',
+        background: '#1a1d27', color: '#e8eaf0', customClass: { container: 'swal-over-modal' }
+    });
     if (!conf.isConfirmed) return;
     const body = new FormData();
     body.append('id_reparacion', id);
     const r = await fetch(`${BASE}/API/vehiculos/reparacion/eliminar`, { method: 'POST', body });
     const d = await r.json();
     Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
-    if (d.codigo === 1) { await abrirFicha(fichaPlacaActual); switchTab(document.querySelector('.ficha-tab[data-tab="reparaciones"]'), 'reparaciones'); }
+    if (d.codigo === 1) {
+        await abrirFicha(fichaPlacaActual);
+        switchTab(document.querySelector('.ficha-tab[data-tab="reparaciones"]'), 'reparaciones');
+    }
 };
 
 // ════════════════════════════════════════════════════════════════════════════
-// ── SEGUROS ───────────────────────────────────────────────────────────────────
+// ── SEGUROS ───────────────────────────────────════════════════════════════════
 // ════════════════════════════════════════════════════════════════════════════
 
 let seguroEditandoId = null;
+let segurosData = [];
 
 const seguroEstadoBadge = (fechaVence) => {
     if (!fechaVence) return `<span style="background:rgba(150,150,150,.15);color:#888;border:1px solid rgba(150,150,150,.25);padding:.2rem .6rem;border-radius:20px;font-size:.7rem;">Sin fecha</span>`;
@@ -1649,7 +1990,9 @@ const toggleFormSeguro = () => {
     const btn = document.getElementById('btnToggleFormSeguro');
     const visible = form.style.display !== 'none';
     form.style.display = visible ? 'none' : 'block';
-    btn.innerHTML = visible ? '<i class="bi bi-plus-circle"></i> Registrar Nuevo Seguro' : '<i class="bi bi-x-circle"></i> Cancelar';
+    btn.innerHTML = visible
+        ? '<i class="bi bi-plus-circle"></i> Registrar Nuevo Seguro'
+        : '<i class="bi bi-x-circle"></i> Cancelar';
     if (visible) { seguroEditandoId = null; limpiarCamposSeguros(); }
 };
 
@@ -1663,10 +2006,17 @@ const resetFormSeguro = () => {
 };
 
 const limpiarCamposSeguros = () => {
-    ['fsNumeroPoliza', 'fsAseguradora', 'fsTipoCobertura', 'fsFechaInicio', 'fsFechaVenc', 'fsPrima', 'fsAgente', 'fsObs'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['fsNumeroPoliza', 'fsAseguradora', 'fsTipoCobertura', 'fsFechaInicio',
+        'fsFechaVenc', 'fsPrima', 'fsAgente', 'fsObs'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.value = '';
+        });
     const areaSeg = document.getElementById('areaPolizaFicha');
     const nombreSeg = document.getElementById('seguroPdfNombre');
-    if (areaSeg) { areaSeg.classList.remove('has-file'); areaSeg.querySelector('.upload-icon i').className = 'bi bi-file-pdf'; areaSeg.querySelector('.upload-label').innerHTML = `<span>Haz clic</span> o arrastra la póliza aquí<br><small>Solo PDF — máx. 10 MB</small>`; }
+    if (areaSeg) {
+        areaSeg.classList.remove('has-file');
+        areaSeg.querySelector('.upload-icon i').className = 'bi bi-file-pdf';
+        areaSeg.querySelector('.upload-label').innerHTML = `<span>Haz clic</span> o arrastra la póliza aquí<br><small>Solo PDF — máx. 10 MB</small>`;
+    }
     if (nombreSeg) nombreSeg.style.display = 'none';
     const btnSave = document.querySelector('#formNuevoSeguroFicha button[onclick="guardarSeguroFicha()"]');
     if (btnSave) { btnSave.innerHTML = '<i class="bi bi-save me-1"></i> Guardar Seguro'; btnSave.style.background = 'linear-gradient(135deg,var(--success),#2e7d52)'; }
@@ -1676,7 +2026,14 @@ const renderTablaSeguros = (seguros) => {
     const wrap = document.getElementById('tablaSeguroWrap');
     if (!wrap) return;
     segurosData = seguros;
-    if (!seguros.length) { wrap.innerHTML = `<div style="text-align:center;padding:3rem;color:var(--text-muted);"><i class="bi bi-shield-slash" style="font-size:3rem;opacity:.2;display:block;margin-bottom:1rem;"></i><p>No hay seguros registrados para este vehículo</p></div>`; return; }
+    if (!seguros.length) {
+        wrap.innerHTML = `
+            <div style="text-align:center;padding:3rem;color:var(--text-muted);">
+                <i class="bi bi-shield-slash" style="font-size:3rem;opacity:.2;display:block;margin-bottom:1rem;"></i>
+                <p>No hay seguros registrados para este vehículo</p>
+            </div>`;
+        return;
+    }
     wrap.innerHTML = seguros.map(s => `
         <div class="svc-row" style="grid-template-columns:1.5fr 1fr 1fr 1fr 1fr auto;">
             <div><div class="svc-label">Póliza</div><div class="svc-val" style="font-weight:600;">${s.numero_poliza}</div></div>
@@ -1685,19 +2042,18 @@ const renderTablaSeguros = (seguros) => {
             <div><div class="svc-label">Estado</div><div class="svc-val">${seguroEstadoBadge(s.fecha_vencimiento)}</div></div>
             <div><div class="svc-label">Costo Anual</div><div class="svc-val">${s.prima_anual ? 'Q ' + Number(s.prima_anual).toLocaleString() : '—'}</div></div>
             <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
-                ${s.pdf_poliza_url ? `<a href="${s.pdf_poliza_url}" target="_blank" style="background:rgba(232,184,75,.15);border:1px solid rgba(232,184,75,.3);color:var(--accent);border-radius:6px;padding:.35rem .6rem;font-size:.8rem;text-decoration:none;" title="Ver póliza PDF"><i class="bi bi-file-earmark-pdf"></i></a>` : ''}
-                <button onclick="verSeguro(${s.id_seguro})" style="
-    background:rgba(76,175,125,.15);border:1px solid rgba(76,175,125,.3);
-    color:#4caf7d;border-radius:6px;padding:.35rem .6rem;
-    cursor:pointer;font-size:.8rem;" title="Ver detalle">
-    <i class="bi bi-eye"></i>
-</button>
-                <button onclick="editarSeguro(${s.id_seguro})" style="background:rgba(58,123,213,.15);border:1px solid rgba(58,123,213,.3);color:#5b9bd5;border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;" title="Editar"><i class="bi bi-pencil-square"></i></button>
-                <button onclick="eliminarSeguro(${s.id_seguro})" style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);color:var(--danger);border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;" title="Eliminar"><i class="bi bi-trash3"></i></button>
+                ${s.pdf_poliza_url ? `<a href="${s.pdf_poliza_url}" target="_blank" style="background:rgba(232,184,75,.15);border:1px solid rgba(232,184,75,.3);color:var(--accent);border-radius:6px;padding:.35rem .6rem;font-size:.8rem;text-decoration:none;"><i class="bi bi-file-earmark-pdf"></i></a>` : ''}
+                <button onclick="verSeguro(${s.id_seguro})" style="background:rgba(76,175,125,.15);border:1px solid rgba(76,175,125,.3);color:#4caf7d;border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;"><i class="bi bi-eye"></i></button>
+                <button onclick="editarSeguro(${s.id_seguro})" style="background:rgba(58,123,213,.15);border:1px solid rgba(58,123,213,.3);color:#5b9bd5;border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;"><i class="bi bi-pencil-square"></i></button>
+                <button onclick="eliminarSeguro(${s.id_seguro})" style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);color:var(--danger);border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;"><i class="bi bi-trash3"></i></button>
             </div>
         </div>
-        <div style="font-size:.75rem;color:var(--text-muted);margin-top:-.4rem;margin-bottom:.6rem;padding-left:.25rem;">${s.tipo_cobertura ? '<i class="bi bi-patch-check"></i> ' + s.tipo_cobertura : ''}${s.contacto_agente ? ' · <i class="bi bi-person-lines-fill"></i> ' + s.contacto_agente : ''}${s.observaciones ? ' · ' + s.observaciones : ''}</div>
-    `).join('');
+        <div style="font-size:.75rem;color:var(--text-muted);margin-top:-.4rem;margin-bottom:.6rem;padding-left:.25rem;">
+            ${s.tipo_cobertura ? '<i class="bi bi-patch-check"></i> ' + s.tipo_cobertura : ''}
+            ${s.contacto_agente ? ' · <i class="bi bi-person-lines-fill"></i> ' + s.contacto_agente : ''}
+            ${s.observaciones ? ' · ' + s.observaciones : ''}
+        </div>`
+    ).join('');
 };
 
 const guardarSeguro = async () => {
@@ -1711,48 +2067,18 @@ const guardarSeguro = async () => {
     const telefono = document.getElementById('fsTelefono').value.trim();
     const esEdicion = seguroEditandoId !== null;
 
-    if (!aseguradora) {
-        Swal.fire({ icon: 'warning', title: 'Aseguradora requerida', text: 'Ingresa el nombre de la aseguradora.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        document.getElementById('fsAseguradora').focus(); return;
-    }
-    if (!poliza) {
-        Swal.fire({ icon: 'warning', title: 'Número de póliza requerido', text: 'Ingresa el número de póliza.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        document.getElementById('fsNumeroPoliza').focus(); return;
-    }
-    if (!fechaInicio) {
-        Swal.fire({ icon: 'warning', title: 'Fecha de inicio requerida', text: 'Selecciona la fecha de inicio del seguro.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        document.getElementById('fsFechaInicio').focus(); return;
-    }
-    if (!fechaVenc) {
-        Swal.fire({ icon: 'warning', title: 'Fecha de vencimiento requerida', text: 'Selecciona la fecha de vencimiento del seguro.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        document.getElementById('fsFechaVenc').focus(); return;
-    }
-    if (fechaVenc <= fechaInicio) {
-        Swal.fire({ icon: 'warning', title: 'Fechas inválidas', text: 'La fecha de vencimiento debe ser posterior a la fecha de inicio.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        document.getElementById('fsFechaVenc').focus(); return;
-    }
-    if (!prima || isNaN(parseFloat(prima)) || parseFloat(prima) < 0) {
-        Swal.fire({ icon: 'warning', title: 'Prima anual requerida', text: 'Ingresa la prima anual del seguro (puede ser 0).', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        document.getElementById('fsPrima').focus(); return;
-    }
-    if (!agente) {
-        Swal.fire({ icon: 'warning', title: 'Agente requerido', text: 'Ingresa el nombre del agente de contacto.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        document.getElementById('fsAgente').focus(); return;
-    }
-    if (!telefono) {
-        Swal.fire({ icon: 'warning', title: 'Teléfono requerido', text: 'Ingresa el teléfono del agente.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        document.getElementById('fsTelefono').focus(); return;
-    }
+    if (!aseguradora) { Swal.fire({ icon: 'warning', title: 'Aseguradora requerida', text: 'Ingresa el nombre de la aseguradora.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); document.getElementById('fsAseguradora').focus(); return; }
+    if (!poliza) { Swal.fire({ icon: 'warning', title: 'Póliza requerida', text: 'Ingresa el número de póliza.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); document.getElementById('fsNumeroPoliza').focus(); return; }
+    if (!fechaInicio) { Swal.fire({ icon: 'warning', title: 'Fecha inicio requerida', text: 'Selecciona la fecha de inicio.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); document.getElementById('fsFechaInicio').focus(); return; }
+    if (!fechaVenc) { Swal.fire({ icon: 'warning', title: 'Fecha vencimiento requerida', text: 'Selecciona la fecha de vencimiento.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); document.getElementById('fsFechaVenc').focus(); return; }
+    if (fechaVenc <= fechaInicio) { Swal.fire({ icon: 'warning', title: 'Fechas inválidas', text: 'La fecha de vencimiento debe ser posterior a la de inicio.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); document.getElementById('fsFechaVenc').focus(); return; }
+    if (!prima || isNaN(parseFloat(prima)) || parseFloat(prima) < 0) { Swal.fire({ icon: 'warning', title: 'Prima requerida', text: 'Ingresa la prima anual (puede ser 0).', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); document.getElementById('fsPrima').focus(); return; }
+    if (!agente) { Swal.fire({ icon: 'warning', title: 'Agente requerido', text: 'Ingresa el nombre del agente.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); document.getElementById('fsAgente').focus(); return; }
+    if (!telefono) { Swal.fire({ icon: 'warning', title: 'Teléfono requerido', text: 'Ingresa el teléfono del agente.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); document.getElementById('fsTelefono').focus(); return; }
 
     const inputPdfSeg = document.getElementById('fsArchivo');
-    if (!esEdicion && (!inputPdfSeg || !inputPdfSeg.files[0])) {
-        Swal.fire({ icon: 'warning', title: 'Póliza PDF requerida', text: 'Debes subir el archivo PDF de la póliza.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        return;
-    }
-    if (inputPdfSeg?.files[0] && inputPdfSeg.files[0].type !== 'application/pdf') {
-        Swal.fire({ icon: 'warning', title: 'Archivo inválido', text: 'La póliza debe ser un archivo PDF.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        return;
-    }
+    if (!esEdicion && (!inputPdfSeg || !inputPdfSeg.files[0])) { Swal.fire({ icon: 'warning', title: 'Póliza PDF requerida', text: 'Debes subir el archivo PDF de la póliza.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); return; }
+    if (inputPdfSeg?.files[0] && inputPdfSeg.files[0].type !== 'application/pdf') { Swal.fire({ icon: 'warning', title: 'Archivo inválido', text: 'La póliza debe ser un archivo PDF.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); return; }
 
     const body = new FormData();
     body.append('placa', fichaPlacaActual);
@@ -1765,7 +2091,6 @@ const guardarSeguro = async () => {
     body.append('agente_contacto', agente);
     body.append('telefono_agente', telefono);
     body.append('observaciones', document.getElementById('fsObs').value);
-
     if (inputPdfSeg?.files[0]) body.append('archivo_poliza', inputPdfSeg.files[0]);
     if (esEdicion) body.append('id_seguro', seguroEditandoId);
 
@@ -1791,19 +2116,14 @@ const guardarSeguro = async () => {
     }
 };
 
-
-
 const editarSeguro = (id) => {
     const s = segurosData.find(x => x.id_seguro == id);
     if (!s) return;
-
     seguroEditandoId = s.id_seguro;
-
     const form = document.getElementById('formNuevoSeguroFicha');
     const btn = document.getElementById('btnToggleFormSeguro');
     form.style.display = 'block';
     btn.innerHTML = '<i class="bi bi-x-circle"></i> Cancelar';
-
     document.getElementById('fsNumeroPoliza').value = s.numero_poliza || '';
     document.getElementById('fsAseguradora').value = s.aseguradora || '';
     document.getElementById('fsTipoCobertura').value = s.tipo_cobertura || '';
@@ -1813,8 +2133,6 @@ const editarSeguro = (id) => {
     document.getElementById('fsAgente').value = s.agente_contacto || '';
     document.getElementById('fsTelefono').value = s.telefono_agente || '';
     document.getElementById('fsObs').value = s.observaciones || '';
-
-    // ── Mostrar PDF existente si tiene ───────────────────────────────────────
     const areaPoliza = document.getElementById('areaPolizaFicha');
     if (areaPoliza) {
         if (s.pdf_poliza_url) {
@@ -1822,32 +2140,27 @@ const editarSeguro = (id) => {
             areaPoliza.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
             areaPoliza.querySelector('.upload-label').innerHTML = `
                 <span style="color:var(--success)">Póliza cargada</span><br>
-                <small>
-                    <a href="${s.pdf_poliza_url}" target="_blank"
-                        style="color:var(--accent);text-decoration:none;">
-                        <i class="bi bi-file-earmark-pdf"></i> Ver PDF actual
-                    </a>
-                    &nbsp;·&nbsp; Sube uno nuevo para reemplazarlo
-                </small>`;
+                <small><a href="${s.pdf_poliza_url}" target="_blank" style="color:var(--accent);text-decoration:none;">
+                    <i class="bi bi-file-earmark-pdf"></i> Ver PDF actual
+                </a> &nbsp;·&nbsp; Sube uno nuevo para reemplazarlo</small>`;
         } else {
             areaPoliza.classList.remove('has-file');
             areaPoliza.querySelector('.upload-icon i').className = 'bi bi-file-pdf';
             areaPoliza.querySelector('.upload-label').innerHTML = `<span>Subir PDF</span>`;
         }
     }
-
-    // ── Cambiar botón guardar a "Actualizar" ──────────────────────────────────
     const btnSave = document.querySelector('#formNuevoSeguroFicha button[onclick="guardarSeguroFicha()"]');
-    if (btnSave) {
-        btnSave.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Actualizar Seguro';
-        btnSave.style.background = 'linear-gradient(135deg,#3a7bd5,#2563b0)';
-    }
-
+    if (btnSave) { btnSave.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Actualizar Seguro'; btnSave.style.background = 'linear-gradient(135deg,#3a7bd5,#2563b0)'; }
     form.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
 const eliminarSeguro = async (id) => {
-    const conf = await Swal.fire({ icon: 'warning', title: '¿Eliminar seguro?', text: 'Se eliminará la póliza y sus archivos. Esta acción no se puede deshacer.', showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#e05252', cancelButtonColor: '#3a7bd5', background: '#1a1d27', color: '#e8eaf0', customClass: { container: 'swal-over-modal' } });
+    const conf = await Swal.fire({
+        icon: 'warning', title: '¿Eliminar seguro?', text: 'Se eliminará la póliza y sus archivos.',
+        showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#e05252', cancelButtonColor: '#3a7bd5',
+        background: '#1a1d27', color: '#e8eaf0', customClass: { container: 'swal-over-modal' }
+    });
     if (!conf.isConfirmed) return;
     const body = new FormData();
     body.append('id_seguro', id);
@@ -1859,134 +2172,63 @@ const eliminarSeguro = async (id) => {
     } catch (err) { Toast.fire({ icon: 'error', title: 'Error de conexión' }); }
 };
 
-
-
 const verSeguro = (id) => {
     const s = segurosData.find(x => x.id_seguro == id);
     if (!s) return;
-
     const hoy = new Date();
     const vence = s.fecha_vencimiento ? new Date(s.fecha_vencimiento) : null;
     const dias = vence ? Math.ceil((vence - hoy) / (1000 * 60 * 60 * 24)) : null;
-
-    const estadoColor = {
-        'Vigente': '#4caf7d',
-        'Vencido': '#e05252',
-        'Cancelado': '#7c8398'
-    };
-
+    const estadoColor = { 'Vigente': '#4caf7d', 'Vencido': '#e05252', 'Cancelado': '#7c8398' };
     let estadoHTML = '';
     if (s.estado === 'Vigente' && dias !== null) {
-        if (dias <= 0) {
-            estadoHTML = `<span style="background:rgba(224,82,82,.2);color:#e05252;border:1px solid rgba(224,82,82,.4);padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:700;">VENCIDO</span>`;
-        } else if (dias <= 30) {
-            estadoHTML = `<span style="background:rgba(232,184,75,.2);color:#e8b84b;border:1px solid rgba(232,184,75,.4);padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:700;">⚠ Vence en ${dias} días</span>`;
-        } else {
-            estadoHTML = `<span style="background:rgba(76,175,125,.2);color:#4caf7d;border:1px solid rgba(76,175,125,.4);padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:700;">✓ VIGENTE</span>`;
-        }
+        if (dias <= 0) estadoHTML = `<span style="background:rgba(224,82,82,.2);color:#e05252;border:1px solid rgba(224,82,82,.4);padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:700;">VENCIDO</span>`;
+        else if (dias <= 30) estadoHTML = `<span style="background:rgba(232,184,75,.2);color:#e8b84b;border:1px solid rgba(232,184,75,.4);padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:700;">⚠ Vence en ${dias} días</span>`;
+        else estadoHTML = `<span style="background:rgba(76,175,125,.2);color:#4caf7d;border:1px solid rgba(76,175,125,.4);padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:700;">✓ VIGENTE</span>`;
     } else {
         const color = estadoColor[s.estado] || '#888';
         estadoHTML = `<span style="background:${color}22;color:${color};border:1px solid ${color}44;padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:700;">${s.estado}</span>`;
     }
-
     const polizaHTML = s.pdf_poliza_url
-        ? `<a href="${s.pdf_poliza_url}" target="_blank"
-            style="display:inline-flex;align-items:center;gap:.4rem;
-            background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.25);
-            color:var(--accent);padding:.35rem .75rem;border-radius:6px;
-            font-size:.78rem;text-decoration:none;margin:.2rem;">
-            <i class="bi bi-file-earmark-pdf"></i> Ver Póliza PDF
-           </a>`
+        ? `<a href="${s.pdf_poliza_url}" target="_blank" style="display:inline-flex;align-items:center;gap:.4rem;background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.25);color:var(--accent);padding:.35rem .75rem;border-radius:6px;font-size:.78rem;text-decoration:none;margin:.2rem;"><i class="bi bi-file-earmark-pdf"></i> Ver Póliza PDF</a>`
         : '<span style="color:#555;font-size:.78rem;">Sin póliza adjunta</span>';
-
     Swal.fire({
-        title: `<span style="font-family:Rajdhani,sans-serif;font-size:1.1rem;">
-            <i class="bi bi-shield-check" style="color:#4caf7d;"></i>
-            Seguro — ${s.aseguradora}
-        </span>`,
+        title: `<span style="font-family:Rajdhani,sans-serif;font-size:1.1rem;"><i class="bi bi-shield-check" style="color:#4caf7d;"></i> Seguro — ${s.aseguradora}</span>`,
         html: `
         <div style="text-align:left;font-size:.82rem;">
-
-            <!-- Estado y póliza -->
             <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;">
                 ${estadoHTML}
-                <span style="color:#888;font-size:.78rem;">
-                    <i class="bi bi-file-text"></i> Póliza: <strong style="color:#e8eaf0;">${s.numero_poliza}</strong>
-                </span>
+                <span style="color:#888;font-size:.78rem;"><i class="bi bi-file-text"></i> Póliza: <strong style="color:#e8eaf0;">${s.numero_poliza}</strong></span>
             </div>
-
-            <!-- Grid de datos -->
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem;">
-                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
-                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Aseguradora</div>
-                    <div style="color:#c8cfe0;font-weight:600;">${s.aseguradora}</div>
-                </div>
-                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
-                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Tipo de Cobertura</div>
-                    <div style="color:#c8cfe0;font-weight:600;">${s.tipo_cobertura || '—'}</div>
-                </div>
-                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
-                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Fecha Inicio</div>
-                    <div style="color:#c8cfe0;font-weight:600;">${s.fecha_inicio || '—'}</div>
-                </div>
-                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
-                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Fecha Vencimiento</div>
-                    <div style="color:${dias !== null && dias <= 30 ? '#e8b84b' : '#c8cfe0'};font-weight:600;">
-                        ${s.fecha_vencimiento || '—'}
-                        ${dias !== null && dias > 0 ? `<span style="font-size:.7rem;color:#888;"> (${dias}d)</span>` : ''}
-                    </div>
-                </div>
-                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
-                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Prima Anual</div>
-                    <div style="color:#4caf7d;font-weight:700;">${s.prima_anual ? 'Q ' + Number(s.prima_anual).toLocaleString() : '—'}</div>
-                </div>
-                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
-                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Agente de Contacto</div>
-                    <div style="color:#c8cfe0;">${s.agente_contacto || '—'}</div>
-                </div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;"><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Aseguradora</div><div style="color:#c8cfe0;font-weight:600;">${s.aseguradora}</div></div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;"><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Tipo de Cobertura</div><div style="color:#c8cfe0;font-weight:600;">${s.tipo_cobertura || '—'}</div></div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;"><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Fecha Inicio</div><div style="color:#c8cfe0;font-weight:600;">${s.fecha_inicio || '—'}</div></div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;"><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Fecha Vencimiento</div><div style="color:${dias !== null && dias <= 30 ? '#e8b84b' : '#c8cfe0'};font-weight:600;">${s.fecha_vencimiento || '—'}${dias !== null && dias > 0 ? `<span style="font-size:.7rem;color:#888;"> (${dias}d)</span>` : ''}</div></div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;"><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Prima Anual</div><div style="color:#4caf7d;font-weight:700;">${s.prima_anual ? 'Q ' + Number(s.prima_anual).toLocaleString() : '—'}</div></div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;"><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Agente</div><div style="color:#c8cfe0;">${s.agente_contacto || '—'}</div></div>
             </div>
-
-            <!-- Teléfono -->
-            ${s.telefono_agente ? `
-            <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;margin-bottom:1rem;
-                display:flex;align-items:center;gap:.5rem;">
-                <i class="bi bi-telephone-fill" style="color:#4caf7d;"></i>
-                <span style="color:#c8cfe0;">${s.telefono_agente}</span>
-            </div>` : ''}
-
-            <!-- Observaciones -->
-            ${s.observaciones ? `
-            <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;margin-bottom:1rem;">
-                <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Observaciones</div>
-                <div style="color:#888;">${s.observaciones}</div>
-            </div>` : ''}
-
-            <!-- Póliza PDF -->
-            <div>
-                <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.5rem;">
-                    <i class="bi bi-file-earmark-text"></i> Documento de Póliza
-                </div>
-                <div>${polizaHTML}</div>
-            </div>
-
+            ${s.telefono_agente ? `<div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;"><i class="bi bi-telephone-fill" style="color:#4caf7d;"></i><span style="color:#c8cfe0;">${s.telefono_agente}</span></div>` : ''}
+            ${s.observaciones ? `<div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;margin-bottom:1rem;"><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Observaciones</div><div style="color:#888;">${s.observaciones}</div></div>` : ''}
+            <div><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.5rem;"><i class="bi bi-file-earmark-text"></i> Documento de Póliza</div><div>${polizaHTML}</div></div>
         </div>`,
-        background: '#1a1d27',
-        color: '#e8eaf0',
-        confirmButtonColor: '#3a7bd5',
-        confirmButtonText: '<i class="bi bi-x"></i> Cerrar',
-        width: '580px',
-        customClass: { container: 'swal-over-modal' }
+        background: '#1a1d27', color: '#e8eaf0',
+        confirmButtonColor: '#3a7bd5', confirmButtonText: '<i class="bi bi-x"></i> Cerrar',
+        width: '580px', customClass: { container: 'swal-over-modal' }
     });
 };
-
 window.verSeguro = verSeguro;
+
 const inputSeguroPdf = document.getElementById('fsArchivo');
 if (inputSeguroPdf) {
     inputSeguroPdf.addEventListener('change', () => {
         const file = inputSeguroPdf.files[0];
         if (!file) return;
         const area = document.getElementById('areaPolizaFicha');
-        if (area) { area.classList.add('has-file'); area.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill'; area.querySelector('.upload-label').innerHTML = `<span style="color:var(--success)">${file.name}</span><br><small>PDF seleccionado</small>`; }
+        if (area) {
+            area.classList.add('has-file');
+            area.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
+            area.querySelector('.upload-label').innerHTML = `<span style="color:var(--success)">${file.name}</span><br><small>PDF seleccionado</small>`;
+        }
     });
 }
 
@@ -1995,13 +2237,16 @@ if (inputSeguroPdf) {
 // ════════════════════════════════════════════════════════════════════════════
 
 let accidenteEditandoId = null;
+let accidentesData = [];
 
 const toggleFormAccidente = () => {
     const form = document.getElementById('formNuevoAccidente');
     const btn = document.getElementById('btnToggleFormAccidente');
     const visible = form.style.display !== 'none';
     form.style.display = visible ? 'none' : 'block';
-    btn.innerHTML = visible ? '<i class="bi bi-plus-circle"></i> Registrar Nuevo Accidente' : '<i class="bi bi-x-circle"></i> Cancelar';
+    btn.innerHTML = visible
+        ? '<i class="bi bi-plus-circle"></i> Registrar Accidente / Choque'
+        : '<i class="bi bi-x-circle"></i> Cancelar';
     if (visible) { accidenteEditandoId = null; limpiarCamposAccidente(); }
 };
 
@@ -2009,48 +2254,41 @@ const resetFormAccidente = () => {
     const form = document.getElementById('formNuevoAccidente');
     const btn = document.getElementById('btnToggleFormAccidente');
     if (form) form.style.display = 'none';
-    if (btn) btn.innerHTML = '<i class="bi bi-plus-circle"></i> Registrar Nuevo Accidente';
+    if (btn) btn.innerHTML = '<i class="bi bi-plus-circle"></i> Registrar Accidente / Choque';
     accidenteEditandoId = null;
     limpiarCamposAccidente();
 };
 
 const limpiarCamposAccidente = () => {
-    ['acFecha', 'acLugar', 'acDescripcion', 'acConductor',
-        'acCostoEst', 'acCostoReal', 'acExpediente', 'acObs'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.value = '';
-        });
+    ['acFecha', 'acLugar', 'acDescripcion', 'acConductor', 'acCostoEst', 'acCostoReal', 'acExpediente', 'acObs']
+        .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     const selEstado = document.getElementById('acEstado');
     if (selEstado) selEstado.value = 'Reportado';
-
-    // Reset informe policial
     const areaInformeR = document.getElementById('areaInformeAcc');
     const inputInformeR = document.getElementById('acInforme');
-    if (areaInformeR) {
-        areaInformeR.classList.remove('has-file');
-        areaInformeR.querySelector('.upload-icon i').className = 'bi bi-file-pdf';
-        areaInformeR.querySelector('.upload-label').innerHTML = `<span>Subir informe PDF</span>`;
-    }
+    if (areaInformeR) { areaInformeR.classList.remove('has-file'); areaInformeR.querySelector('.upload-icon i').className = 'bi bi-file-pdf'; areaInformeR.querySelector('.upload-label').innerHTML = `<span>Subir informe PDF</span>`; }
     if (inputInformeR) inputInformeR.value = '';
-
-    // Reset fotos dinámicas
     resetFotosAcc();
-
-    // Reset botón guardar
     const btnSave = document.querySelector('#formNuevoAccidente button[onclick="guardarAccidente()"]');
-    if (btnSave) {
-        btnSave.innerHTML = '<i class="bi bi-save me-1"></i> Guardar Accidente';
-        btnSave.style.background = 'linear-gradient(135deg,var(--danger),#c93030)';
-    }
+    if (btnSave) { btnSave.innerHTML = '<i class="bi bi-save me-1"></i> Guardar Accidente'; btnSave.style.background = 'linear-gradient(135deg,var(--danger),#c93030)'; }
 };
 
 const renderTablaAccidentes = (accidentes) => {
     accidentesData = accidentes;
     const wrap = document.getElementById('tablaAccidentesWrap');
     if (!wrap) return;
-    if (!accidentes.length) { wrap.innerHTML = `<div style="text-align:center;padding:3rem;color:var(--text-muted);"><i class="bi bi-cone-striped" style="font-size:3rem;opacity:.2;display:block;margin-bottom:1rem;"></i><p>No hay accidentes registrados para este vehículo</p></div>`; return; }
+    if (!accidentes.length) {
+        wrap.innerHTML = `
+            <div style="text-align:center;padding:3rem;color:var(--text-muted);">
+                <i class="bi bi-cone-striped" style="font-size:3rem;opacity:.2;display:block;margin-bottom:1rem;"></i>
+                <p>No hay accidentes registrados para este vehículo</p>
+            </div>`;
+        return;
+    }
     const costoTotal = accidentes.reduce((sum, a) => sum + (parseFloat(a.costo_reparacion) || 0) + (parseFloat(a.costo_danos) || 0), 0);
-    const resumenHTML = costoTotal > 0 ? `<div style="background:rgba(224,82,82,.08);border:1px solid rgba(224,82,82,.2);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:.75rem;"><i class="bi bi-currency-dollar" style="color:var(--danger);font-size:1.25rem;"></i><div><div style="font-size:.75rem;color:var(--text-muted);">Costo total acumulado</div><div style="font-weight:700;color:var(--danger);">Q ${Number(costoTotal).toLocaleString()}</div></div></div>` : '';
+    const resumenHTML = costoTotal > 0
+        ? `<div style="background:rgba(224,82,82,.08);border:1px solid rgba(224,82,82,.2);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:.75rem;"><i class="bi bi-currency-dollar" style="color:var(--danger);font-size:1.25rem;"></i><div><div style="font-size:.75rem;color:var(--text-muted);">Costo total acumulado</div><div style="font-weight:700;color:var(--danger);">Q ${Number(costoTotal).toLocaleString()}</div></div></div>`
+        : '';
     const estadoColor = (e) => ({ 'Cerrado': 'var(--success)', 'En proceso': 'var(--accent)', 'Pendiente': '#888' }[e] || 'inherit');
     const culpaBadge = (c) => { if (!c) return ''; const map = { 'Propio': 'rgba(224,82,82,.15)', 'Tercero': 'rgba(58,123,213,.15)', 'Compartida': 'rgba(232,184,75,.15)', 'Sin determinar': 'rgba(150,150,150,.15)' }; return `<span style="background:${map[c] || 'rgba(150,150,150,.15)'};padding:.15rem .5rem;border-radius:20px;font-size:.7rem;color:var(--text-secondary);">${c}</span>`; };
     wrap.innerHTML = resumenHTML + accidentes.map(a => `
@@ -2061,18 +2299,20 @@ const renderTablaAccidentes = (accidentes) => {
             <div><div class="svc-label">Costo Daños</div><div class="svc-val">${a.costo_danos ? 'Q ' + Number(a.costo_danos).toLocaleString() : '—'}</div></div>
             <div><div class="svc-label">Costo Reparación</div><div class="svc-val">${a.costo_reparacion ? 'Q ' + Number(a.costo_reparacion).toLocaleString() : '—'}</div></div>
             <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
-            <button onclick="verAccidente(${a.id_accidente})" style="
-                background:rgba(111,66,193,.15);border:1px solid rgba(111,66,193,.3);
-                color:#a78bfa;border-radius:6px;padding:.35rem .6rem;
-                cursor:pointer;font-size:.8rem;" title="Ver detalle">
-                <i class="bi bi-eye"></i></button>
-                <button onclick="editarAccidente(${a.id_accidente})" style="background:rgba(58,123,213,.15);border:1px solid rgba(58,123,213,.3);color:#5b9bd5;border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;" title="Editar"><i class="bi bi-pencil-square"></i></button>
-                <button onclick="eliminarAccidente(${a.id_accidente})" style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);color:var(--danger);border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;" title="Eliminar"><i class="bi bi-trash3"></i></button>
+                <button onclick="verAccidente(${a.id_accidente})" style="background:rgba(111,66,193,.15);border:1px solid rgba(111,66,193,.3);color:#a78bfa;border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;"><i class="bi bi-eye"></i></button>
+                <button onclick="editarAccidente(${a.id_accidente})" style="background:rgba(58,123,213,.15);border:1px solid rgba(58,123,213,.3);color:#5b9bd5;border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;"><i class="bi bi-pencil-square"></i></button>
+                <button onclick="eliminarAccidente(${a.id_accidente})" style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);color:var(--danger);border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;"><i class="bi bi-trash3"></i></button>
             </div>
         </div>
-        <div style="font-size:.75rem;color:var(--text-muted);margin-top:-.4rem;margin-bottom:.6rem;padding-left:.25rem;">${a.lugar ? '<i class="bi bi-geo-alt"></i> ' + a.lugar : ''}${a.conductor_responsable ? ' · <i class="bi bi-person-fill"></i> ' + a.conductor_responsable : ''}${a.culpabilidad ? ' · ' + culpaBadge(a.culpabilidad) : ''}${a.no_expediente ? ' · <i class="bi bi-journal-text"></i> Exp. ' + a.no_expediente : ''}${a.km_al_momento ? ' · <i class="bi bi-speedometer"></i> ' + Number(a.km_al_momento).toLocaleString() + ' km' : ''}</div>
-        ${a.descripcion ? `<div style="font-size:.75rem;color:var(--text-secondary);margin-top:-.3rem;margin-bottom:.6rem;padding-left:.25rem;padding-right:1rem;">${a.descripcion}</div>` : ''}
-    `).join('');
+        <div style="font-size:.75rem;color:var(--text-muted);margin-top:-.4rem;margin-bottom:.6rem;padding-left:.25rem;">
+            ${a.lugar ? '<i class="bi bi-geo-alt"></i> ' + a.lugar : ''}
+            ${a.conductor_responsable ? ' · <i class="bi bi-person-fill"></i> ' + a.conductor_responsable : ''}
+            ${a.culpabilidad ? ' · ' + culpaBadge(a.culpabilidad) : ''}
+            ${a.no_expediente ? ' · <i class="bi bi-journal-text"></i> Exp. ' + a.no_expediente : ''}
+            ${a.km_al_momento ? ' · <i class="bi bi-speedometer"></i> ' + Number(a.km_al_momento).toLocaleString() + ' km' : ''}
+        </div>
+        ${a.descripcion ? `<div style="font-size:.75rem;color:var(--text-secondary);margin-top:-.3rem;margin-bottom:.6rem;padding-left:.25rem;padding-right:1rem;">${a.descripcion}</div>` : ''}`
+    ).join('');
 };
 
 const guardarAccidente = async () => {
@@ -2083,40 +2323,16 @@ const guardarAccidente = async () => {
     const conductor = document.getElementById('acConductor').value.trim();
     const esEdicion = accidenteEditandoId !== null;
 
-    // ── Validaciones ──────────────────────────────────────────────────────────
-    if (!fecha) {
-        Swal.fire({ icon: 'warning', title: 'Fecha requerida', text: 'Selecciona la fecha del accidente.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        document.getElementById('acFecha').focus(); return;
-    }
-    if (!lugar) {
-        Swal.fire({ icon: 'warning', title: 'Lugar requerido', text: 'Ingresa el lugar del accidente.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        document.getElementById('acLugar').focus(); return;
-    }
-    if (!tipo) {
-        Swal.fire({ icon: 'warning', title: 'Tipo requerido', text: 'Selecciona el tipo de accidente.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        document.getElementById('acTipo').focus(); return;
-    }
-    if (!desc) {
-        Swal.fire({ icon: 'warning', title: 'Descripción requerida', text: 'Describe cómo ocurrió el accidente.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        document.getElementById('acDescripcion').focus(); return;
-    }
-    if (!conductor) {
-        Swal.fire({ icon: 'warning', title: 'Conductor requerido', text: 'Ingresa el nombre del conductor responsable.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        document.getElementById('acConductor').focus(); return;
-    }
+    if (!fecha) { Swal.fire({ icon: 'warning', title: 'Fecha requerida', text: 'Selecciona la fecha del accidente.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); document.getElementById('acFecha').focus(); return; }
+    if (!lugar) { Swal.fire({ icon: 'warning', title: 'Lugar requerido', text: 'Ingresa el lugar del accidente.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); document.getElementById('acLugar').focus(); return; }
+    if (!tipo) { Swal.fire({ icon: 'warning', title: 'Tipo requerido', text: 'Selecciona el tipo de accidente.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); document.getElementById('acTipo').focus(); return; }
+    if (!desc) { Swal.fire({ icon: 'warning', title: 'Descripción requerida', text: 'Describe cómo ocurrió el accidente.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); document.getElementById('acDescripcion').focus(); return; }
+    if (!conductor) { Swal.fire({ icon: 'warning', title: 'Conductor requerido', text: 'Ingresa el nombre del conductor responsable.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); document.getElementById('acConductor').focus(); return; }
 
-    // ── Validar informe policial ───────────────────────────────────────────────
     const acInformeEl = document.getElementById('acInforme');
-    if (!esEdicion && (!acInformeEl || !acInformeEl.files[0])) {
-        Swal.fire({ icon: 'warning', title: 'Informe policial requerido', text: 'Debes subir el informe policial en PDF.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        return;
-    }
-    if (acInformeEl?.files[0] && acInformeEl.files[0].type !== 'application/pdf') {
-        Swal.fire({ icon: 'warning', title: 'Archivo inválido', text: 'El informe policial debe ser un archivo PDF.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } });
-        return;
-    }
+    if (!esEdicion && (!acInformeEl || !acInformeEl.files[0])) { Swal.fire({ icon: 'warning', title: 'Informe policial requerido', text: 'Debes subir el informe policial en PDF.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); return; }
+    if (acInformeEl?.files[0] && acInformeEl.files[0].type !== 'application/pdf') { Swal.fire({ icon: 'warning', title: 'Archivo inválido', text: 'El informe policial debe ser un archivo PDF.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); return; }
 
-    // ── Construir body ────────────────────────────────────────────────────────
     const body = new FormData();
     body.append('placa', fichaPlacaActual);
     body.append('fecha_accidente', fecha);
@@ -2133,7 +2349,6 @@ const guardarAccidente = async () => {
     document.querySelectorAll('#fotosAccContainer input[type="file"]').forEach((input, i) => {
         if (input.files[0]) body.append(`archivo_foto_${i + 1}`, input.files[0]);
     });
-
     if (acInformeEl?.files[0]) body.append('archivo_informe', acInformeEl.files[0]);
     if (esEdicion) body.append('id_accidente', accidenteEditandoId);
 
@@ -2185,7 +2400,12 @@ const editarAccidente = (id) => {
 };
 
 const eliminarAccidente = async (id) => {
-    const conf = await Swal.fire({ icon: 'warning', title: '¿Eliminar accidente?', text: 'Esta acción no se puede deshacer.', showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#e05252', cancelButtonColor: '#3a7bd5', background: '#1a1d27', color: '#e8eaf0', customClass: { container: 'swal-over-modal' } });
+    const conf = await Swal.fire({
+        icon: 'warning', title: '¿Eliminar accidente?', text: 'Esta acción no se puede deshacer.',
+        showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#e05252', cancelButtonColor: '#3a7bd5',
+        background: '#1a1d27', color: '#e8eaf0', customClass: { container: 'swal-over-modal' }
+    });
     if (!conf.isConfirmed) return;
     const body = new FormData();
     body.append('id_accidente', id);
@@ -2200,217 +2420,72 @@ const eliminarAccidente = async (id) => {
 const verAccidente = (id) => {
     const a = accidentesData.find(x => x.id_accidente == id);
     if (!a) return;
-
-    const estadoColor = {
-        'Cerrado': '#4caf7d',
-        'En trámite': '#e8b84b',
-        'Reportado': '#5b9bd5',
-        'Sin seguro': '#e05252'
-    };
-
-    const fotosURLs = [
-        a.foto_1_url, a.foto_2_url, a.foto_3_url, a.foto_4_url
-    ].filter(Boolean);
-
-    // Fotos con lightbox
-    const fotosLightbox = fotosURLs.map((url, j) => ({
-        url,
-        caption: `Foto ${j + 1} — Accidente ${a.tipo_accidente}`
-    }));
-
+    const estadoColor = { 'Cerrado': '#4caf7d', 'En trámite': '#e8b84b', 'Reportado': '#5b9bd5', 'Sin seguro': '#e05252' };
+    const fotosURLs = [a.foto_1_url, a.foto_2_url, a.foto_3_url, a.foto_4_url].filter(Boolean);
+    const fotosLightbox = fotosURLs.map((url, j) => ({ url, caption: `Foto ${j + 1} — Accidente ${a.tipo_accidente}` }));
     const fotosHTML = fotosURLs.length
-        ? fotosURLs.map((url, i) => `
-            <a href="#" onclick="event.preventDefault();event.stopPropagation();
-                abrirLightbox(${JSON.stringify(fotosLightbox).replace(/"/g, '&quot;')}, ${i})"
-                style="display:inline-flex;align-items:center;gap:.4rem;
-                background:rgba(58,123,213,.1);border:1px solid rgba(58,123,213,.25);
-                color:#5b9bd5;padding:.35rem .75rem;border-radius:6px;
-                font-size:.78rem;text-decoration:none;margin:.2rem;cursor:zoom-in;">
-                <i class="bi bi-image"></i> Foto ${i + 1}
-            </a>`).join('')
+        ? fotosURLs.map((url, i) => `<a href="#" onclick="event.preventDefault();event.stopPropagation();abrirLightbox(${JSON.stringify(fotosLightbox).replace(/"/g, '&quot;')},${i})" style="display:inline-flex;align-items:center;gap:.4rem;background:rgba(58,123,213,.1);border:1px solid rgba(58,123,213,.25);color:#5b9bd5;padding:.35rem .75rem;border-radius:6px;font-size:.78rem;text-decoration:none;margin:.2rem;cursor:zoom-in;"><i class="bi bi-image"></i> Foto ${i + 1}</a>`).join('')
         : '<span style="color:#555;font-size:.78rem;">Sin fotos adjuntas</span>';
-
     const informeHTML = a.informe_url
-        ? `<a href="${a.informe_url}" target="_blank"
-                style="display:inline-flex;align-items:center;gap:.4rem;
-                background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.25);
-                color:var(--accent);padding:.35rem .75rem;border-radius:6px;
-                font-size:.78rem;text-decoration:none;margin:.2rem;">
-                <i class="bi bi-file-earmark-pdf"></i> Informe Policial
-            </a>`
+        ? `<a href="${a.informe_url}" target="_blank" style="display:inline-flex;align-items:center;gap:.4rem;background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.25);color:var(--accent);padding:.35rem .75rem;border-radius:6px;font-size:.78rem;text-decoration:none;margin:.2rem;"><i class="bi bi-file-earmark-pdf"></i> Informe Policial</a>`
         : '<span style="color:#555;font-size:.78rem;">Sin informe adjunto</span>';
-
     Swal.fire({
-        title: `<span style="font-family:Rajdhani,sans-serif;font-size:1.1rem;">
-            <i class="bi bi-cone-striped" style="color:#e05252;"></i>
-            Accidente — ${a.tipo_accidente}
-        </span>`,
+        title: `<span style="font-family:Rajdhani,sans-serif;font-size:1.1rem;"><i class="bi bi-cone-striped" style="color:#e05252;"></i> Accidente — ${a.tipo_accidente}</span>`,
         html: `
         <div style="text-align:left;font-size:.82rem;">
-
             <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;">
-                <span style="background:${estadoColor[a.estado] || '#888'}22;
-                    color:${estadoColor[a.estado] || '#888'};
-                    border:1px solid ${estadoColor[a.estado] || '#888'}44;
-                    padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:700;">
-                    ${a.estado}
-                </span>
-                <span style="color:#888;font-size:.78rem;">
-                    <i class="bi bi-calendar3"></i> ${a.fecha_accidente}
-                </span>
-                ${a.no_expediente ? `<span style="color:#888;font-size:.78rem;">
-                    <i class="bi bi-journal-text"></i> Exp. ${a.no_expediente}
-                </span>` : ''}
+                <span style="background:${estadoColor[a.estado] || '#888'}22;color:${estadoColor[a.estado] || '#888'};border:1px solid ${estadoColor[a.estado] || '#888'}44;padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:700;">${a.estado}</span>
+                <span style="color:#888;font-size:.78rem;"><i class="bi bi-calendar3"></i> ${a.fecha_accidente}</span>
+                ${a.no_expediente ? `<span style="color:#888;font-size:.78rem;"><i class="bi bi-journal-text"></i> Exp. ${a.no_expediente}</span>` : ''}
             </div>
-
-            <div style="background:#1e2130;border-left:3px solid #e05252;
-                padding:.75rem 1rem;border-radius:0 8px 8px 0;margin-bottom:1rem;
-                color:#c8cfe0;line-height:1.5;">
-                ${a.descripcion}
-            </div>
-
+            <div style="background:#1e2130;border-left:3px solid #e05252;padding:.75rem 1rem;border-radius:0 8px 8px 0;margin-bottom:1rem;color:#c8cfe0;line-height:1.5;">${a.descripcion}</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem;">
-                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
-                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Lugar</div>
-                    <div style="color:#c8cfe0;">${a.lugar || '—'}</div>
-                </div>
-                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
-                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Conductor</div>
-                    <div style="color:#c8cfe0;">${a.conductor_responsable || '—'}</div>
-                </div>
-                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
-                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Costo Daños</div>
-                    <div style="color:#e05252;font-weight:700;">${a.costo_danos ? 'Q ' + Number(a.costo_danos).toLocaleString() : '—'}</div>
-                </div>
-                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
-                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Costo Reparación</div>
-                    <div style="color:#e05252;font-weight:700;">${a.costo_reparacion ? 'Q ' + Number(a.costo_reparacion).toLocaleString() : '—'}</div>
-                </div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;"><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Lugar</div><div style="color:#c8cfe0;">${a.lugar || '—'}</div></div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;"><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Conductor</div><div style="color:#c8cfe0;">${a.conductor_responsable || '—'}</div></div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;"><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Costo Daños</div><div style="color:#e05252;font-weight:700;">${a.costo_danos ? 'Q ' + Number(a.costo_danos).toLocaleString() : '—'}</div></div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;"><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Costo Reparación</div><div style="color:#e05252;font-weight:700;">${a.costo_reparacion ? 'Q ' + Number(a.costo_reparacion).toLocaleString() : '—'}</div></div>
             </div>
-
-            ${(a.costo_danos || a.costo_reparacion) ? `
-            <div style="background:rgba(224,82,82,.08);border:1px solid rgba(224,82,82,.2);
-                border-radius:8px;padding:.6rem 1rem;margin-bottom:1rem;
-                display:flex;justify-content:space-between;align-items:center;">
-                <span style="color:#888;font-size:.78rem;">Costo total del accidente</span>
-                <span style="color:#e05252;font-weight:700;font-size:1rem;font-family:Rajdhani,sans-serif;">
-                    Q ${Number((parseFloat(a.costo_danos) || 0) + (parseFloat(a.costo_reparacion) || 0)).toLocaleString()}
-                </span>
-            </div>` : ''}
-
-            ${a.observaciones ? `
-            <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;margin-bottom:1rem;">
-                <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Observaciones</div>
-                <div style="color:#888;">${a.observaciones}</div>
-            </div>` : ''}
-
-            <div style="margin-bottom:.75rem;">
-                <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.5rem;">
-                    <i class="bi bi-images"></i> Fotografías / Evidencia
-                </div>
-                <div>${fotosHTML}</div>
-            </div>
-
-            <div>
-                <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.5rem;">
-                    <i class="bi bi-file-earmark-text"></i> Informe Policial
-                </div>
-                <div>${informeHTML}</div>
-            </div>
-
+            ${(a.costo_danos || a.costo_reparacion) ? `<div style="background:rgba(224,82,82,.08);border:1px solid rgba(224,82,82,.2);border-radius:8px;padding:.6rem 1rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;"><span style="color:#888;font-size:.78rem;">Costo total</span><span style="color:#e05252;font-weight:700;font-size:1rem;font-family:Rajdhani,sans-serif;">Q ${Number((parseFloat(a.costo_danos) || 0) + (parseFloat(a.costo_reparacion) || 0)).toLocaleString()}</span></div>` : ''}
+            ${a.observaciones ? `<div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;margin-bottom:1rem;"><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Observaciones</div><div style="color:#888;">${a.observaciones}</div></div>` : ''}
+            <div style="margin-bottom:.75rem;"><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.5rem;"><i class="bi bi-images"></i> Fotografías</div><div>${fotosHTML}</div></div>
+            <div><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.5rem;"><i class="bi bi-file-earmark-text"></i> Informe Policial</div><div>${informeHTML}</div></div>
         </div>`,
-        background: '#1a1d27',
-        color: '#e8eaf0',
-        confirmButtonColor: '#6f42c1',
-        confirmButtonText: '<i class="bi bi-x"></i> Cerrar',
-        width: '600px',
-        customClass: { container: 'swal-over-modal' }
+        background: '#1a1d27', color: '#e8eaf0',
+        confirmButtonColor: '#6f42c1', confirmButtonText: '<i class="bi bi-x"></i> Cerrar',
+        width: '600px', customClass: { container: 'swal-over-modal' }
     });
 };
-
 window.verAccidente = verAccidente;
-
 // ════════════════════════════════════════════════════════════════════════════
 // ── CHEQUEOS ──────────────────────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
 
 let chequeoActualId = null;
-let chequeoItemsDef = {};
 let chequeoResultados = {};
-let chequeoTotalItems = 17; // ← agregar aquí
+let chequeoTotalItems = 17;
 
 const ITEMS_CHEQUEO = {
-    1: {
-        desc: 'Tren delantero',
-        tipos: null
-    }, // todos
-    2: {
-        desc: 'Tapicería',
-        tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro']
-    },
-    3: {
-        desc: 'Carrocería',
-        tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro']
-    },
-    4: {
-        desc: 'Pintura en general',
-        tipos: null
-    },
-    5: {
-        desc: 'Siglas que identifican a los vehículos pintados en color naranja fluorescente y en el lugar correspondiente',
-        tipos: null
-    },
-    6: {
-        desc: 'Lona del camión',
-        tipos: ['Camión']
-    },
-    7: {
-        desc: 'Luces y pide vías',
-        tipos: null
-    },
-    8: {
-        desc: 'Sistema eléctrico',
-        tipos: null
-    },
-    9: {
-        desc: 'Herramienta extra para reparación de vehículos',
-        tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro']
-    },
-    10: {
-        desc: 'Herramienta básica (Tricket, llave de chuchos, palanca o tubo, trozo, cable o cadena, señalizaciones etc.)',
-        tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro']
-    },
-    11: {
-        desc: 'Herramienta de emergencia (llave de ½, Nos. 12, 13, 14, alicate, llave ajustable, juego de desatornilladores)',
-        tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro']
-    },
-    12: {
-        desc: 'Repuestos necesarios de emergencias',
-        tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro']
-    },
-    13: {
-        desc: 'Neumático de repuesto',
-        tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro']
-    },
-    14: {
-        desc: 'Acumulador o batería',
-        tipos: null
-    },
-    15: {
-        desc: 'Neumáticos',
-        tipos: null
-    },
-    16: {
-        desc: 'Lubricante',
-        tipos: null
-    },
-    17: {
-        desc: 'Odómetro',
-        tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro', 'Motocicleta']
-    },
+    1: { desc: 'Tren delantero', tipos: null },
+    2: { desc: 'Tapicería', tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro'] },
+    3: { desc: 'Carrocería', tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro'] },
+    4: { desc: 'Pintura en general', tipos: null },
+    5: { desc: 'Siglas que identifican a los vehículos pintados en color naranja fluorescente y en el lugar correspondiente', tipos: null },
+    6: { desc: 'Lona del camión', tipos: ['Camión'] },
+    7: { desc: 'Luces y pide vías', tipos: null },
+    8: { desc: 'Sistema eléctrico', tipos: null },
+    9: { desc: 'Herramienta extra para reparación de vehículos', tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro'] },
+    10: { desc: 'Herramienta básica (Tricket, llave de chuchos, palanca o tubo, trozo, cable o cadena, señalizaciones etc.)', tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro'] },
+    11: { desc: 'Herramienta de emergencia (llave de ½, Nos. 12, 13, 14, alicate, llave ajustable, juego de desatornilladores)', tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro'] },
+    12: { desc: 'Repuestos necesarios de emergencias', tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro'] },
+    13: { desc: 'Neumático de repuesto', tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro'] },
+    14: { desc: 'Acumulador o batería', tipos: null },
+    15: { desc: 'Neumáticos', tipos: null },
+    16: { desc: 'Lubricante', tipos: null },
+    17: { desc: 'Odómetro', tipos: ['Automóvil', 'Pickup', 'Camión', 'Microbús', 'Blindado', 'Camioneta', 'Otro', 'Motocicleta'] },
 };
 
 const abrirModalChequeo = async () => {
+    mostrarLoader('Cargando hoja de chequeo...');
     const modal = document.getElementById('modalChequeo');
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
@@ -2421,6 +2496,7 @@ const abrirModalChequeo = async () => {
     if (formChequeo) formChequeo.style.display = 'none';
     if (btnChequeo) btnChequeo.style.display = 'flex';
     await cargarChequeos();
+    ocultarLoader();
 };
 
 const cerrarModalChequeo = () => {
@@ -2432,15 +2508,19 @@ const cerrarModalChequeo = () => {
     const btnChequeo = document.getElementById('btnNuevoChequeo');
     if (formChequeo) formChequeo.style.display = 'none';
     if (btnChequeo) btnChequeo.style.display = 'flex';
-    // ← NO fichaPlacaActual = '' aquí
 };
 
 const actualizarBotonesExpediente = (tieneChequeoMes) => {
     const btnChequeo = document.getElementById('btnIrAChequeo');
     const btnExpediente = document.getElementById('btnGenerarExpediente');
     if (!btnChequeo || !btnExpediente) return;
-    if (tieneChequeoMes) { btnChequeo.style.display = 'none'; btnExpediente.style.display = 'flex'; }
-    else { btnChequeo.style.display = 'flex'; btnExpediente.style.display = 'none'; }
+    if (tieneChequeoMes) {
+        btnChequeo.style.display = 'none';
+        btnExpediente.style.display = 'flex';
+    } else {
+        btnChequeo.style.display = 'flex';
+        btnExpediente.style.display = 'none';
+    }
 };
 
 const cargarChequeos = async () => {
@@ -2452,7 +2532,6 @@ const cargarChequeos = async () => {
         const badge = document.getElementById('badgeChequeo');
         if (badge) badge.textContent = d.datos.length;
 
-        // ── Bloquear botón si ya hay chequeo este mes ─────────────────────────
         const ahora = new Date();
         const mesActual = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`;
         const yaHayChequeoEsteMes = d.datos.some(c =>
@@ -2461,7 +2540,6 @@ const cargarChequeos = async () => {
 
         const btnNuevo = document.getElementById('btnNuevoChequeo');
         const alerta = document.getElementById('chequeoAlertaMes');
-
         if (btnNuevo) btnNuevo.style.display = yaHayChequeoEsteMes ? 'none' : 'flex';
         if (alerta) alerta.style.display = yaHayChequeoEsteMes ? 'flex' : 'none';
 
@@ -2475,7 +2553,14 @@ const cargarChequeos = async () => {
 const renderTablaChequeos = (chequeos) => {
     const wrap = document.getElementById('chequeoHistorialWrap') || document.getElementById('tablaChequeoWrap');
     if (!wrap) return;
-    if (!chequeos.length) { wrap.innerHTML = `<div style="text-align:center;padding:3rem;color:var(--text-muted);"><i class="bi bi-clipboard2-x" style="font-size:3rem;opacity:.2;display:block;margin-bottom:1rem;"></i><p>No hay chequeos registrados para este vehículo</p></div>`; return; }
+    if (!chequeos.length) {
+        wrap.innerHTML = `
+            <div style="text-align:center;padding:3rem;color:var(--text-muted);">
+                <i class="bi bi-clipboard2-x" style="font-size:3rem;opacity:.2;display:block;margin-bottom:1rem;"></i>
+                <p>No hay chequeos registrados para este vehículo</p>
+            </div>`;
+        return;
+    }
     wrap.innerHTML = chequeos.map(c => {
         const estadoColor = c.estado === 'Completado' ? 'var(--success)' : 'var(--accent)';
         const estadoBg = c.estado === 'Completado' ? 'rgba(76,175,125,.15)' : 'rgba(232,184,75,.15)';
@@ -2485,12 +2570,16 @@ const renderTablaChequeos = (chequeos) => {
             <div><div class="svc-label">Fecha</div><div class="svc-val">${c.fecha_chequeo}</div></div>
             <div><div class="svc-label">KM</div><div class="svc-val">${Number(c.km_al_chequeo).toLocaleString()} km</div></div>
             <div><div class="svc-label">Realizado por</div><div class="svc-val">${c.realizado_por || '—'}</div></div>
-            <div><div class="svc-label">Estado</div><div class="svc-val"><span style="background:${estadoBg};color:${estadoColor};border:1px solid ${estadoBorder};padding:.2rem .65rem;border-radius:20px;font-size:.72rem;font-weight:700;">${c.estado}</span></div></div>
+            <div><div class="svc-label">Estado</div><div class="svc-val">
+                <span style="background:${estadoBg};color:${estadoColor};border:1px solid ${estadoBorder};padding:.2rem .65rem;border-radius:20px;font-size:.72rem;font-weight:700;">
+                    ${c.estado}
+                </span>
+            </div></div>
             <div style="display:flex;gap:.4rem;align-items:center;">
                 ${c.estado === 'Completado'
-                ? `<button onclick="verChequeo(${c.id_chequeo})" style="background:rgba(111,66,193,.15);border:1px solid rgba(111,66,193,.3);color:#a78bfa;border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;" title="Ver detalle"><i class="bi bi-eye"></i></button>`
-                : `<button onclick="continuarChequeo(${c.id_chequeo})" style="background:rgba(232,184,75,.15);border:1px solid rgba(232,184,75,.3);color:var(--accent);border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;" title="Continuar"><i class="bi bi-pencil-square"></i></button>`}
-                <button onclick="eliminarChequeo(${c.id_chequeo})" style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);color:var(--danger);border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;" title="Eliminar"><i class="bi bi-trash3"></i></button>
+                ? `<button onclick="verChequeo(${c.id_chequeo})" style="background:rgba(111,66,193,.15);border:1px solid rgba(111,66,193,.3);color:#a78bfa;border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;"><i class="bi bi-eye"></i></button>`
+                : `<button onclick="continuarChequeo(${c.id_chequeo})" style="background:rgba(232,184,75,.15);border:1px solid rgba(232,184,75,.3);color:var(--accent);border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;"><i class="bi bi-pencil-square"></i></button>`}
+                <button onclick="eliminarChequeo(${c.id_chequeo})" style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);color:var(--danger);border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;"><i class="bi bi-trash3"></i></button>
             </div>
         </div>
         ${c.observaciones_gen ? `<div style="font-size:.75rem;color:var(--text-muted);margin-top:-.4rem;margin-bottom:.6rem;padding-left:.25rem;"><i class="bi bi-chat-text"></i> ${c.observaciones_gen}</div>` : ''}`;
@@ -2500,22 +2589,16 @@ const renderTablaChequeos = (chequeos) => {
 const generarFilasChequeo = (itemsExistentes = {}) => {
     const tbody = document.getElementById('chequeoTablaItems');
     if (!tbody) return;
-
     const tipo = fichaTipoVehiculo;
-
-    // Filtrar ítems que aplican al tipo de vehículo
     const itemsAplicables = Object.entries(ITEMS_CHEQUEO).filter(([num, item]) => {
-        if (!item.tipos) return true; // null = aplica a todos
+        if (!item.tipos) return true;
         return item.tipos.includes(tipo);
     });
-
     tbody.innerHTML = itemsAplicables.map(([num, item], idx) => {
         const n = parseInt(num);
         const res = itemsExistentes[n] || {};
-        const desc = item.desc;
         const opciones = ['BE', 'ME', 'MEI', 'NT'];
         const colores = { BE: '#4caf7d', ME: '#e8b84b', MEI: '#e05252', NT: '#7c8398' };
-
         const radiosCols = opciones.map(op => `
             <td style="text-align:center;padding:.5rem .25rem;">
                 <label style="cursor:pointer;display:flex;align-items:center;justify-content:center;">
@@ -2528,30 +2611,26 @@ const generarFilasChequeo = (itemsExistentes = {}) => {
                         cursor:pointer;transition:all .2s;flex-shrink:0;">
                 </label>
             </td>`).join('');
-
         return `
-            <tr style="border-bottom:1px solid var(--border);transition:background .15s;"
-                onmouseover="this.style.background='rgba(255,255,255,.03)'"
-                onmouseout="this.style.background='transparent'">
-                <td style="padding:.6rem .75rem;color:var(--text-muted);font-size:.8rem;font-weight:600;">
-                    ${String(idx + 1).padStart(2, '0')}
-                </td>
-                <td style="padding:.6rem .75rem;color:var(--text-main);font-size:.82rem;line-height:1.4;">
-                    ${desc}
-                </td>
-                ${radiosCols}
-                <td style="padding:.5rem .75rem;">
-                    <input type="text" id="chq_obs_${n}" value="${res.observacion || ''}"
-                        placeholder="..." class="form-control"
-                        style="font-size:.75rem;padding:.3rem .5rem !important;"
-                        oninput="onChequeoObsChange(${n}, this.value)">
-                </td>
-            </tr>`;
+        <tr style="border-bottom:1px solid var(--border);transition:background .15s;"
+            onmouseover="this.style.background='rgba(255,255,255,.03)'"
+            onmouseout="this.style.background='transparent'">
+            <td style="padding:.6rem .75rem;color:var(--text-muted);font-size:.8rem;font-weight:600;">
+                ${String(idx + 1).padStart(2, '0')}
+            </td>
+            <td style="padding:.6rem .75rem;color:var(--text-main);font-size:.82rem;line-height:1.4;">
+                ${item.desc}
+            </td>
+            ${radiosCols}
+            <td style="padding:.5rem .75rem;">
+                <input type="text" id="chq_obs_${n}" value="${res.observacion || ''}"
+                    placeholder="..." class="form-control"
+                    style="font-size:.75rem;padding:.3rem .5rem !important;"
+                    oninput="onChequeoObsChange(${n}, this.value)">
+            </td>
+        </tr>`;
     }).join('');
-
-    // Actualizar total de ítems para el progreso
     chequeoTotalItems = itemsAplicables.length;
-
     if (Object.keys(itemsExistentes).length) {
         chequeoResultados = {};
         Object.entries(itemsExistentes).forEach(([num, data]) => {
@@ -2568,7 +2647,9 @@ const onChequeoItemChange = (num, valor) => {
     if (!chequeoResultados[num]) chequeoResultados[num] = {};
     chequeoResultados[num].resultado = valor;
     const colores = { BE: '#4caf7d', ME: '#e8b84b', MEI: '#e05252', NT: '#7c8398' };
-    document.querySelectorAll(`input[name="chq_item_${num}"]`).forEach(r => { r.style.background = r.value === valor ? colores[r.value] : 'transparent'; });
+    document.querySelectorAll(`input[name="chq_item_${num}"]`).forEach(r => {
+        r.style.background = r.value === valor ? colores[r.value] : 'transparent';
+    });
     actualizarProgreso();
 };
 
@@ -2592,12 +2673,17 @@ const actualizarProgreso = () => {
 const iniciarNuevoChequeo = () => {
     chequeoResultados = {};
     chequeoActualId = null;
-
     document.getElementById('formNuevoChequeo').style.display = 'block';
     document.getElementById('btnNuevoChequeo').style.display = 'none';
     document.getElementById('chqFecha').value = new Date().toISOString().split('T')[0];
     document.getElementById('chqKm').value = document.getElementById('fd-km')?.textContent?.replace(/\D/g, '') || '';
-    document.getElementById('chqResponsable').value = '';
+    const inputResponsable = document.getElementById('chqResponsable');
+    if (inputResponsable) {
+        inputResponsable.value = AUTH_NOMBRE;
+        inputResponsable.readOnly = true;
+        inputResponsable.style.opacity = '.7';
+        inputResponsable.style.cursor = 'not-allowed';
+    }
     document.getElementById('chqObservaciones').value = '';
     generarFilasChequeo();
     actualizarProgreso();
@@ -2611,7 +2697,9 @@ const continuarChequeo = async (id) => {
         chequeoActualId = id;
         chequeoResultados = {};
         const itemsMap = {};
-        (d.datos.items || []).forEach(item => { itemsMap[item.numero_item] = { resultado: item.resultado, observacion: item.observacion }; });
+        (d.datos.items || []).forEach(item => {
+            itemsMap[item.numero_item] = { resultado: item.resultado, observacion: item.observacion };
+        });
         document.getElementById('formNuevoChequeo').style.display = 'block';
         document.getElementById('btnNuevoChequeo').style.display = 'none';
         document.getElementById('chqFecha').value = d.datos.fecha_chequeo;
@@ -2630,59 +2718,53 @@ const verChequeo = async (id) => {
         const colores = { BE: '#4caf7d', ME: '#e8b84b', MEI: '#e05252', NT: '#7c8398' };
         const itemsMap = {};
         (d.datos.items || []).forEach(item => { itemsMap[item.numero_item] = item; });
-        const filas = Object.entries(ITEMS_CHEQUEO).map(([num, desc]) => {
-            const item = itemsMap[parseInt(num)] || {};
-            const color = item.resultado ? colores[item.resultado] : 'var(--text-muted)';
-            return `<tr style="border-bottom:1px solid var(--border);"><td style="padding:.5rem .75rem;color:var(--text-muted);font-size:.8rem;">${String(num).padStart(2, '0')}</td><td style="padding:.5rem .75rem;color:var(--text-main);font-size:.82rem;">${desc}</td><td style="padding:.5rem .75rem;text-align:center;"><span style="color:${color};font-weight:700;font-size:.82rem;">${item.resultado || '—'}</span></td><td style="padding:.5rem .75rem;font-size:.78rem;color:var(--text-muted);">${item.observacion || ''}</td></tr>`;
+        const filas = Object.entries(ITEMS_CHEQUEO).map(([num, item]) => {
+            const it = itemsMap[parseInt(num)] || {};
+            const color = it.resultado ? colores[it.resultado] : 'var(--text-muted)';
+            return `<tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:.5rem .75rem;color:var(--text-muted);font-size:.8rem;">${String(num).padStart(2, '0')}</td>
+                <td style="padding:.5rem .75rem;color:var(--text-main);font-size:.82rem;">${item.desc}</td>
+                <td style="padding:.5rem .75rem;text-align:center;"><span style="color:${color};font-weight:700;font-size:.82rem;">${it.resultado || '—'}</span></td>
+                <td style="padding:.5rem .75rem;font-size:.78rem;color:var(--text-muted);">${it.observacion || ''}</td>
+            </tr>`;
         }).join('');
         await Swal.fire({
             title: `Chequeo — ${d.datos.fecha_chequeo}`,
-            html: `<div style="text-align:left;font-size:.82rem;color:#7c8398;margin-bottom:1rem;"><i class="bi bi-speedometer"></i> ${Number(d.datos.km_al_chequeo).toLocaleString()} km${d.datos.realizado_por ? ' · <i class="bi bi-person"></i> ' + d.datos.realizado_por : ''}</div><div style="overflow-x:auto;max-height:400px;overflow-y:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#1a1d27;position:sticky;top:0;"><th style="padding:.5rem;text-align:left;color:#7c8398;font-size:.7rem;">No.</th><th style="padding:.5rem;text-align:left;color:#7c8398;font-size:.7rem;">Descripción</th><th style="padding:.5rem;text-align:center;color:#7c8398;font-size:.7rem;">Resultado</th><th style="padding:.5rem;text-align:left;color:#7c8398;font-size:.7rem;">Obs.</th></tr></thead><tbody>${filas}</tbody></table></div>${d.datos.observaciones_gen ? `<div style="margin-top:1rem;padding:.75rem;background:#242837;border-radius:8px;font-size:.82rem;color:#7c8398;text-align:left;"><i class="bi bi-chat-text"></i> ${d.datos.observaciones_gen}</div>` : ''}`,
-            background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#6f42c1', confirmButtonText: 'Cerrar', width: '700px', customClass: { container: 'swal-over-modal' }
+            html: `
+            <div style="text-align:left;font-size:.82rem;color:#7c8398;margin-bottom:1rem;">
+                <i class="bi bi-speedometer"></i> ${Number(d.datos.km_al_chequeo).toLocaleString()} km
+                ${d.datos.realizado_por ? ' · <i class="bi bi-person"></i> ' + d.datos.realizado_por : ''}
+            </div>
+            <div style="overflow-x:auto;max-height:400px;overflow-y:auto;">
+                <table style="width:100%;border-collapse:collapse;">
+                    <thead>
+                        <tr style="background:#1a1d27;position:sticky;top:0;">
+                            <th style="padding:.5rem;text-align:left;color:#7c8398;font-size:.7rem;">No.</th>
+                            <th style="padding:.5rem;text-align:left;color:#7c8398;font-size:.7rem;">Descripción</th>
+                            <th style="padding:.5rem;text-align:center;color:#7c8398;font-size:.7rem;">Resultado</th>
+                            <th style="padding:.5rem;text-align:left;color:#7c8398;font-size:.7rem;">Obs.</th>
+                        </tr>
+                    </thead>
+                    <tbody>${filas}</tbody>
+                </table>
+            </div>
+            ${d.datos.observaciones_gen ? `<div style="margin-top:1rem;padding:.75rem;background:#242837;border-radius:8px;font-size:.82rem;color:#7c8398;text-align:left;"><i class="bi bi-chat-text"></i> ${d.datos.observaciones_gen}</div>` : ''}`,
+            background: '#1a1d27', color: '#e8eaf0',
+            confirmButtonColor: '#6f42c1', confirmButtonText: 'Cerrar',
+            width: '700px', customClass: { container: 'swal-over-modal' }
         });
     } catch (err) { Toast.fire({ icon: 'error', title: 'Error de conexión' }); }
 };
 
 const guardarChequeo = async () => {
-    // ── Validar campos del encabezado ─────────────────────────────────────────
     const fecha = document.getElementById('chqFecha').value;
     const km = document.getElementById('chqKm').value;
     const responsable = document.getElementById('chqResponsable').value.trim();
 
-    if (!fecha) {
-        Swal.fire({
-            icon: 'warning', title: 'Fecha requerida',
-            text: 'Selecciona la fecha del chequeo.',
-            background: '#1a1d27', color: '#e8eaf0',
-            confirmButtonColor: '#6f42c1',
-            customClass: { container: 'swal-over-modal' }
-        });
-        return;
-    }
+    if (!fecha) { Swal.fire({ icon: 'warning', title: 'Fecha requerida', text: 'Selecciona la fecha del chequeo.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#6f42c1', customClass: { container: 'swal-over-modal' } }); return; }
+    if (!km || parseInt(km) <= 0) { Swal.fire({ icon: 'warning', title: 'KM requerido', text: 'Ingresa el kilometraje al momento del chequeo.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#6f42c1', customClass: { container: 'swal-over-modal' } }); return; }
+    if (!responsable) { Swal.fire({ icon: 'warning', title: 'Responsable requerido', text: 'Indica quién realizó el chequeo.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#6f42c1', customClass: { container: 'swal-over-modal' } }); return; }
 
-    if (!km || parseInt(km) <= 0) {
-        Swal.fire({
-            icon: 'warning', title: 'KM requerido',
-            text: 'Ingresa el kilometraje al momento del chequeo.',
-            background: '#1a1d27', color: '#e8eaf0',
-            confirmButtonColor: '#6f42c1',
-            customClass: { container: 'swal-over-modal' }
-        });
-        return;
-    }
-
-    if (!responsable) {
-        Swal.fire({
-            icon: 'warning', title: 'Responsable requerido',
-            text: 'Indica quién realizó el chequeo.',
-            background: '#1a1d27', color: '#e8eaf0',
-            confirmButtonColor: '#6f42c1',
-            customClass: { container: 'swal-over-modal' }
-        });
-        return;
-    }
-
-    // ── Si aún no hay chequeo creado en BD, crearlo ahora ────────────────────
     if (!chequeoActualId) {
         try {
             const bodyCrear = new FormData();
@@ -2691,18 +2773,11 @@ const guardarChequeo = async () => {
             bodyCrear.append('km_al_chequeo', km);
             const rCrear = await fetch(`${BASE}/API/vehiculos/chequeos/crear`, { method: 'POST', body: bodyCrear });
             const dCrear = await rCrear.json();
-            if (dCrear.codigo !== 1) {
-                Toast.fire({ icon: 'error', title: dCrear.mensaje });
-                return;
-            }
+            if (dCrear.codigo !== 1) { Toast.fire({ icon: 'error', title: dCrear.mensaje }); return; }
             chequeoActualId = dCrear.id_chequeo;
-        } catch (err) {
-            Toast.fire({ icon: 'error', title: 'Error al crear el chequeo' });
-            return;
-        }
+        } catch (err) { Toast.fire({ icon: 'error', title: 'Error al crear el chequeo' }); return; }
     }
 
-    // ── Completar chequeo ─────────────────────────────────────────────────────
     const items = Object.entries(chequeoResultados).map(([num, data]) => ({
         numero_item: parseInt(num),
         resultado: data.resultado,
@@ -2719,10 +2794,8 @@ const guardarChequeo = async () => {
     try {
         const r = await fetch(`${BASE}/API/vehiculos/chequeos/completar`, { method: 'POST', body });
         const d = await r.json();
-
         if (d.codigo === 1) {
             const placaGuardada = fichaPlacaActual;
-
             document.getElementById('modalChequeo').style.display = 'none';
             chequeoActualId = null;
             chequeoResultados = {};
@@ -2730,25 +2803,16 @@ const guardarChequeo = async () => {
             const btnChequeo = document.getElementById('btnNuevoChequeo');
             if (formChequeo) formChequeo.style.display = 'none';
             if (btnChequeo) btnChequeo.style.display = 'flex';
-
             await Swal.fire({
-                title: '¡Chequeo completado!',
-                icon: 'success',
-                draggable: true,
-                background: '#1a1d27',
-                color: '#e8eaf0',
-                confirmButtonColor: '#6f42c1',
-                customClass: { container: 'swal-over-modal' }
+                title: '¡Chequeo completado!', icon: 'success', draggable: true,
+                background: '#1a1d27', color: '#e8eaf0',
+                confirmButtonColor: '#6f42c1', customClass: { container: 'swal-over-modal' }
             });
-
             if (placaGuardada) await abrirFicha(placaGuardada);
-
         } else {
             Toast.fire({ icon: 'error', title: d.mensaje });
         }
-    } catch (err) {
-        Toast.fire({ icon: 'error', title: 'Error de conexión' });
-    }
+    } catch (err) { Toast.fire({ icon: 'error', title: 'Error de conexión' }); }
 };
 
 const cancelarChequeo = () => {
@@ -2758,11 +2822,15 @@ const cancelarChequeo = () => {
     if (btnChequeo) btnChequeo.style.display = 'flex';
     chequeoActualId = null;
     chequeoResultados = {};
-    // ← NO tocar fichaPlacaActual aquí
 };
 
 const eliminarChequeo = async (id) => {
-    const conf = await Swal.fire({ icon: 'warning', title: '¿Eliminar chequeo?', text: 'Esta acción no se puede deshacer.', showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#e05252', cancelButtonColor: '#3a7bd5', background: '#1a1d27', color: '#e8eaf0', customClass: { container: 'swal-over-modal' } });
+    const conf = await Swal.fire({
+        icon: 'warning', title: '¿Eliminar chequeo?', text: 'Esta acción no se puede deshacer.',
+        showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#e05252', cancelButtonColor: '#3a7bd5',
+        background: '#1a1d27', color: '#e8eaf0', customClass: { container: 'swal-over-modal' }
+    });
     if (!conf.isConfirmed) return;
     const body = new FormData();
     body.append('id_chequeo', id);
@@ -2774,37 +2842,10 @@ const eliminarChequeo = async (id) => {
     } catch (err) { Toast.fire({ icon: 'error', title: 'Error de conexión' }); }
 };
 
+// ════════════════════════════════════════════════════════════════════════════
 // ── FOTOS ACCIDENTE ───────────────────────────────────────────────────────────
-const inputFotosAcc = document.getElementById('acFotos');
-const areaFotosAcc = document.getElementById('areaFotosAcc');
+// ════════════════════════════════════════════════════════════════════════════
 
-if (inputFotosAcc && areaFotosAcc) {
-    inputFotosAcc.addEventListener('change', () => {
-        const file = inputFotosAcc.files[0];
-        if (!file) return;
-        areaFotosAcc.classList.add('has-file');
-        areaFotosAcc.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
-        areaFotosAcc.querySelector('.upload-label').innerHTML = `
-            <span style="color:var(--success)">${file.name}</span>`;
-    });
-}
-
-// ── INFORME POLICIAL ──────────────────────────────────────────────────────────
-const inputInformeAcc = document.getElementById('acInforme');
-const areaInformeAcc = document.getElementById('areaInformeAcc');
-
-if (inputInformeAcc && areaInformeAcc) {
-    inputInformeAcc.addEventListener('change', () => {
-        const file = inputInformeAcc.files[0];
-        if (!file) return;
-        areaInformeAcc.classList.add('has-file');
-        areaInformeAcc.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
-        areaInformeAcc.querySelector('.upload-label').innerHTML = `
-            <span style="color:var(--success)">${file.name}</span>`;
-    });
-}
-
-// ── FOTOS DINÁMICAS ACCIDENTE ─────────────────────────────────────────────────
 let fotosAccCount = 0;
 const MAX_FOTOS_ACC = 4;
 
@@ -2813,105 +2854,40 @@ const agregarFotoAcc = () => {
         Toast.fire({ icon: 'warning', title: `Máximo ${MAX_FOTOS_ACC} archivos permitidos` });
         return;
     }
-
     fotosAccCount++;
     const id = `acFoto_${fotosAccCount}`;
     const container = document.getElementById('fotosAccContainer');
-
     const div = document.createElement('div');
     div.id = `fotoAccItem_${fotosAccCount}`;
     div.style.cssText = 'display:flex;align-items:center;gap:.5rem;background:var(--dark-2);border:1px solid var(--border);border-radius:8px;padding:.5rem .75rem;';
-
     div.innerHTML = `
         <i class="bi bi-paperclip" style="color:var(--text-muted);flex-shrink:0;"></i>
         <div class="file-upload-area" id="area_${id}"
-            style="flex:1;padding:.4rem .75rem;margin:0;min-height:unset;
-            display:flex;align-items:center;gap:.5rem;cursor:pointer;"
+            style="flex:1;padding:.4rem .75rem;margin:0;min-height:unset;display:flex;align-items:center;gap:.5rem;cursor:pointer;"
             onclick="document.getElementById('${id}').click()">
             <input type="file" id="${id}" name="fotos_acc[]"
-                accept=".pdf,.jpg,.jpeg,.png"
-                style="display:none;"
+                accept=".pdf,.jpg,.jpeg,.png" style="display:none;"
                 onchange="onFotoAccChange('${id}', ${fotosAccCount})">
-            <span id="label_${id}" style="font-size:.78rem;color:var(--text-muted);">
-                Seleccionar archivo...
-            </span>
+            <span id="label_${id}" style="font-size:.78rem;color:var(--text-muted);">Seleccionar archivo...</span>
         </div>
         <button type="button" onclick="quitarFotoAcc(${fotosAccCount})"
             style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
-            color:var(--danger);border-radius:6px;padding:.3rem .5rem;
-            cursor:pointer;flex-shrink:0;">
+            color:var(--danger);border-radius:6px;padding:.3rem .5rem;cursor:pointer;flex-shrink:0;">
             <i class="bi bi-x"></i>
         </button>`;
-
     container.appendChild(div);
     actualizarContadorFotos();
-
-    // Ocultar botón si llegamos al máximo
     if (fotosAccCount >= MAX_FOTOS_ACC) {
         document.getElementById('btnAgregarFotoAcc').style.display = 'none';
     }
 };
-
-
-
-// ── LIGHTBOX ──────────────────────────────────────────────────────────────────
-let lbImagenes = [];
-let lbIndice = 0;
-
-const abrirLightbox = (imagenes, indice = 0) => {
-    lbImagenes = imagenes; // [{ url, caption }]
-    lbIndice = indice;
-    _renderLightbox();
-    document.getElementById('bhr-lightbox').classList.add('visible');
-    document.body.style.overflow = 'hidden';
-};
-
-const cerrarLightbox = () => {
-    document.getElementById('bhr-lightbox').classList.remove('visible');
-    document.body.style.overflow = '';
-};
-
-const navLightbox = (dir) => {
-    lbIndice = Math.max(0, Math.min(lbImagenes.length - 1, lbIndice + dir));
-    _renderLightbox();
-};
-
-const _renderLightbox = () => {
-    const item = lbImagenes[lbIndice];
-    const img = document.getElementById('lbImagen');
-    const caption = document.getElementById('lbCaption');
-    const prev = document.getElementById('lbPrev');
-    const next = document.getElementById('lbNext');
-
-    img.src = item.url;
-    caption.textContent = item.caption || '';
-    prev.classList.toggle('hidden', lbIndice === 0);
-    next.classList.toggle('hidden', lbIndice === lbImagenes.length - 1);
-};
-
-// Cerrar con ESC o click fuera
-document.getElementById('bhr-lightbox').addEventListener('click', (e) => {
-    if (e.target === document.getElementById('bhr-lightbox')) cerrarLightbox();
-});
-document.addEventListener('keydown', (e) => {
-    const lb = document.getElementById('bhr-lightbox');
-    if (!lb.classList.contains('visible')) return;
-    if (e.key === 'Escape') cerrarLightbox();
-    if (e.key === 'ArrowLeft') navLightbox(-1);
-    if (e.key === 'ArrowRight') navLightbox(1);
-});
-
-window.abrirLightbox = abrirLightbox;
-window.cerrarLightbox = cerrarLightbox;
-window.navLightbox = navLightbox;
 
 const onFotoAccChange = (id, num) => {
     const input = document.getElementById(id);
     const label = document.getElementById(`label_${id}`);
     if (!input || !input.files[0]) return;
     const file = input.files[0];
-    label.innerHTML = `<i class="bi bi-check-circle-fill" style="color:var(--success);"></i>
-        <span style="color:var(--success);font-size:.78rem;">${file.name}</span>`;
+    label.innerHTML = `<i class="bi bi-check-circle-fill" style="color:var(--success);"></i><span style="color:var(--success);font-size:.78rem;">${file.name}</span>`;
 };
 
 const quitarFotoAcc = (num) => {
@@ -2937,80 +2913,79 @@ const resetFotosAcc = () => {
     if (btn) btn.style.display = 'flex';
 };
 
-window.agregarFotoAcc = agregarFotoAcc;
-window.onFotoAccChange = onFotoAccChange;
-window.quitarFotoAcc = quitarFotoAcc;
+// ── Informe policial upload ───────────────────────────────────────────────────
+const inputInformeAcc = document.getElementById('acInforme');
+const areaInformeAcc = document.getElementById('areaInformeAcc');
+if (inputInformeAcc && areaInformeAcc) {
+    inputInformeAcc.addEventListener('change', () => {
+        const file = inputInformeAcc.files[0];
+        if (!file) return;
+        areaInformeAcc.classList.add('has-file');
+        areaInformeAcc.querySelector('.upload-icon i').className = 'bi bi-check-circle-fill';
+        areaInformeAcc.querySelector('.upload-label').innerHTML = `<span style="color:var(--success)">${file.name}</span>`;
+    });
+}
 
+// ════════════════════════════════════════════════════════════════════════════
+// ── LIGHTBOX ──────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
 
+let lbImagenes = [];
+let lbIndice = 0;
+
+const abrirLightbox = (imagenes, indice = 0) => {
+    lbImagenes = imagenes;
+    lbIndice = indice;
+    _renderLightbox();
+    document.getElementById('bhr-lightbox').classList.add('visible');
+    document.body.style.overflow = 'hidden';
+};
+
+const cerrarLightbox = () => {
+    document.getElementById('bhr-lightbox').classList.remove('visible');
+    document.body.style.overflow = '';
+};
+
+const navLightbox = (dir) => {
+    lbIndice = Math.max(0, Math.min(lbImagenes.length - 1, lbIndice + dir));
+    _renderLightbox();
+};
+
+const _renderLightbox = () => {
+    const item = lbImagenes[lbIndice];
+    const img = document.getElementById('lbImagen');
+    const caption = document.getElementById('lbCaption');
+    const prev = document.getElementById('lbPrev');
+    const next = document.getElementById('lbNext');
+    img.src = item.url;
+    caption.textContent = item.caption || '';
+    prev.classList.toggle('hidden', lbIndice === 0);
+    next.classList.toggle('hidden', lbIndice === lbImagenes.length - 1);
+};
+
+document.getElementById('bhr-lightbox').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('bhr-lightbox')) cerrarLightbox();
+});
+document.addEventListener('keydown', (e) => {
+    const lb = document.getElementById('bhr-lightbox');
+    if (!lb.classList.contains('visible')) return;
+    if (e.key === 'Escape') cerrarLightbox();
+    if (e.key === 'ArrowLeft') navLightbox(-1);
+    if (e.key === 'ArrowRight') navLightbox(1);
+});
+
+// ════════════════════════════════════════════════════════════════════════════
 // ── GENERAR EXPEDIENTE ────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+
 const generarExpediente = (placa) => {
     window.open(`${BASE}/vehiculos/expediente?placa=${encodeURIComponent(placa)}`, '_blank');
 };
 
-// ── AUTO-UPPERCASE ────────────────────────────────────────────────────────────
-document.getElementById('placa').addEventListener('input', function () { this.value = this.value.toUpperCase(); });
-document.getElementById('numero_serie').addEventListener('input', function () { this.value = this.value.toUpperCase(); });
+// ════════════════════════════════════════════════════════════════════════════
+// ── SOLICITAR MODIFICACIÓN (COMTE_PTN) ───────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
 
-// ── EVENT LISTENERS ───────────────────────────────────────────────────────────
-formulario.addEventListener('submit', guardar);
-btnCancelar.addEventListener('click', cancelar);
-btnModificar.addEventListener('click', modificar);
-
-// ── EXPONER GLOBALES ──────────────────────────────────────────────────────────
-window.irAChequeo = abrirModalChequeo;
-window.generarExpediente = generarExpediente;
-window.abrirFicha = abrirFicha;
-window.cerrarFicha = cerrarFicha;
-window.switchTab = switchTab;
-window.guardarServicio = guardarServicio;
-window.eliminarServicio = eliminarServicio;
-window.toggleFormServicio = toggleFormServicio;
-window.toggleFormReparacion = toggleFormReparacion;
-window.guardarReparacion = guardarReparacion;
-window.editarReparacion = editarReparacion;
-window.eliminarReparacion = eliminarReparacion;
-window.toggleFormSeguro = toggleFormSeguro;
-window.toggleFormSeguroFicha = toggleFormSeguro;
-window.guardarSeguroFicha = guardarSeguro;
-window.guardarSeguro = guardarSeguro;
-window.editarSeguro = editarSeguro;
-window.eliminarSeguro = eliminarSeguro;
-window.toggleFormAccidente = toggleFormAccidente;
-window.guardarAccidente = guardarAccidente;
-window.editarAccidente = editarAccidente;
-window.eliminarAccidente = eliminarAccidente;
-window.iniciarNuevoChequeo = iniciarNuevoChequeo;
-window.continuarChequeo = continuarChequeo;
-window.verChequeo = verChequeo;
-window.guardarChequeo = guardarChequeo;
-window.cancelarChequeo = cancelarChequeo;
-window.eliminarChequeo = eliminarChequeo;
-window.onChequeoItemChange = onChequeoItemChange;
-window.onChequeoObsChange = onChequeoObsChange;
-window.abrirModalChequeo = abrirModalChequeo;
-window.cerrarModalChequeo = cerrarModalChequeo;
-
-// ── DATA EN MEMORIA ───────────────────────────────────────────────────────────
-let segurosData = [];
-let accidentesData = [];
-let fichaTipoVehiculo = '';
-
-// ── SEGURO EN FORMULARIO NUEVO ────────────────────────────────────────────────
-let vehiculoTieneSeguro = false;
-
-const elegirSeguro = (opcion) => {
-    const btnSi = document.getElementById('btnSeguroSi');
-    const btnNo = document.getElementById('btnSeguroNo');
-    const panel = document.getElementById('panelFormSeguro');
-    const aviso = document.getElementById('avisoSinSeguro');
-    btnSi.classList.remove('sel-si');
-    btnNo.classList.remove('sel-no');
-    if (opcion === 'si') { btnSi.classList.add('sel-si'); panel.style.display = 'block'; aviso.style.display = 'none'; vehiculoTieneSeguro = true; }
-    else { btnNo.classList.add('sel-no'); panel.style.display = 'none'; aviso.style.display = 'flex'; vehiculoTieneSeguro = false; }
-};
-
-window.elegirSeguro = elegirSeguro;
-// ── SOLICITAR MODIFICACION (COMTE_PTN) ────────────────────────────────────────
 window.solicitarModificacion = async (placa) => {
     const vehiculo = todosLosVehiculos.find(v => v.placa === placa);
     if (!vehiculo) return;
@@ -3022,131 +2997,74 @@ window.solicitarModificacion = async (placa) => {
             <div style="text-align:left;font-size:.85rem;">
                 <p style="color:#7c8398;margin-bottom:1rem;">
                     <i class="bi bi-truck" style="color:#e8b84b;"></i>
-                    <strong style="color:#e8b84b;">${vehiculo.marca} ${vehiculo.modelo}</strong>
-                    — Catálogo ${placa}
+                    <strong style="color:#e8b84b;">${vehiculo.marca} ${vehiculo.modelo}</strong> — Catálogo ${placa}
                 </p>
                 <p style="color:#7c8398;margin-bottom:1rem;">¿Qué deseas modificar?</p>
                 <div style="display:flex;flex-direction:column;gap:.5rem;">
-                    <button id="btn-tipo-texto"
-                        style="background:#242837;border:1px solid #2e3347;border-radius:10px;
-                        padding:.85rem 1rem;cursor:pointer;text-align:left;color:#e8eaf0;
-                        display:flex;align-items:center;gap:.75rem;">
+                    <button id="btn-tipo-texto" style="background:#242837;border:1px solid #2e3347;border-radius:10px;padding:.85rem 1rem;cursor:pointer;text-align:left;color:#e8eaf0;display:flex;align-items:center;gap:.75rem;">
                         <i class="bi bi-pencil-square" style="font-size:1.3rem;color:#e8b84b;"></i>
-                        <div>
-                            <div style="font-weight:600;font-size:.88rem;">Datos del vehículo</div>
-                            <div style="font-size:.75rem;color:#7c8398;">Marca, modelo, color, kilometraje, estado...</div>
-                        </div>
+                        <div><div style="font-weight:600;font-size:.88rem;">Datos del vehículo</div><div style="font-size:.75rem;color:#7c8398;">Marca, modelo, color, kilometraje, estado...</div></div>
                     </button>
-                    <button id="btn-tipo-unidad"
-                        style="background:#242837;border:1px solid #2e3347;border-radius:10px;
-                        padding:.85rem 1rem;cursor:pointer;text-align:left;color:#e8eaf0;
-                        display:flex;align-items:center;gap:.75rem;">
+                    <button id="btn-tipo-unidad" style="background:#242837;border:1px solid #2e3347;border-radius:10px;padding:.85rem 1rem;cursor:pointer;text-align:left;color:#e8eaf0;display:flex;align-items:center;gap:.75rem;">
                         <i class="bi bi-geo-alt-fill" style="font-size:1.3rem;color:#3a7bd5;"></i>
-                        <div>
-                            <div style="font-weight:600;font-size:.88rem;">Unidad asignada</div>
-                            <div style="font-size:.75rem;color:#7c8398;">Cambiar destacamento o unidad</div>
-                        </div>
+                        <div><div style="font-weight:600;font-size:.88rem;">Unidad asignada</div><div style="font-size:.75rem;color:#7c8398;">Cambiar destacamento o unidad</div></div>
                     </button>
-                    <button id="btn-tipo-archivo"
-                        style="background:#242837;border:1px solid #2e3347;border-radius:10px;
-                        padding:.85rem 1rem;cursor:pointer;text-align:left;color:#e8eaf0;
-                        display:flex;align-items:center;gap:.75rem;">
+                    <button id="btn-tipo-archivo" style="background:#242837;border:1px solid #2e3347;border-radius:10px;padding:.85rem 1rem;cursor:pointer;text-align:left;color:#e8eaf0;display:flex;align-items:center;gap:.75rem;">
                         <i class="bi bi-file-earmark-arrow-up" style="font-size:1.3rem;color:#4caf7d;"></i>
-                        <div>
-                            <div style="font-weight:600;font-size:.88rem;">Fotos o documentos</div>
-                            <div style="font-size:.75rem;color:#7c8398;">Foto frontal, lateral, trasera, tarjeta PDF...</div>
-                        </div>
+                        <div><div style="font-weight:600;font-size:.88rem;">Fotos o documentos</div><div style="font-size:.75rem;color:#7c8398;">Foto frontal, lateral, trasera, tarjeta PDF...</div></div>
                     </button>
                 </div>
             </div>`,
-            background: '#1a1d27',
-            color: '#e8eaf0',
-            showCancelButton: true,
-            cancelButtonText: 'Cancelar',
-            cancelButtonColor: '#555',
+            background: '#1a1d27', color: '#e8eaf0',
+            showCancelButton: true, cancelButtonText: 'Cancelar', cancelButtonColor: '#555',
             showConfirmButton: false,
             didOpen: () => {
-                document.getElementById('btn-tipo-texto').addEventListener('click', () => {
-                    Swal.close(); resolve('texto');
-                });
-                document.getElementById('btn-tipo-unidad').addEventListener('click', () => {
-                    Swal.close(); resolve('unidad');
-                });
-                document.getElementById('btn-tipo-archivo').addEventListener('click', () => {
-                    Swal.close(); resolve('archivo');
-                });
+                document.getElementById('btn-tipo-texto').addEventListener('click', () => { Swal.close(); resolve('texto'); });
+                document.getElementById('btn-tipo-unidad').addEventListener('click', () => { Swal.close(); resolve('unidad'); });
+                document.getElementById('btn-tipo-archivo').addEventListener('click', () => { Swal.close(); resolve('archivo'); });
             }
-        }).then(result => {
-            if (result.isDismissed) resolve(null);
-        });
+        }).then(result => { if (result.isDismissed) resolve(null); });
     });
 
     if (!tipoSolicitud) return;
 
-    // ── PASO 2A: Datos del vehículo ───────────────────────────────────────────
     if (tipoSolicitud === 'texto') {
-        const datosVehiculo = {
-            marca: vehiculo.marca,
-            modelo: vehiculo.modelo,
-            color: vehiculo.color,
-            km_actuales: vehiculo.km_actuales,
-            estado: vehiculo.estado,
-            observaciones: vehiculo.observaciones || ''
-        };
-
+        const datosVehiculo = { marca: vehiculo.marca, modelo: vehiculo.modelo, color: vehiculo.color, km_actuales: vehiculo.km_actuales, estado: vehiculo.estado, observaciones: vehiculo.observaciones || '' };
         const { value: formValues, isConfirmed } = await Swal.fire({
             title: 'Modificar datos del vehículo',
             html: `
-                <div style="text-align:left;font-size:.85rem;">
-                    <p style="color:#7c8398;margin-bottom:1rem;">
-                        La solicitud será enviada al Comandante de Cía para su autorización.
-                    </p>
-                    <div style="margin-bottom:.75rem;">
-                        <label style="color:#e8b84b;font-size:.78rem;font-weight:600;">Campo a modificar</label>
-                        <select id="swal-campo" class="form-select"
-                            style="margin-top:.3rem;background:#242837;color:#e8eaf0;border:1px solid #2e3347;">
-                            <option value="">Seleccione...</option>
-                            <option value="marca">Marca</option>
-                            <option value="modelo">Modelo</option>
-                            <option value="color">Color</option>
-                            <option value="km_actuales">Kilometraje</option>
-                            <option value="estado">Estado</option>
-                            <option value="observaciones">Observaciones</option>
-                        </select>
+            <div style="text-align:left;font-size:.85rem;">
+                <p style="color:#7c8398;margin-bottom:1rem;">La solicitud será enviada al Comandante de Cía para su autorización.</p>
+                <div style="margin-bottom:.75rem;">
+                    <label style="color:#e8b84b;font-size:.78rem;font-weight:600;">Campo a modificar</label>
+                    <select id="swal-campo" class="form-select" style="margin-top:.3rem;background:#242837;color:#e8eaf0;border:1px solid #2e3347;">
+                        <option value="">Seleccione...</option>
+                        <option value="marca">Marca</option><option value="modelo">Modelo</option>
+                        <option value="color">Color</option><option value="km_actuales">Kilometraje</option>
+                        <option value="estado">Estado</option><option value="observaciones">Observaciones</option>
+                    </select>
+                </div>
+                <div id="swal-valor-actual-wrap" style="display:none;margin-bottom:.75rem;">
+                    <label style="color:#7c8398;font-size:.75rem;">Valor actual:</label>
+                    <div style="background:#1a1d27;border:1px solid #2e3347;border-radius:8px;padding:.5rem .75rem;margin-top:.3rem;color:#e8b84b;font-weight:600;">
+                        <i class="bi bi-arrow-right-circle"></i> <span id="swal-valor-actual"></span>
                     </div>
-                    <div id="swal-valor-actual-wrap" style="display:none;margin-bottom:.75rem;">
-                        <label style="color:#7c8398;font-size:.75rem;">Valor actual:</label>
-                        <div style="background:#1a1d27;border:1px solid #2e3347;border-radius:8px;
-                            padding:.5rem .75rem;margin-top:.3rem;color:#e8b84b;font-weight:600;">
-                            <i class="bi bi-arrow-right-circle"></i>
-                            <span id="swal-valor-actual"></span>
-                        </div>
-                    </div>
-                    <div>
-                        <label style="color:#e8b84b;font-size:.78rem;font-weight:600;">Nuevo valor</label>
-                        <input id="swal-valor" type="text" class="form-control"
-                            placeholder="Ingresa el nuevo valor..."
-                            style="margin-top:.3rem;background:#242837;color:#e8eaf0;border:1px solid #2e3347;">
-                    </div>
-                </div>`,
-            background: '#1a1d27',
-            color: '#e8eaf0',
-            showCancelButton: true,
-            confirmButtonText: 'Enviar solicitud',
-            cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#e8b84b',
-            cancelButtonColor: '#555',
+                </div>
+                <div>
+                    <label style="color:#e8b84b;font-size:.78rem;font-weight:600;">Nuevo valor</label>
+                    <input id="swal-valor" type="text" class="form-control" placeholder="Ingresa el nuevo valor..." style="margin-top:.3rem;background:#242837;color:#e8eaf0;border:1px solid #2e3347;">
+                </div>
+            </div>`,
+            background: '#1a1d27', color: '#e8eaf0',
+            showCancelButton: true, confirmButtonText: 'Enviar solicitud', cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#e8b84b', cancelButtonColor: '#555',
             didOpen: () => {
                 document.getElementById('swal-campo').addEventListener('change', function () {
                     const campo = this.value;
                     const wrap = document.getElementById('swal-valor-actual-wrap');
                     const span = document.getElementById('swal-valor-actual');
-                    if (campo && datosVehiculo[campo] !== undefined) {
-                        span.textContent = datosVehiculo[campo];
-                        wrap.style.display = 'block';
-                    } else {
-                        wrap.style.display = 'none';
-                    }
+                    if (campo && datosVehiculo[campo] !== undefined) { span.textContent = datosVehiculo[campo]; wrap.style.display = 'block'; }
+                    else wrap.style.display = 'none';
                 });
             },
             preConfirm: () => {
@@ -3157,64 +3075,33 @@ window.solicitarModificacion = async (placa) => {
                 return { campo, valor };
             }
         });
-
         if (!isConfirmed || !formValues) return;
-
-        const datos = {
-            tipo_solicitud: 'texto',
-            [formValues.campo]: {
-                antes: datosVehiculo[formValues.campo],
-                ahora: formValues.valor
-            }
-        };
-        await crearSolicitudModificacion(placa, datos);
+        await crearSolicitudModificacion(placa, { tipo_solicitud: 'texto', [formValues.campo]: { antes: datosVehiculo[formValues.campo], ahora: formValues.valor } });
     }
 
-    // ── PASO 2B: Unidad asignada ──────────────────────────────────────────────
     else if (tipoSolicitud === 'unidad') {
-        // Cargar unidades disponibles
         let unidades = [];
-        try {
-            const r = await fetch(`${BASE}/API/unidades/lista`);
-            const d = await r.json();
-            unidades = d.datos || [];
-        } catch { }
-
-        const opcionesUnidades = unidades.map(u =>
-            `<option value="${u.id_unidad}" data-nombre="${u.unidad_destacamento}">
-                ${u.unidad_destacamento}
-            </option>`
-        ).join('');
-
+        try { const r = await fetch(`${BASE}/API/unidades/lista`); const d = await r.json(); unidades = d.datos || []; } catch { }
+        const opcionesUnidades = unidades.map(u => `<option value="${u.id_unidad}" data-nombre="${u.unidad_destacamento}">${u.unidad_destacamento}</option>`).join('');
         const unidadActual = vehiculo.unidad_nombre || 'Sin asignar';
-
         const { value: formValues, isConfirmed } = await Swal.fire({
             title: 'Cambiar unidad asignada',
             html: `
-                <div style="text-align:left;font-size:.85rem;">
-                    <div style="margin-bottom:.75rem;">
-                        <label style="color:#7c8398;font-size:.75rem;">Unidad actual:</label>
-                        <div style="background:#1a1d27;border:1px solid #2e3347;border-radius:8px;
-                            padding:.5rem .75rem;margin-top:.3rem;color:#e8b84b;font-weight:600;">
-                            <i class="bi bi-geo-alt-fill"></i> ${unidadActual}
-                        </div>
-                    </div>
-                    <div>
-                        <label style="color:#e8b84b;font-size:.78rem;font-weight:600;">Nueva unidad</label>
-                        <select id="swal-unidad" class="form-select"
-                            style="margin-top:.3rem;background:#242837;color:#e8eaf0;border:1px solid #2e3347;">
-                            <option value="">Seleccione unidad...</option>
-                            ${opcionesUnidades}
-                        </select>
-                    </div>
-                </div>`,
-            background: '#1a1d27',
-            color: '#e8eaf0',
-            showCancelButton: true,
-            confirmButtonText: 'Enviar solicitud',
-            cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#e8b84b',
-            cancelButtonColor: '#555',
+            <div style="text-align:left;font-size:.85rem;">
+                <div style="margin-bottom:.75rem;">
+                    <label style="color:#7c8398;font-size:.75rem;">Unidad actual:</label>
+                    <div style="background:#1a1d27;border:1px solid #2e3347;border-radius:8px;padding:.5rem .75rem;margin-top:.3rem;color:#e8b84b;font-weight:600;"><i class="bi bi-geo-alt-fill"></i> ${unidadActual}</div>
+                </div>
+                <div>
+                    <label style="color:#e8b84b;font-size:.78rem;font-weight:600;">Nueva unidad</label>
+                    <select id="swal-unidad" class="form-select" style="margin-top:.3rem;background:#242837;color:#e8eaf0;border:1px solid #2e3347;">
+                        <option value="">Seleccione unidad...</option>${opcionesUnidades}
+                    </select>
+                </div>
+            </div>`,
+            background: '#1a1d27', color: '#e8eaf0',
+            showCancelButton: true, confirmButtonText: 'Enviar solicitud', cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#e8b84b', cancelButtonColor: '#555',
             preConfirm: () => {
                 const sel = document.getElementById('swal-unidad');
                 const id = sel.value;
@@ -3223,60 +3110,33 @@ window.solicitarModificacion = async (placa) => {
                 return { id, nombre };
             }
         });
-
         if (!isConfirmed || !formValues) return;
-
-        const datos = {
-            tipo_solicitud: 'unidad',
-            id_unidad: {
-                antes: vehiculo.id_unidad || '—',
-                ahora: formValues.id
-            },
-            nombre_unidad: {
-                antes: unidadActual,
-                ahora: formValues.nombre
-            }
-        };
-        await crearSolicitudModificacion(placa, datos);
+        await crearSolicitudModificacion(placa, { tipo_solicitud: 'unidad', id_unidad: { antes: vehiculo.id_unidad || '—', ahora: formValues.id }, nombre_unidad: { antes: unidadActual, ahora: formValues.nombre } });
     }
 
-    // ── PASO 2C: Archivos ─────────────────────────────────────────────────────
     else if (tipoSolicitud === 'archivo') {
         const { value: formValues, isConfirmed } = await Swal.fire({
             title: 'Solicitar cambio de archivo',
             html: `
-                <div style="text-align:left;font-size:.85rem;">
-                    <p style="color:#7c8398;margin-bottom:1rem;">
-                        Indica qué archivo necesita ser actualizado y describe el motivo.
-                    </p>
-                    <div style="margin-bottom:.75rem;">
-                        <label style="color:#e8b84b;font-size:.78rem;font-weight:600;">Archivo a cambiar</label>
-                        <select id="swal-archivo" class="form-select"
-                            style="margin-top:.3rem;background:#242837;color:#e8eaf0;border:1px solid #2e3347;">
-                            <option value="">Seleccione...</option>
-                            <option value="foto_frente">Foto frontal</option>
-                            <option value="foto_lateral">Foto lateral</option>
-                            <option value="foto_trasera">Foto trasera</option>
-                            <option value="tarjeta_pdf">Tarjeta de circulación (PDF)</option>
-                            <option value="cert_inventario">Certificación de inventario</option>
-                            <option value="cert_sicoin">Certificación SICOIN</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label style="color:#e8b84b;font-size:.78rem;font-weight:600;">Motivo del cambio</label>
-                        <textarea id="swal-motivo" class="form-control" rows="3"
-                            placeholder="Describe por qué necesita actualizarse este archivo..."
-                            style="margin-top:.3rem;background:#242837;color:#e8eaf0;
-                            border:1px solid #2e3347;border-radius:8px;resize:none;"></textarea>
-                    </div>
-                </div>`,
-            background: '#1a1d27',
-            color: '#e8eaf0',
-            showCancelButton: true,
-            confirmButtonText: 'Enviar solicitud',
-            cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#e8b84b',
-            cancelButtonColor: '#555',
+            <div style="text-align:left;font-size:.85rem;">
+                <p style="color:#7c8398;margin-bottom:1rem;">Indica qué archivo necesita ser actualizado y describe el motivo.</p>
+                <div style="margin-bottom:.75rem;">
+                    <label style="color:#e8b84b;font-size:.78rem;font-weight:600;">Archivo a cambiar</label>
+                    <select id="swal-archivo" class="form-select" style="margin-top:.3rem;background:#242837;color:#e8eaf0;border:1px solid #2e3347;">
+                        <option value="">Seleccione...</option>
+                        <option value="foto_frente">Foto frontal</option><option value="foto_lateral">Foto lateral</option>
+                        <option value="foto_trasera">Foto trasera</option><option value="tarjeta_pdf">Tarjeta de circulación (PDF)</option>
+                        <option value="cert_inventario">Certificación de inventario</option><option value="cert_sicoin">Certificación SICOIN</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="color:#e8b84b;font-size:.78rem;font-weight:600;">Motivo del cambio</label>
+                    <textarea id="swal-motivo" class="form-control" rows="3" placeholder="Describe por qué necesita actualizarse..." style="margin-top:.3rem;background:#242837;color:#e8eaf0;border:1px solid #2e3347;border-radius:8px;resize:none;"></textarea>
+                </div>
+            </div>`,
+            background: '#1a1d27', color: '#e8eaf0',
+            showCancelButton: true, confirmButtonText: 'Enviar solicitud', cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#e8b84b', cancelButtonColor: '#555',
             preConfirm: () => {
                 const archivo = document.getElementById('swal-archivo').value;
                 const motivo = document.getElementById('swal-motivo').value.trim();
@@ -3285,20 +3145,78 @@ window.solicitarModificacion = async (placa) => {
                 return { archivo, motivo };
             }
         });
-
         if (!isConfirmed || !formValues) return;
-
-        const datos = {
-            tipo_solicitud: 'archivo',
-            campo: formValues.archivo,
-            descripcion: {
-                antes: 'Archivo actual',
-                ahora: formValues.motivo
-            }
-        };
-        await crearSolicitudModificacion(placa, datos);
+        await crearSolicitudModificacion(placa, { tipo_solicitud: 'archivo', campo: formValues.archivo, descripcion: { antes: 'Archivo actual', ahora: formValues.motivo } });
     }
 };
+
+// ════════════════════════════════════════════════════════════════════════════
+// ── WINDOW EXPORTS ────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+
+window.seleccionarTipo = seleccionarTipo;
+window.abrirFicha = abrirFicha;
+window.cerrarFicha = cerrarFicha;
+window.switchTab = switchTab;
+window.generarExpediente = generarExpediente;
+window.elegirSeguro = elegirSeguro;
+
+// Órdenes de servicio
+window.toggleFormNuevaOrden = toggleFormNuevaOrden;
+window.crearOrden = crearOrden;
+window.agregarItem = agregarItem;
+window.eliminarItemOrden = eliminarItemOrden;
+window.completarOrden = completarOrden;
+window.confirmarEliminarOrden = confirmarEliminarOrden;
+window.abrirOrdenEnProceso = abrirOrdenEnProceso;
+window.verOrden = verOrden;
+
+// Reparaciones
+window.toggleFormReparacion = toggleFormReparacion;
+window.guardarReparacion = guardarReparacion;
+window.editarReparacion = editarReparacion;
+window.eliminarReparacion = eliminarReparacion;
+
+// Seguros
+window.toggleFormSeguro = toggleFormSeguro;
+window.toggleFormSeguroFicha = toggleFormSeguro;
+window.guardarSeguroFicha = guardarSeguro;
+window.guardarSeguro = guardarSeguro;
+window.editarSeguro = editarSeguro;
+window.eliminarSeguro = eliminarSeguro;
+window.verSeguro = verSeguro;
+
+// Accidentes
+window.toggleFormAccidente = toggleFormAccidente;
+window.guardarAccidente = guardarAccidente;
+window.editarAccidente = editarAccidente;
+window.eliminarAccidente = eliminarAccidente;
+window.verAccidente = verAccidente;
+window.agregarFotoAcc = agregarFotoAcc;
+window.onFotoAccChange = onFotoAccChange;
+window.quitarFotoAcc = quitarFotoAcc;
+
+// Chequeos
+window.abrirModalChequeo = abrirModalChequeo;
+window.cerrarModalChequeo = cerrarModalChequeo;
+window.iniciarNuevoChequeo = iniciarNuevoChequeo;
+window.continuarChequeo = continuarChequeo;
+window.verChequeo = verChequeo;
+window.guardarChequeo = guardarChequeo;
+window.cancelarChequeo = cancelarChequeo;
+window.eliminarChequeo = eliminarChequeo;
+window.onChequeoItemChange = onChequeoItemChange;
+window.onChequeoObsChange = onChequeoObsChange;
+window.irAChequeo = abrirModalChequeo;
+
+// Lightbox
+window.abrirLightbox = abrirLightbox;
+window.cerrarLightbox = cerrarLightbox;
+window.navLightbox = navLightbox;
+
+// ════════════════════════════════════════════════════════════════════════════
 // ── INIT ──────────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+
 cargarUnidades();
 buscar();
