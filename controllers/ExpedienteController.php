@@ -4,7 +4,8 @@ namespace Controllers;
 
 use Exception;
 use Model\Vehiculos;
-use Model\Servicios;
+use Model\OrdenesServicio;
+use Model\OrdenServicioItems;
 use Model\Reparaciones;
 use Mpdf\Mpdf;
 use MVC\Router;
@@ -25,7 +26,8 @@ class ExpedienteController
 
         try {
             $vehiculo     = Vehiculos::traerConDetalle($placa);
-            $servicios    = Servicios::traerPorPlaca($placa);
+            $ordenes   = OrdenesServicio::traerPorPlaca($placa);
+            $servicios = OrdenesServicio::traerServiciosParaPDF($placa);
             $reparaciones = Reparaciones::traerPorPlaca($placa);
 
             if (!$vehiculo) {
@@ -686,33 +688,94 @@ class ExpedienteController
     private static function paginaHistorialServicios(array $v, array $servicios): string
     {
         if (empty($servicios)) {
-            $tabla = '<div class="caja-vacia">No hay servicios registrados para este vehículo.</div>';
+            $contenido = '<div class="caja-vacia">No hay servicios registrados para este vehículo.</div>';
         } else {
-            $filas = '';
+            // ── Agrupar por tipo de servicio ──────────────────────────────
+            $grupos = [];
             foreach ($servicios as $s) {
-                $kmP = $s['km_proximo_servicio'] ? number_format((int)$s['km_proximo_servicio']) . ' km' : '—';
-                $filas .= '
-                <tr>
-                    <td>' . date('d/m/Y', strtotime($s['fecha_realizado'])) . '</td>
-                    <td style="text-align:left;">' . htmlspecialchars($s['tipo_nombre']) . '</td>
-                    <td>' . number_format((int)$s['km_al_servicio']) . ' km</td>
-                    <td>' . $kmP . '</td>
-                    <td style="text-align:left;">' . htmlspecialchars($s['responsable'] ?? '—') . '</td>
-                    <td style="text-align:left;">' . htmlspecialchars($s['observaciones'] ?? '—') . '</td>
-                </tr>';
+                $tipo = $s['tipo_nombre'];
+                if (!isset($grupos[$tipo])) {
+                    $grupos[$tipo] = [];
+                }
+                $grupos[$tipo][] = $s;
             }
-            $tabla = '<table class="tabla-control"><thead><tr>
-                <th>Fecha</th><th>Servicio Realizado</th><th>Kilometraje</th>
-                <th>Próximo KM</th><th>Responsable</th><th>Observaciones</th>
-            </tr></thead><tbody>' . $filas . '</tbody></table>';
+
+            $contenido = '';
+            foreach ($grupos as $tipoNombre => $items) {
+                // ── Encabezado del grupo ──────────────────────────────────
+                $contenido .= '
+            <div style="margin-top:14px;margin-bottom:0;">
+                <div style="background:#1a1a1a;color:#ffffff;padding:5px 10px;
+                    font-size:8.5pt;font-weight:bold;text-transform:uppercase;
+                    letter-spacing:1pt;border-left:4pt solid #C75B00;">
+                    ' . htmlspecialchars($tipoNombre) . '
+                    <span style="float:right;font-size:7.5pt;color:#aaa;font-weight:normal;">
+                        ' . count($items) . ' registro(s)
+                    </span>
+                </div>
+            </div>';
+
+                // ── Tabla del grupo ───────────────────────────────────────
+                $filas = '';
+                $kmAnterior = null;
+                foreach ($items as $i => $s) {
+                    $kmActual   = (int)$s['km_al_servicio'];
+                    $kmProximo  = (int)($s['km_proximo_servicio'] ?? 0);
+
+                    // ── Calcular diferencia con próximo programado ────────
+                    $diferencia = '';
+                    if ($i > 0 && $kmAnterior !== null) {
+                        $kmProgramado = $kmAnterior; // próximo km del registro anterior
+                        $diff = $kmActual - $kmProgramado;
+                        if ($diff > 0) {
+                            $diferencia = '<span style="color:#e05252;font-weight:bold;">+' . number_format($diff) . ' km tarde</span>';
+                        } elseif ($diff < 0) {
+                            $diferencia = '<span style="color:#4caf7d;font-weight:bold;">' . number_format(abs($diff)) . ' km antes</span>';
+                        } else {
+                            $diferencia = '<span style="color:#4caf7d;font-weight:bold;">A tiempo</span>';
+                        }
+                    } else {
+                        $diferencia = '<span style="color:#7c8398;font-size:7pt;">Primer registro</span>';
+                    }
+
+                    $kmProximoStr = $kmProximo > 0 ? number_format($kmProximo) . ' km' : '—';
+                    $bg = ($i % 2 === 0) ? '#ffffff' : '#fff8f2';
+
+                    $filas .= '
+                <tr style="background:' . $bg . ';">
+                    <td>' . date('d/m/Y', strtotime($s['fecha_realizado'])) . '</td>
+                    <td>' . number_format($kmActual) . ' km</td>
+                    <td>' . $kmProximoStr . '</td>
+                    <td>' . $diferencia . '</td>
+                    <td style="text-align:left;">' . htmlspecialchars($s['responsable'] ?? '—') . '</td>
+                    <td style="text-align:left;font-size:7.5pt;">' . htmlspecialchars($s['observaciones'] ?? ($s['obs_item'] ?? '—')) . '</td>
+                </tr>';
+
+                    $kmAnterior = $kmProximo > 0 ? $kmProximo : null;
+                }
+
+                $contenido .= '
+            <table class="tabla-control" style="margin-bottom:0;">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>KM Real</th>
+                        <th>Próximo KM</th>
+                        <th>Cumplimiento</th>
+                        <th>Responsable</th>
+                        <th>Observaciones</th>
+                    </tr>
+                </thead>
+                <tbody>' . $filas . '</tbody>
+            </table>';
+            }
         }
 
         return '
-        ' . self::encabezado('HISTORIAL DE SERVICIOS') . '
-        ' . self::fichaIdentificacion($v) . '
-        <div class="titulo-sub">Servicios Registrados</div>
-        ' . $tabla . '
-        ' . self::pie($v['placa'], '08 – HISTORIAL DE SERVICIOS');
+    ' . self::encabezado('HISTORIAL DE SERVICIOS') . '
+    ' . self::fichaIdentificacion($v) . '
+    ' . $contenido . '
+    ' . self::pie($v['placa'], '08 – HISTORIAL DE SERVICIOS');
     }
 
     private static function paginaHistorialFiltrado(array $v, array $servicios, string $titulo, string $tipo): string

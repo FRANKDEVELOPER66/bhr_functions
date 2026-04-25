@@ -50,14 +50,26 @@ class FichaController
             // Órdenes de servicio
             $ordenes = OrdenesServicio::traerPorPlaca($placa);
 
-            // Orden en proceso activa si existe
+            // Orden en proceso activa
             $ordenEnProceso = OrdenesServicio::traerEnProceso($placa);
 
-            // Próximo servicio
+            // Próximo servicio — 3 niveles de alerta
             $proximoServicio = OrdenesServicio::traerProximoServicio($placa);
-            $alertaKm = $proximoServicio &&
-                !empty($proximoServicio['km_proximo']) &&
-                (int)$vehiculo['km_actuales'] >= (int)$proximoServicio['km_proximo'];
+            $alertaKm        = false;
+            $alertaAmarilla  = false;
+
+            if ($proximoServicio && !empty($proximoServicio['km_proximo'])) {
+                $kmActual   = (int)$vehiculo['km_actuales'];
+                $kmProximo  = (int)$proximoServicio['km_proximo'];
+                $diferencia = $kmProximo - $kmActual;
+
+                if ($diferencia <= 0) {
+                    $alertaKm = true;        // 🔴 Vencido
+                } elseif ($diferencia <= 500) {
+                    $alertaAmarilla = true;  // 🟡 Por vencer
+                }
+                // 🟢 Verde — sin alerta, faltan más de 500 km
+            }
 
             // Reparaciones
             $reparaciones = Reparaciones::traerPorPlaca($placa);
@@ -96,7 +108,8 @@ class FichaController
                 'seguros'          => $seguros,
                 'accidentes'       => $accidentes,
                 'proximo_servicio' => $proximoServicio,
-                'alerta_km'        => $alertaKm
+                'alerta_km'        => $alertaKm,
+                'alerta_amarilla'  => $alertaAmarilla
             ], JSON_UNESCAPED_UNICODE);
         } catch (Exception $e) {
             http_response_code(500);
@@ -158,6 +171,8 @@ class FichaController
 
         // ── Cambiar estado del vehículo a Taller ──────────────────────────────
         Vehiculos::consultarSQL("UPDATE vehiculos SET estado = 'Taller' WHERE placa = '{$placa}'");
+        // ── Actualizar KM actuales del vehículo ───────────────────────────────
+        Vehiculos::consultarSQL("UPDATE vehiculos SET km_actuales = {$km} WHERE placa = '{$placa}'");
 
         // Obtener la orden recién creada desde la BD
         $ordenCreada = OrdenesServicio::traerEnProceso($placa);
@@ -203,7 +218,6 @@ class FichaController
         }
 
         try {
-            // No permitir duplicar el mismo tipo en la misma orden
             if (OrdenServicioItems::existeEnOrden($idOrden, $idTipoServicio)) {
                 echo json_encode([
                     'codigo'  => 0,
@@ -212,7 +226,7 @@ class FichaController
                 return;
             }
 
-            $resultado = 'Realizado';
+            $resultado    = 'Realizado';
             $kmIngreso    = null;
             $fechaProximo = null;
 
@@ -221,7 +235,12 @@ class FichaController
 
             if ($tipo && $orden) {
                 if (!empty($tipo->intervalo_km)) {
-                    $kmIngreso = (int)$orden->km_al_ingreso + (int)$tipo->intervalo_km;
+                    // Usar KM actual real del vehículo
+                    $vehiculoActual = Vehiculos::find($orden->placa);
+                    $kmBase    = $vehiculoActual
+                        ? (int)$vehiculoActual->km_actuales
+                        : (int)$orden->km_al_ingreso;
+                    $kmIngreso = $kmBase + (int)$tipo->intervalo_km;
                 }
                 if (!empty($tipo->intervalo_dias)) {
                     $fechaProximo = date(
@@ -231,7 +250,7 @@ class FichaController
                 }
             }
 
-            // Respetar km_proximo manual si se envió
+            // Respetar km_proximo real si el mecánico lo envió
             if (!empty($_POST['km_proximo'])) {
                 $kmIngreso = (int)$_POST['km_proximo'];
             }
@@ -645,6 +664,76 @@ class FichaController
                 'mensaje' => 'Error al modificar reparación',
                 'detalle' => $e->getMessage()
             ], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    public static function alertasOrdenAPI(Router $router)
+    {
+        isAuthApi();
+        header('Content-Type: application/json; charset=UTF-8');
+
+        $placa = strtoupper(trim($_GET['placa'] ?? ''));
+        if (!$placa) {
+            echo json_encode(['codigo' => 0, 'mensaje' => 'Placa requerida'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        try {
+            $vehiculo = Vehiculos::find($placa);
+            if (!$vehiculo) {
+                echo json_encode(['codigo' => 0, 'mensaje' => 'Vehículo no encontrado'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            // ── Usar km_override si viene del JS (KM ingresado por el mecánico) ──
+            $kmOverride = isset($_GET['km_override']) ? (int)$_GET['km_override'] : 0;
+            $kmActual   = $kmOverride > 0 ? $kmOverride : (int)$vehiculo->km_actuales;
+
+            $servicios = OrdenesServicio::traerTodosProximosServicios($placa);
+
+            $alertas = [];
+            foreach ($servicios as $s) {
+                $kmProximo  = (int)$s['km_proximo'];
+                $diferencia = $kmProximo - $kmActual;
+
+                if ($diferencia <= 0) {
+                    $nivel = 'rojo';
+                    $diff  = abs($diferencia);
+                    $texto = "se pasó por {$diff} km";
+                } elseif ($diferencia <= 500) {
+                    $nivel = 'amarillo';
+                    $texto = "faltan {$diferencia} km";
+                } else {
+                    $nivel = 'verde';
+                    $texto = "faltan {$diferencia} km";
+                }
+
+                $alertas[] = [
+                    'tipo_nombre' => $s['tipo_nombre'],
+                    'km_proximo'  => $kmProximo,
+                    'diferencia'  => $diferencia,
+                    'nivel'       => $nivel,
+                    'texto'       => $texto
+                ];
+            }
+
+            usort($alertas, function ($a, $b) {
+                $orden = ['rojo' => 0, 'amarillo' => 1, 'verde' => 2];
+                return $orden[$a['nivel']] <=> $orden[$b['nivel']];
+            });
+
+            echo json_encode([
+                'codigo'      => 1,
+                'km_actual'   => $kmActual,
+                'alertas'     => $alertas,
+                'hay_alertas' => count(array_filter(
+                    $alertas,
+                    fn($a) => in_array($a['nivel'], ['rojo', 'amarillo'])
+                )) > 0
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['codigo' => 0, 'mensaje' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
         }
     }
 }

@@ -38,6 +38,7 @@ $router->post('/API/vehiculos/orden/eliminar-item',     [FichaController::class,
 $router->post('/API/vehiculos/orden/completar',         [FichaController::class, 'completarOrdenAPI']);
 $router->post('/API/vehiculos/orden/eliminar',          [FichaController::class, 'eliminarOrdenAPI']);
 $router->get('/API/vehiculos/orden/obtener',            [FichaController::class, 'obtenerOrdenAPI']);
+$router->get('/API/vehiculos/alertas-orden', [FichaController::class, 'alertasOrdenAPI']);
 
 // ── FICHA — REPARACIONES ─────────────────────────────────────────────────────
 $router->get('/API/vehiculos/tipos-reparacion',        [FichaController::class, 'tiposReparacionAPI']);

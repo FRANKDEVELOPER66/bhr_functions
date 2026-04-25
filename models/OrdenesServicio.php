@@ -121,19 +121,62 @@ class OrdenesServicio extends ActiveRecord
     public static function traerProximoServicio(string $placa): ?array
     {
         $sql = "SELECT 
-                    i.km_proximo,
-                    i.fecha_proximo,
-                    ts.nombre AS tipo_nombre
-                FROM orden_servicio_items i
-                JOIN ordenes_servicio o ON i.id_orden = o.id_orden
-                JOIN tipos_servicio ts ON i.id_tipo_servicio = ts.id_tipo_servicio
-                WHERE o.placa = ?
-                  AND o.estado = 'Completado'
-                  AND i.km_proximo IS NOT NULL
-                  AND i.resultado = 'Realizado'
-                ORDER BY i.km_proximo ASC
-                LIMIT 1";
+                i.km_proximo,
+                i.fecha_proximo,
+                ts.nombre AS tipo_nombre,
+                o.fecha_ingreso,
+                o.id_orden
+            FROM orden_servicio_items i
+            JOIN ordenes_servicio o  ON i.id_orden       = o.id_orden
+            JOIN tipos_servicio   ts ON i.id_tipo_servicio = ts.id_tipo_servicio
+            WHERE o.placa      = ?
+              AND o.estado     = 'Completado'
+              AND i.km_proximo IS NOT NULL
+              AND i.resultado  = 'Realizado'
+            ORDER BY o.id_orden DESC, i.km_proximo DESC
+            LIMIT 1";
+
         $resultado = self::fetchArray($sql, [$placa]);
         return $resultado[0] ?? null;
+    }
+
+    public static function traerTodosProximosServicios(string $placa): array
+    {
+        $sql = "SELECT 
+                i.km_proximo,
+                i.fecha_proximo,
+                ts.nombre AS tipo_nombre,
+                MAX(o.id_orden) AS id_orden
+            FROM orden_servicio_items i
+            JOIN ordenes_servicio o  ON i.id_orden        = o.id_orden
+            JOIN tipos_servicio   ts ON i.id_tipo_servicio = ts.id_tipo_servicio
+            WHERE o.placa     = ?
+              AND o.estado    = 'Completado'
+              AND i.km_proximo IS NOT NULL
+              AND i.resultado = 'Realizado'
+            GROUP BY i.id_tipo_servicio, ts.nombre, i.km_proximo, i.fecha_proximo
+            ORDER BY MAX(o.id_orden) DESC, i.km_proximo ASC";
+
+        return self::fetchArray($sql, [$placa]) ?? [];
+    }
+    public static function traerServiciosParaPDF(string $placa): array
+    {
+        $sql = "SELECT 
+                o.fecha_ingreso      AS fecha_realizado,
+                o.km_al_ingreso      AS km_al_servicio,
+                o.responsable,
+                o.observaciones,
+                ts.nombre            AS tipo_nombre,
+                i.km_proximo         AS km_proximo_servicio,
+                i.observacion        AS obs_item
+            FROM ordenes_servicio o
+            JOIN orden_servicio_items i  ON i.id_orden        = o.id_orden
+            JOIN tipos_servicio       ts ON i.id_tipo_servicio = ts.id_tipo_servicio
+            WHERE o.placa   = ?
+              AND o.estado  = 'Completado'
+              AND i.resultado = 'Realizado'
+            ORDER BY o.fecha_ingreso ASC, o.id_orden ASC";
+
+        return self::fetchArray($sql, [$placa]) ?? [];
     }
 }

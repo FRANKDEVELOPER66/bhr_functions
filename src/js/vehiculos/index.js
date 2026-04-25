@@ -866,11 +866,10 @@ const _resetKmProximo = () => {
     const input = document.getElementById('itemKmProximo');
     if (!input) return;
     input.value = '';
-    input.disabled = false;
-    input.readOnly = false;
-    input.placeholder = 'Opcional';
-    input.style.opacity = '1';
-    input.style.background = '';
+    input.readOnly = true;
+    input.placeholder = '—';
+    input.style.opacity = '.6';
+    input.style.background = 'rgba(232,184,75,.05)';
     input.title = '';
 };
 
@@ -880,10 +879,7 @@ const _onTipoServicioChange = () => {
     if (!sel || !input) return;
 
     const nombreTipo = sel.options[sel.selectedIndex]?.text || '';
-    const kmActual = parseInt(
-        document.getElementById('ordenKm')?.value ||
-        document.getElementById('repKm')?.value || '0'
-    );
+    const kmActual = parseInt(document.getElementById('ordenKm')?.value || '0');
 
     const tipoData = tiposServicio.find(t => t.nombre === nombreTipo);
     const intervalo = tipoData?.intervalo_km
@@ -891,44 +887,32 @@ const _onTipoServicioChange = () => {
         : (KM_INTERVALOS[nombreTipo] ?? null);
 
     if (!nombreTipo) {
-        // Sin selección — reset limpio
         input.value = '';
-        input.disabled = false;
-        input.readOnly = false;
-        input.placeholder = 'Opcional';
-        input.style.opacity = '1';
-        input.style.background = '';
-        input.title = '';
+        input.placeholder = '—';
+        input.readOnly = true;
+        input.style.opacity = '.6';
+        input.style.background = 'rgba(232,184,75,.05)';
 
     } else if (SIN_KM_PROXIMO.has(nombreTipo)) {
-        // No aplica — desactivado, valor vacío que el PHP guardará como NULL
         input.value = '';
-        input.disabled = true;
+        input.placeholder = 'No aplica';
         input.readOnly = true;
-        input.placeholder = 'No aplica para este servicio';
         input.style.opacity = '.35';
         input.style.background = 'rgba(255,255,255,.03)';
-        input.title = 'Este tipo de servicio no requiere KM próximo';
 
     } else if (intervalo && intervalo > 0 && kmActual > 0) {
-        // Cálculo automático — readonly para que no lo editen
         input.value = kmActual + intervalo;
-        input.disabled = false;
         input.readOnly = true;
-        input.placeholder = '';
-        input.style.opacity = '.75';
-        input.style.background = 'rgba(232,184,75,.06)';
-        input.title = `Calculado automáticamente: ${kmActual.toLocaleString()} km + ${intervalo.toLocaleString()} km intervalo`;
+        input.style.opacity = '.6';
+        input.style.background = 'rgba(232,184,75,.05)';
+        input.title = `${kmActual.toLocaleString()} km actuales + ${intervalo.toLocaleString()} km intervalo`;
 
     } else {
-        // Mecánico decide — editable libre
         input.value = '';
-        input.disabled = false;
-        input.readOnly = false;
-        input.placeholder = 'Ingrese KM próximo';
-        input.style.opacity = '1';
-        input.style.background = '';
-        input.title = '';
+        input.placeholder = 'Sin intervalo definido';
+        input.readOnly = true;
+        input.style.opacity = '.6';
+        input.style.background = 'rgba(232,184,75,.05)';
     }
 };
 
@@ -1007,7 +991,6 @@ const abrirFicha = async (placa) => {
     await cargarTiposServicio();
     await cargarTiposReparacion();
 
-    const ordenKmEl = document.getElementById('ordenKm');
     const ordenFechaEl = document.getElementById('ordenFecha');
     const hoy = new Date().toISOString().split('T')[0];
     if (ordenFechaEl) ordenFechaEl.value = hoy;
@@ -1026,7 +1009,7 @@ const abrirFicha = async (placa) => {
         if (fichaPlacaEl) fichaPlacaEl.textContent = v.placa;
         if (fichaVehiculoEl) fichaVehiculoEl.textContent = `${v.marca} ${v.modelo} · ${v.anio}`;
 
-        // ── Fotos ─────────────────────────────────────────────────────────
+        // ── Fotos ─────────────────────────────────────────────────────
         const img = document.getElementById('fichaFoto');
         const noFoto = document.getElementById('fichaNoFoto');
         const imgLateral = document.getElementById('fichaFotoLateral');
@@ -1047,7 +1030,7 @@ const abrirFicha = async (placa) => {
             else { imgTrasera.style.display = 'none'; noImgTrasera.style.display = 'flex'; }
         }
 
-        // ── Lightbox ──────────────────────────────────────────────────────
+        // ── Lightbox ──────────────────────────────────────────────────
         const fotosVehiculo = [];
         if (v.foto_url) fotosVehiculo.push({ url: v.foto_url, caption: 'Vista Frontal — ' + v.placa });
         if (v.foto_lateral_url) fotosVehiculo.push({ url: v.foto_lateral_url, caption: 'Vista Lateral — ' + v.placa });
@@ -1066,7 +1049,7 @@ const abrirFicha = async (placa) => {
             imgTrasera.onclick = () => abrirLightbox(fotosVehiculo, fotosVehiculo.findIndex(f => f.url === v.foto_trasera_url));
         }
 
-        // ── PDFs ──────────────────────────────────────────────────────────
+        // ── PDFs ──────────────────────────────────────────────────────
         const pdfBtn = document.getElementById('fichaPdfBtn');
         const certInvBtn = document.getElementById('fichaCertInventarioBtn');
         const certSicBtn = document.getElementById('fichaCertSicoinBtn');
@@ -1074,7 +1057,7 @@ const abrirFicha = async (placa) => {
         if (certInvBtn) { if (v.cert_inventario_url) { certInvBtn.href = v.cert_inventario_url; certInvBtn.style.display = 'block'; } else { certInvBtn.style.display = 'none'; } }
         if (certSicBtn) { if (v.cert_sicoin_url) { certSicBtn.href = v.cert_sicoin_url; certSicBtn.style.display = 'block'; } else { certSicBtn.style.display = 'none'; } }
 
-        // ── Datos generales ───────────────────────────────────────────────
+        // ── Datos generales ───────────────────────────────────────────
         const _set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
         _set('fd-placa', v.placa);
         _set('fd-serie', v.numero_serie);
@@ -1096,25 +1079,75 @@ const abrirFicha = async (placa) => {
             estadoEl.style.color = colores[v.estado] || 'inherit';
         }
 
-        // ── KM orden — readonly con valor actual ──────────────────────────
+        // ── KM al ingreso — editable con validación ───────────────────
+        const ordenKmEl = document.getElementById('ordenKm');
         if (ordenKmEl) {
             ordenKmEl.value = v.km_actuales;
-            ordenKmEl.readOnly = true;
-            ordenKmEl.style.opacity = '.7';
-            ordenKmEl.style.cursor = 'not-allowed';
-            ordenKmEl.style.background = 'rgba(255,255,255,.03)';
-            ordenKmEl.title = `KM actual del vehículo: ${Number(v.km_actuales).toLocaleString()} km`;
+            ordenKmEl.readOnly = false;
+            ordenKmEl.style.opacity = '1';
+            ordenKmEl.style.cursor = '';
+            ordenKmEl.style.background = '';
+            ordenKmEl.title = '';
+            ordenKmEl.dataset.kmMinimo = v.km_actuales;
+
+            // ── Validar al salir del campo ────────────────────────────
+            ordenKmEl.onblur = () => {
+                const kmIngresado = parseInt(ordenKmEl.value || '0');
+                const kmMinimo = parseInt(ordenKmEl.dataset.kmMinimo || '0');
+                const diferencia = kmIngresado - kmMinimo;
+
+                if (!kmIngresado || kmIngresado < kmMinimo) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'KM inválido',
+                        html: `El kilometraje ingresado (<strong>${kmIngresado.toLocaleString()} km</strong>) 
+                   no puede ser menor al registrado 
+                   (<strong>${kmMinimo.toLocaleString()} km</strong>).`,
+                        confirmButtonText: 'Corregir',
+                        confirmButtonColor: '#e8b84b',
+                        background: '#1a1d27', color: '#e8eaf0',
+                        customClass: { container: 'swal-over-modal' }
+                    }).then(() => {
+                        ordenKmEl.value = kmMinimo;
+                        ordenKmEl.focus();
+                    });
+                    return;
+                }
+
+                if (diferencia > 0 && diferencia < 1000) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Kilometraje Inválido',
+                        html: `La diferencia entre el KM ingresado 
+                   (<strong>${kmIngresado.toLocaleString()} km</strong>) y el registrado 
+                   (<strong>${kmMinimo.toLocaleString()} km</strong>) es de solo 
+                   <strong>${diferencia.toLocaleString()} km</strong>.<br><br>
+                   <span style="font-size:.82rem;color:#7c8398;">
+                       Se esperaría un mínimo de 1,000 km entre servicios.
+                   </span>`,
+                        confirmButtonText: 'Corregir',
+                        confirmButtonColor: '#e8b84b',
+                        background: '#1a1d27', color: '#e8eaf0',
+                        customClass: { container: 'swal-over-modal' }
+                    }).then(() => {
+                        ordenKmEl.value = kmMinimo;
+                        ordenKmEl.focus();
+                    });
+                }
+            };
         }
 
-        // ── KM reparacion ─────────────────────────────────────────────────
+        // ── KM reparacion ─────────────────────────────────────────────
         const repKmEl = document.getElementById('repKm');
         if (repKmEl) repKmEl.value = v.km_actuales;
 
-        // ── Alertas próximo servicio ──────────────────────────────────────
+        // ── Alertas próximo servicio ──────────────────────────────────
         const fichaAlertaEl = document.getElementById('fichaAlerta');
         const fichaProximoEl = document.getElementById('fichaProximo');
+        const fichaAmarillaEl = document.getElementById('fichaAlertaAmarilla');
         if (fichaAlertaEl) fichaAlertaEl.style.display = 'none';
         if (fichaProximoEl) fichaProximoEl.style.display = 'none';
+        if (fichaAmarillaEl) fichaAmarillaEl.style.display = 'none';
 
         if (d.proximo_servicio) {
             const ps = d.proximo_servicio;
@@ -1123,7 +1156,18 @@ const abrirFicha = async (placa) => {
                     fichaAlertaEl.style.display = 'flex';
                     const textoEl = document.getElementById('fichaAlertaTexto');
                     if (textoEl) textoEl.textContent =
-                        `${ps.tipo_nombre} — venció a los ${Number(ps.km_proximo).toLocaleString()} km. KM actual: ${Number(v.km_actuales).toLocaleString()} km`;
+                        `${ps.tipo_nombre} — venció a los ${Number(ps.km_proximo).toLocaleString()} km. ` +
+                        `KM actual: ${Number(v.km_actuales).toLocaleString()} km ` +
+                        `(+${(Number(v.km_actuales) - Number(ps.km_proximo)).toLocaleString()} km de diferencia)`;
+                }
+            } else if (d.alerta_amarilla) {
+                if (fichaAmarillaEl) {
+                    fichaAmarillaEl.style.display = 'flex';
+                    const faltan = Number(ps.km_proximo) - Number(v.km_actuales);
+                    const textoEl = document.getElementById('fichaAlertaAmarillaTexto');
+                    if (textoEl) textoEl.textContent =
+                        `${ps.tipo_nombre} a los ${Number(ps.km_proximo).toLocaleString()} km. ` +
+                        `Faltan ${faltan.toLocaleString()} km.`;
                 }
             } else {
                 if (fichaProximoEl) {
@@ -1136,21 +1180,21 @@ const abrirFicha = async (placa) => {
             }
         }
 
-        // ── Badges ────────────────────────────────────────────────────────
+        // ── Badges ────────────────────────────────────────────────────
         const _badge = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
         _badge('badgeServicios', (d.ordenes || []).length);
         _badge('badgeReparaciones', d.reparaciones.length);
         _badge('badgeSeguro', (d.seguros || []).length);
         _badge('badgeAccidentes', (d.accidentes || []).length);
 
-        // ── Render tabs ───────────────────────────────────────────────────
+        // ── Render tabs ───────────────────────────────────────────────
         renderTablaServicios(d.ordenes || []);
         renderTablaReparaciones(d.reparaciones);
         renderTablaSeguros(d.seguros || []);
         renderTablaAccidentes(d.accidentes || []);
         await cargarChequeos();
 
-        // ── Orden en proceso ──────────────────────────────────────────────
+        // ── Orden en proceso ──────────────────────────────────────────
         const ordenAlerta = document.getElementById('ordenEnProcesoAlert');
         const btnNuevaOrden = document.getElementById('btnNuevaOrden');
 
@@ -1160,15 +1204,21 @@ const abrirFicha = async (placa) => {
             const textoEl = document.getElementById('ordenEnProcesoTexto');
             if (textoEl) textoEl.innerHTML =
                 `Abierta el ${d.orden_en_proceso.fecha_ingreso} · 
-        ${Number(d.orden_en_proceso.km_al_ingreso).toLocaleString()} km · 
-        ${d.orden_en_proceso.total_items || 0} servicio(s)`;
+                ${Number(d.orden_en_proceso.km_al_ingreso).toLocaleString()} km · 
+                ${d.orden_en_proceso.total_items || 0} servicio(s)`;
             if (ordenAlerta) ordenAlerta.style.display = 'flex';
-            if (btnNuevaOrden) btnNuevaOrden.style.display = 'none'; // ← ocultar
+            if (btnNuevaOrden) btnNuevaOrden.style.display = 'none';
+
+            // ── Ir directo al tab servicios cuando hay orden activa ───
+            switchTab(
+                document.querySelector('.ficha-tab[data-tab="servicios"]'),
+                'servicios'
+            );
         } else {
             ordenActualId = null;
             _ordenIdRespaldo = null;
             if (ordenAlerta) ordenAlerta.style.display = 'none';
-            if (btnNuevaOrden) btnNuevaOrden.style.display = '';     // ← mostrar
+            if (btnNuevaOrden) btnNuevaOrden.style.display = '';
         }
 
     } catch (err) {
@@ -1290,6 +1340,83 @@ const crearOrden = async () => {
         return;
     }
 
+    // ── Verificar alertas de servicios antes de abrir ─────────────────────
+    try {
+        const rAlertas = await fetch(`${BASE}/API/vehiculos/alertas-orden?placa=${fichaPlacaActual}&km_override=${km}`);
+        if (rAlertas.ok) {
+            const dAlertas = await rAlertas.json();
+            if (dAlertas.codigo === 1 && dAlertas.alertas.length > 0) {
+
+                const colores = {
+                    rojo: { icono: '🔴', color: '#e05252', bg: 'rgba(224,82,82,.1)', border: 'rgba(224,82,82,.3)' },
+                    amarillo: { icono: '🟡', color: '#e8b84b', bg: 'rgba(232,184,75,.1)', border: 'rgba(232,184,75,.3)' },
+                    verde: { icono: '🟢', color: '#4caf7d', bg: 'rgba(76,175,125,.1)', border: 'rgba(76,175,125,.3)' },
+                };
+
+                const filasHtml = dAlertas.alertas.map(a => {
+                    const c = colores[a.nivel];
+                    return `
+                    <div style="display:flex;align-items:center;gap:.75rem;
+                        background:${c.bg};border:1px solid ${c.border};
+                        border-radius:8px;padding:.6rem .85rem;margin-bottom:.4rem;">
+                        <span style="font-size:1rem;flex-shrink:0;">${c.icono}</span>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:.85rem;font-weight:600;color:#e8eaf0;">
+                                ${a.tipo_nombre}
+                            </div>
+                            <div style="font-size:.75rem;color:#7c8398;">
+                                Programado a los <strong style="color:${c.color};">
+                                ${Number(a.km_proximo).toLocaleString()} km
+                                </strong>
+                            </div>
+                        </div>
+                        <div style="font-size:.78rem;font-weight:700;color:${c.color};
+                            white-space:nowrap;text-align:right;">
+                            ${a.texto}
+                        </div>
+                    </div>`;
+                }).join('');
+
+                const hayRojos = dAlertas.alertas.some(a => a.nivel === 'rojo');
+
+                const conf = await Swal.fire({
+                    icon: hayRojos ? 'warning' : 'info',
+                    title: `<span style="font-family:Rajdhani,sans-serif;">
+                        Estado de servicios — ${Number(dAlertas.km_actual).toLocaleString()} km actuales
+                    </span>`,
+                    html: `
+                        <div style="text-align:left;margin-bottom:.75rem;font-size:.82rem;color:#7c8398;">
+                            Revisá el estado de los servicios programados antes de abrir la orden:
+                        </div>
+                        <div style="max-height:300px;overflow-y:auto;">
+                            ${filasHtml}
+                        </div>
+                        ${hayRojos ? `
+                        <div style="margin-top:.75rem;background:rgba(224,82,82,.08);
+                            border:1px solid rgba(224,82,82,.25);border-radius:8px;
+                            padding:.65rem 1rem;font-size:.8rem;color:#e05252;text-align:left;">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            Hay servicios vencidos. Se recomienda atenderlos en esta visita.
+                        </div>` : ''}`,
+                    showCancelButton: true,
+                    confirmButtonText: '<i class="bi bi-door-open"></i> Entendido, abrir orden',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: hayRojos ? '#e8b84b' : '#4caf7d',
+                    cancelButtonColor: '#555',
+                    background: '#1a1d27', color: '#e8eaf0',
+                    width: '560px',
+                    customClass: { container: 'swal-over-modal' }
+                });
+
+                if (!conf.isConfirmed) return;
+            }
+        }
+    } catch (e) {
+        // Si falla la consulta de alertas, continuar igual
+        console.warn('No se pudieron cargar alertas:', e);
+    }
+
+    // ── Crear la orden ────────────────────────────────────────────────────
     const btnCrear = document.getElementById('btnConfirmarOrden');
     if (btnCrear) { btnCrear.disabled = true; btnCrear.style.opacity = '.5'; }
 
@@ -1323,7 +1450,7 @@ const crearOrden = async () => {
             '<i class="bi bi-plus-circle"></i> Nueva Orden de Servicio';
 
         _mostrarPanelOrden(d.orden);
-        // ── Ocultar botón nueva orden al abrir una ───────────────────────────
+
         const btnNuevaOrden = document.getElementById('btnNuevaOrden');
         if (btnNuevaOrden) btnNuevaOrden.style.display = 'none';
 
