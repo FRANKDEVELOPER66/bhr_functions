@@ -1152,19 +1152,23 @@ const abrirFicha = async (placa) => {
 
         // ── Orden en proceso ──────────────────────────────────────────────
         const ordenAlerta = document.getElementById('ordenEnProcesoAlert');
+        const btnNuevaOrden = document.getElementById('btnNuevaOrden');
+
         if (d.orden_en_proceso) {
             ordenActualId = parseInt(d.orden_en_proceso.id_orden);
             _ordenIdRespaldo = parseInt(d.orden_en_proceso.id_orden);
             const textoEl = document.getElementById('ordenEnProcesoTexto');
             if (textoEl) textoEl.innerHTML =
                 `Abierta el ${d.orden_en_proceso.fecha_ingreso} · 
-                ${Number(d.orden_en_proceso.km_al_ingreso).toLocaleString()} km · 
-                ${d.orden_en_proceso.total_items || 0} servicio(s)`;
+        ${Number(d.orden_en_proceso.km_al_ingreso).toLocaleString()} km · 
+        ${d.orden_en_proceso.total_items || 0} servicio(s)`;
             if (ordenAlerta) ordenAlerta.style.display = 'flex';
+            if (btnNuevaOrden) btnNuevaOrden.style.display = 'none'; // ← ocultar
         } else {
             ordenActualId = null;
             _ordenIdRespaldo = null;
             if (ordenAlerta) ordenAlerta.style.display = 'none';
+            if (btnNuevaOrden) btnNuevaOrden.style.display = '';     // ← mostrar
         }
 
     } catch (err) {
@@ -1276,9 +1280,6 @@ const crearOrden = async () => {
         });
         return;
     }
-
-    const btnCrear = document.getElementById('btnConfirmarOrden');
-    if (btnCrear) { btnCrear.disabled = true; btnCrear.style.opacity = '.5'; }
     if (!responsable) {
         Swal.fire({
             icon: 'warning', title: 'Responsable requerido',
@@ -1288,6 +1289,9 @@ const crearOrden = async () => {
         });
         return;
     }
+
+    const btnCrear = document.getElementById('btnConfirmarOrden');
+    if (btnCrear) { btnCrear.disabled = true; btnCrear.style.opacity = '.5'; }
 
     try {
         mostrarLoader('Abriendo orden de servicio...');
@@ -1319,36 +1323,19 @@ const crearOrden = async () => {
             '<i class="bi bi-plus-circle"></i> Nueva Orden de Servicio';
 
         _mostrarPanelOrden(d.orden);
-        // ── Actualizar badge estado en la carta del grid ──────────────────────
-        setTimeout(() => {
-            buscar();
-            // Actualizar badge en la carta específica si está visible
-            document.querySelectorAll('.vehicle-card').forEach(carta => {
-                const btnFicha = carta.querySelector(`[onclick="abrirFicha('${fichaPlacaActual}')"]`);
-                if (btnFicha) {
-                    const estadoCarta = carta.querySelector('.card-estado');
-                    if (estadoCarta) {
-                        estadoCarta.textContent = 'Taller';
-                        estadoCarta.style.background = '#3d300a';
-                        estadoCarta.style.color = '#e8b84b';
-                        estadoCarta.style.border = '1.5px solid #6b520f';
-                    }
-                }
-            });
-        }, 500);
+        // ── Ocultar botón nueva orden al abrir una ───────────────────────────
+        const btnNuevaOrden = document.getElementById('btnNuevaOrden');
+        if (btnNuevaOrden) btnNuevaOrden.style.display = 'none';
 
         const ordenAlerta = document.getElementById('ordenEnProcesoAlert');
         if (ordenAlerta) ordenAlerta.style.display = 'none';
 
-        // ── Actualizar estado en tab Info ─────────────────────────────────
         const estadoEl = document.getElementById('fd-estado');
         if (estadoEl) { estadoEl.textContent = 'Taller'; estadoEl.style.color = '#e8b84b'; }
 
-        // ── Actualizar badge servicios ─────────────────────────────────────
         const badge = document.getElementById('badgeServicios');
         if (badge) badge.textContent = parseInt(badge.textContent || '0') + 1;
 
-        // ── Actualizar cartas en segundo plano ────────────────────────────
         setTimeout(() => buscar(), 500);
 
         Swal.fire({
@@ -1359,7 +1346,21 @@ const crearOrden = async () => {
         });
 
     } catch (err) {
-        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+        console.error('crearOrden error:', err);
+        const esRedError = err instanceof TypeError;
+        Swal.fire({
+            icon: 'warning',
+            title: esRedError ? 'Sin conexión' : 'Error',
+            html: esRedError
+                ? `<span style="font-size:.85rem;color:#7c8398;">
+                    No se pudo conectar con el servidor.<br>
+                    <strong style="color:#e8b84b;">Recargá la página</strong> para verificar si la orden se creó.
+                   </span>`
+                : `<span style="font-size:.85rem;color:#7c8398;">${err.message || 'Intenta de nuevo.'}</span>`,
+            confirmButtonText: 'Entendido', confirmButtonColor: '#e8b84b',
+            background: '#1a1d27', color: '#e8eaf0',
+            customClass: { container: 'swal-over-modal' }
+        });
     } finally {
         ocultarLoader();
         if (btnCrear) { btnCrear.disabled = false; btnCrear.style.opacity = '1'; }
@@ -1506,12 +1507,10 @@ const agregarItem = async () => {
             return;
         }
 
-        // Limpiar campos
         tipoSel.value = '';
         document.getElementById('itemObservacion').value = '';
         _resetKmProximo();
 
-        // Recargar panel orden
         try {
             const rOrden = await fetch(`${BASE}/API/vehiculos/orden/obtener?id=${ordenActualId}`);
             if (rOrden.ok) {
@@ -1524,16 +1523,24 @@ const agregarItem = async () => {
 
         Swal.fire({
             position: 'top-end', icon: 'success', title: 'Servicio agregado',
-            showConfirmButton: false, timer: 1000, timerProgressBar: true,
+            showConfirmButton: false, timer: 1500, timerProgressBar: true,
             background: '#1a1d27', color: '#e8eaf0'
         });
 
     } catch (err) {
         console.error('agregarItem error:', err);
+        const esRedError = err instanceof TypeError;
         Swal.fire({
-            icon: 'error', title: 'Error de conexión',
-            text: err.message || 'Verifica tu conexión e intenta de nuevo.',
-            background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e05252',
+            icon: 'warning',
+            title: esRedError ? 'Sin conexión' : 'Error',
+            html: esRedError
+                ? `<span style="font-size:.85rem;color:#7c8398;">
+                    No se pudo conectar con el servidor.<br>
+                    <strong style="color:#e8b84b;">Recargá la página</strong> para verificar si el servicio se guardó.
+                   </span>`
+                : `<span style="font-size:.85rem;color:#7c8398;">${err.message || 'Intenta de nuevo.'}</span>`,
+            confirmButtonText: 'Entendido', confirmButtonColor: '#e8b84b',
+            background: '#1a1d27', color: '#e8eaf0',
             customClass: { container: 'swal-over-modal' }
         });
     } finally {
@@ -1565,14 +1572,14 @@ const completarOrden = async () => {
         html: `
             <div style="text-align:left;font-size:.88rem;color:#c8cfe0;line-height:1.7;">
                 <p>Está a punto de cerrar definitivamente esta orden de servicio.</p>
-                <p>Verifique que <strong style="color:#e8eaf0;">todos los servicios han sido realizados</strong> 
+                <p>Verifique que <strong style="color:#e8eaf0;">todos los servicios han sido realizados</strong>
                 antes de continuar.</p>
                 <div style="background:rgba(224,82,82,.1);border:1px solid rgba(224,82,82,.3);
                     border-radius:8px;padding:.75rem 1rem;margin-top:.75rem;
                     display:flex;align-items:flex-start;gap:.6rem;">
                     <i class="bi bi-exclamation-triangle-fill" style="color:#e05252;margin-top:.1rem;flex-shrink:0;"></i>
                     <span style="font-size:.82rem;color:#e05252;">
-                        Esta acción es <strong>irreversible</strong>. El vehículo saldrá del taller 
+                        Esta acción es <strong>irreversible</strong>. El vehículo saldrá del taller
                         y quedará operativo en estado <strong>Alta</strong>.
                     </span>
                 </div>
@@ -1609,33 +1616,20 @@ const completarOrden = async () => {
         ordenActualId = null;
         _ordenIdRespaldo = null;
 
+        // ── Mostrar botón nueva orden ─────────────────────────────────────
+        const btnNuevaOrden = document.getElementById('btnNuevaOrden');
+        if (btnNuevaOrden) btnNuevaOrden.style.display = '';
+
         document.getElementById('panelOrdenAbierta').style.display = 'none';
         document.getElementById('ordenEnProcesoAlert').style.display = 'none';
 
-        // ── Actualizar estado en tab Info ─────────────────────────────────
         const estadoEl = document.getElementById('fd-estado');
         if (estadoEl) { estadoEl.textContent = 'Alta'; estadoEl.style.color = '#4caf7d'; }
 
-        // ── Recargar ficha para mostrar historial actualizado ─────────────
         await abrirFicha(placaCompletada);
         switchTab(document.querySelector('.ficha-tab[data-tab="servicios"]'), 'servicios');
 
-        // ── Actualizar carta en el grid ───────────────────────────────────
-        setTimeout(() => {
-            buscar();
-            document.querySelectorAll('.vehicle-card').forEach(carta => {
-                const btnFicha = carta.querySelector(`[onclick="abrirFicha('${placaCompletada}')"]`);
-                if (btnFicha) {
-                    const estadoCarta = carta.querySelector('.card-estado');
-                    if (estadoCarta) {
-                        estadoCarta.textContent = 'Alta';
-                        estadoCarta.style.background = '#1a3d2b';
-                        estadoCarta.style.color = '#4caf7d';
-                        estadoCarta.style.border = '1.5px solid #2d6b45';
-                    }
-                }
-            });
-        }, 500);
+        setTimeout(() => buscar(), 500);
 
         Swal.fire({
             position: 'top-end', icon: 'success', title: 'Orden completada',
@@ -1645,7 +1639,21 @@ const completarOrden = async () => {
         });
 
     } catch (err) {
-        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+        console.error('completarOrden error:', err);
+        const esRedError = err instanceof TypeError;
+        Swal.fire({
+            icon: 'warning',
+            title: esRedError ? 'Sin conexión' : 'Error',
+            html: esRedError
+                ? `<span style="font-size:.85rem;color:#7c8398;">
+                    No se pudo conectar con el servidor.<br>
+                    <strong style="color:#e8b84b;">Recargá la página</strong> para verificar si la orden se completó.
+                   </span>`
+                : `<span style="font-size:.85rem;color:#7c8398;">${err.message || 'Intenta de nuevo.'}</span>`,
+            confirmButtonText: 'Entendido', confirmButtonColor: '#e8b84b',
+            background: '#1a1d27', color: '#e8eaf0',
+            customClass: { container: 'swal-over-modal' }
+        });
     } finally {
         ocultarLoader();
     }
@@ -1673,17 +1681,41 @@ const confirmarEliminarOrden = async () => {
 
         ordenActualId = null;
         _ordenIdRespaldo = null;
+
+        // ── Mostrar botón nueva orden ─────────────────────────────────────
+        const btnNuevaOrden = document.getElementById('btnNuevaOrden');
+        if (btnNuevaOrden) btnNuevaOrden.style.display = '';
+
         document.getElementById('panelOrdenAbierta').style.display = 'none';
         document.getElementById('ordenEnProcesoAlert').style.display = 'none';
 
+        // ── Actualizar estado en tab Info ─────────────────────────────────
+        const estadoEl = document.getElementById('fd-estado');
+        if (estadoEl) { estadoEl.textContent = 'Alta'; estadoEl.style.color = '#4caf7d'; }
+
         await abrirFicha(fichaPlacaActual);
         switchTab(document.querySelector('.ficha-tab[data-tab="servicios"]'), 'servicios');
-        buscar();
+
+        setTimeout(() => buscar(), 500);
 
         Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
 
     } catch (err) {
-        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+        console.error('eliminarOrden error:', err);
+        const esRedError = err instanceof TypeError;
+        Swal.fire({
+            icon: 'warning',
+            title: esRedError ? 'Sin conexión' : 'Error',
+            html: esRedError
+                ? `<span style="font-size:.85rem;color:#7c8398;">
+                    No se pudo conectar con el servidor.<br>
+                    <strong style="color:#e8b84b;">Recargá la página</strong> para verificar el estado de la orden.
+                   </span>`
+                : `<span style="font-size:.85rem;color:#7c8398;">${err.message || 'Intenta de nuevo.'}</span>`,
+            confirmButtonText: 'Entendido', confirmButtonColor: '#e8b84b',
+            background: '#1a1d27', color: '#e8eaf0',
+            customClass: { container: 'swal-over-modal' }
+        });
     } finally {
         ocultarLoader();
     }
@@ -1692,28 +1724,29 @@ const confirmarEliminarOrden = async () => {
 // ── RENDER HISTORIAL ÓRDENES ──────────────────────────────────────────────────
 const renderTablaServicios = (ordenes) => {
     const wrap = document.getElementById('tablaOrdenesWrap');
-    if (!ordenes || !ordenes.length) {
+
+    // ── Filtrar: solo mostrar órdenes COMPLETADAS en el historial ─────────
+    const ordenesCompletadas = (ordenes || []).filter(o => o.estado === 'Completado');
+
+    if (!ordenesCompletadas.length) {
         wrap.innerHTML = `
             <div style="text-align:center;padding:2rem;color:var(--text-muted);">
                 <i class="bi bi-tools" style="font-size:2.5rem;opacity:.2;display:block;margin-bottom:.75rem;"></i>
-                <p>No hay órdenes de servicio registradas</p>
+                <p>No hay órdenes de servicio completadas</p>
             </div>`;
         return;
     }
-    wrap.innerHTML = ordenes.map(o => {
-        const esEnProceso = o.estado === 'En proceso';
-        const estadoColor = esEnProceso ? '#e8b84b' : '#4caf7d';
-        const estadoBg = esEnProceso ? 'rgba(232,184,75,.15)' : 'rgba(76,175,125,.15)';
+
+    wrap.innerHTML = ordenesCompletadas.map(o => {
         return `
-        <div class="svc-row" style="grid-template-columns:1fr 1fr 1fr 1fr auto;
-            ${esEnProceso ? 'border-color:rgba(232,184,75,.3);' : ''}">
+        <div class="svc-row" style="grid-template-columns:1fr 1fr 1fr 1fr auto;">
             <div><div class="svc-label">Fecha ingreso</div><div class="svc-val">${o.fecha_ingreso}</div></div>
             <div><div class="svc-label">KM</div><div class="svc-val">${Number(o.km_al_ingreso).toLocaleString()} km</div></div>
             <div><div class="svc-label">Servicios</div><div class="svc-val">${o.total_items || 0} servicio(s)</div></div>
             <div><div class="svc-label">Estado</div><div class="svc-val">
-                <span style="background:${estadoBg};color:${estadoColor};border:1px solid ${estadoColor}44;
+                <span style="background:rgba(76,175,125,.15);color:#4caf7d;border:1px solid rgba(76,175,125,.3);
                     padding:.2rem .65rem;border-radius:20px;font-size:.72rem;font-weight:700;">
-                    ${o.estado}
+                    Completado
                 </span>
             </div></div>
             <div style="display:flex;gap:.4rem;align-items:center;">

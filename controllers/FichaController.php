@@ -157,8 +157,7 @@ class FichaController
         }
 
         // ── Cambiar estado del vehículo a Taller ──────────────────────────────
-        self::$db->prepare("UPDATE vehiculos SET estado = 'Taller' WHERE placa = ?")
-            ->execute([$placa]);
+        Vehiculos::consultarSQL("UPDATE vehiculos SET estado = 'Taller' WHERE placa = '{$placa}'");
 
         // Obtener la orden recién creada desde la BD
         $ordenCreada = OrdenesServicio::traerEnProceso($placa);
@@ -345,8 +344,7 @@ class FichaController
             $orden->actualizar();
 
             // Cambiar estado del vehículo a Alta
-            self::$db->prepare("UPDATE vehiculos SET estado = 'Alta' WHERE placa = ?")
-                ->execute([$placa]);
+            Vehiculos::consultarSQL("UPDATE vehiculos SET estado = 'Alta' WHERE placa = '{$placa}'");
 
             echo json_encode([
                 'codigo'  => 1,
@@ -387,21 +385,18 @@ class FichaController
 
             $placa = $orden->placa;
 
-            // Eliminar items de la orden primero (cascade debería manejarlo pero por seguridad)
-            self::$db->prepare("DELETE FROM orden_servicio_items WHERE id_orden = ?")
-                ->execute([$idOrden]);
+            // Eliminar items primero
+            Vehiculos::consultarSQL("DELETE FROM orden_servicio_items WHERE id_orden = {$idOrden}");
 
             // Eliminar la orden
-            self::$db->prepare("DELETE FROM ordenes_servicio WHERE id_orden = ?")
-                ->execute([$idOrden]);
+            Vehiculos::consultarSQL("DELETE FROM ordenes_servicio WHERE id_orden = {$idOrden}");
 
-            // Verificar si quedan otras órdenes en proceso para este vehículo
+            // Verificar si quedan otras órdenes en proceso
             $otraOrdenEnProceso = OrdenesServicio::existeEnProceso($placa);
 
             // Solo volver a Alta si no hay otra orden abierta
             if (!$otraOrdenEnProceso) {
-                self::$db->prepare("UPDATE vehiculos SET estado = 'Alta' WHERE placa = ?")
-                    ->execute([$placa]);
+                Vehiculos::consultarSQL("UPDATE vehiculos SET estado = 'Alta' WHERE placa = '{$placa}'");
             }
 
             echo json_encode([
