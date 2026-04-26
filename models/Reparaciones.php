@@ -98,4 +98,33 @@ class Reparaciones extends ActiveRecord
         $resultado = self::fetchArray($sql, [$placa, $idTipoReparacion]);
         return $resultado[0] ?? null;
     }
+    public static function traerHistorialAgrupado(string $placa): array
+    {
+        $sql = "SELECT 
+                tr.nombre            AS tipo_nombre,
+                r.fecha_inicio,
+                r.fecha_fin,
+                r.descripcion,
+                r.km_al_momento,
+                r.costo,
+                r.estado,
+                r.proveedor,
+                r.responsable,
+                r.observaciones
+            FROM reparaciones r
+            JOIN tipos_reparacion tr ON r.id_tipo_reparacion = tr.id_tipo_reparacion
+            WHERE r.placa = ?
+            ORDER BY tr.nombre ASC, r.fecha_inicio ASC";
+
+        $rows = self::fetchArray($sql, [$placa]) ?? [];
+
+        $grupos = [];
+        foreach ($rows as $r) {
+            $tipo = $r['tipo_nombre'];
+            if (!isset($grupos[$tipo])) $grupos[$tipo] = [];
+            $grupos[$tipo][] = $r;
+        }
+
+        return $grupos;
+    }
 }

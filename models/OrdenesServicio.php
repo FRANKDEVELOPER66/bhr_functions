@@ -179,4 +179,36 @@ class OrdenesServicio extends ActiveRecord
 
         return self::fetchArray($sql, [$placa]) ?? [];
     }
+
+    public static function traerHistorialAgrupado(string $placa): array
+    {
+        $sql = "SELECT 
+                ts.nombre            AS tipo_nombre,
+                o.fecha_ingreso      AS fecha_realizado,
+                o.km_al_ingreso      AS km_al_servicio,
+                o.responsable,
+                o.observaciones,
+                i.km_proximo         AS km_proximo_servicio,
+                i.observacion        AS obs_item,
+                o.id_orden
+            FROM ordenes_servicio o
+            JOIN orden_servicio_items i  ON i.id_orden        = o.id_orden
+            JOIN tipos_servicio       ts ON i.id_tipo_servicio = ts.id_tipo_servicio
+            WHERE o.placa     = ?
+              AND o.estado    = 'Completado'
+              AND i.resultado = 'Realizado'
+            ORDER BY ts.nombre ASC, o.fecha_ingreso ASC, o.id_orden ASC";
+
+        $rows = self::fetchArray($sql, [$placa]) ?? [];
+
+        // Agrupar por tipo
+        $grupos = [];
+        foreach ($rows as $r) {
+            $tipo = $r['tipo_nombre'];
+            if (!isset($grupos[$tipo])) $grupos[$tipo] = [];
+            $grupos[$tipo][] = $r;
+        }
+
+        return $grupos;
+    }
 }

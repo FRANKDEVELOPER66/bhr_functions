@@ -736,4 +736,167 @@ class FichaController
             echo json_encode(['codigo' => 0, 'mensaje' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
         }
     }
+
+    public static function hojaVidaAPI(Router $router)
+    {
+        isAuthApi();
+        header('Content-Type: application/json; charset=UTF-8');
+
+        $placa = strtoupper(trim($_GET['placa'] ?? ''));
+        if (!$placa) {
+            echo json_encode(['codigo' => 0, 'mensaje' => 'Placa requerida'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        try {
+            $grupos = OrdenesServicio::traerHistorialAgrupado($placa);
+
+            // Calcular cumplimiento por grupo
+            $resultado = [];
+            foreach ($grupos as $tipo => $registros) {
+                $items = [];
+                $kmProgramadoAnterior = null;
+
+                foreach ($registros as $i => $r) {
+                    $kmReal     = (int)$r['km_al_servicio'];
+                    $kmProximo  = (int)($r['km_proximo_servicio'] ?? 0);
+
+                    if ($i === 0 || $kmProgramadoAnterior === null) {
+                        $cumplimiento = 'primer_registro';
+                        $diferencia   = 0;
+                    } else {
+                        $diferencia   = $kmReal - $kmProgramadoAnterior;
+                        if ($diferencia > 0) {
+                            $cumplimiento = 'tarde';
+                        } elseif ($diferencia < 0) {
+                            $cumplimiento = 'antes';
+                        } else {
+                            $cumplimiento = 'exacto';
+                        }
+                    }
+
+                    $items[] = [
+                        'fecha'         => $r['fecha_realizado'],
+                        'km_real'       => $kmReal,
+                        'km_proximo'    => $kmProximo > 0 ? $kmProximo : null,
+                        'responsable'   => $r['responsable'] ?? '',
+                        'observacion'   => $r['obs_item'] ?? $r['observaciones'] ?? '',
+                        'cumplimiento'  => $cumplimiento,
+                        'diferencia'    => abs($diferencia),
+                    ];
+
+                    $kmProgramadoAnterior = $kmProximo > 0 ? $kmProximo : null;
+                }
+
+                $resultado[] = [
+                    'tipo'   => $tipo,
+                    'total'  => count($items),
+                    'items'  => $items,
+                ];
+            }
+
+            echo json_encode([
+                'codigo' => 1,
+                'grupos' => $resultado
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['codigo' => 0, 'mensaje' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    public static function hojaVidaReparacionesAPI(Router $router)
+    {
+        isAuthApi();
+        header('Content-Type: application/json; charset=UTF-8');
+
+        $placa = strtoupper(trim($_GET['placa'] ?? ''));
+        if (!$placa) {
+            echo json_encode(['codigo' => 0, 'mensaje' => 'Placa requerida'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        try {
+            $grupos = Reparaciones::traerHistorialAgrupado($placa);
+
+            $resultado = [];
+            foreach ($grupos as $tipo => $registros) {
+                $costoTotal = array_sum(array_column($registros, 'costo'));
+                $resultado[] = [
+                    'tipo'        => $tipo,
+                    'total'       => count($registros),
+                    'costo_total' => $costoTotal,
+                    'items'       => array_map(fn($r) => [
+                        'fecha_inicio'  => $r['fecha_inicio'],
+                        'fecha_fin'     => $r['fecha_fin'] ?? null,
+                        'descripcion'   => $r['descripcion'],
+                        'km_al_momento' => (int)$r['km_al_momento'],
+                        'costo'         => $r['costo'] ? (float)$r['costo'] : null,
+                        'estado'        => $r['estado'],
+                        'proveedor'     => $r['proveedor'] ?? '',
+                        'responsable'   => $r['responsable'] ?? '',
+                        'observaciones' => $r['observaciones'] ?? '',
+                    ], $registros),
+                ];
+            }
+
+            echo json_encode([
+                'codigo' => 1,
+                'grupos' => $resultado
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['codigo' => 0, 'mensaje' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    public static function hojaVidaAccidentesAPI(Router $router)
+    {
+        isAuthApi();
+        header('Content-Type: application/json; charset=UTF-8');
+
+        $placa = strtoupper(trim($_GET['placa'] ?? ''));
+        if (!$placa) {
+            echo json_encode(['codigo' => 0, 'mensaje' => 'Placa requerida'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        try {
+            $urlBase = rtrim($_ENV['SFTP_PUBLIC_URL'] ?? '', '/');
+            $grupos  = Accidentes::traerHistorialAgrupado($placa);
+
+            $resultado = [];
+            foreach ($grupos as $tipo => $registros) {
+                $costoTotal = array_sum(array_column($registros, 'costo_real'));
+                $resultado[] = [
+                    'tipo'        => $tipo,
+                    'total'       => count($registros),
+                    'costo_total' => $costoTotal,
+                    'items'       => array_map(fn($r) => [
+                        'fecha_accidente'   => $r['fecha_accidente'],
+                        'lugar'             => $r['lugar']                ?? '',
+                        'descripcion'       => $r['descripcion']          ?? '',
+                        'conductor'         => $r['conductor_responsable'] ?? '',
+                        'costo_estimado'    => $r['costo_estimado'] ? (float)$r['costo_estimado'] : null,
+                        'costo_real'        => $r['costo_real']     ? (float)$r['costo_real']     : null,
+                        'estado'            => $r['estado_caso']          ?? '',
+                        'numero_expediente' => $r['numero_expediente']    ?? '',
+                        'observaciones'     => $r['observaciones']        ?? '',
+                        'foto_1_url'        => !empty($r['archivo_foto_1']) ? "{$urlBase}/{$r['archivo_foto_1']}" : null,
+                        'foto_2_url'        => !empty($r['archivo_foto_2']) ? "{$urlBase}/{$r['archivo_foto_2']}" : null,
+                        'foto_3_url'        => !empty($r['archivo_foto_3']) ? "{$urlBase}/{$r['archivo_foto_3']}" : null,
+                        'foto_4_url'        => !empty($r['archivo_foto_4']) ? "{$urlBase}/{$r['archivo_foto_4']}" : null,
+                    ], $registros),
+                ];
+            }
+
+            echo json_encode([
+                'codigo' => 1,
+                'grupos' => $resultado
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['codigo' => 0, 'mensaje' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+    }
 }

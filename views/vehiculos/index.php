@@ -1856,9 +1856,22 @@
                         </button>
                     </div>
 
-                    <button id="btnNuevaOrden" onclick="toggleFormNuevaOrden()" style="margin-bottom:1.25rem;background:linear-gradient(135deg,var(--accent),var(--accent-2));border:none;color:var(--dark);padding:.7rem 1.5rem;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;display:flex;align-items:center;gap:.5rem;">
-                        <i class="bi bi-plus-circle"></i> Nueva Orden de Servicio
-                    </button>
+                    <div style="display:flex;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center;">
+                        <button id="btnNuevaOrden" onclick="toggleFormNuevaOrden()"
+                            style="background:linear-gradient(135deg,var(--accent),var(--accent-2));
+                                border:none;color:var(--dark);padding:.7rem 1.5rem;border-radius:8px;
+                                font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;
+                                cursor:pointer;display:flex;align-items:center;gap:.5rem;">
+                            <i class="bi bi-plus-circle"></i> Nueva Orden de Servicio
+                        </button>
+                        <button onclick="verHistorialServicios()"
+                            style="background:rgba(111,66,193,.15);border:1px solid rgba(111,66,193,.3);
+                                color:#a78bfa;padding:.7rem 1.5rem;border-radius:8px;
+                                font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;
+                                cursor:pointer;display:flex;align-items:center;gap:.5rem;">
+                            <i class="bi bi-clock-history"></i> Historial de Servicios
+                        </button>
+                    </div>
 
                     <div id="formNuevaOrden" style="display:none;background:var(--dark-3);border:1px solid rgba(232,184,75,.3);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
                         <div style="font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:700;color:var(--accent);margin-bottom:1rem;letter-spacing:.5px;">
@@ -1942,9 +1955,22 @@
 
                 <!-- TAB REPARACIONES -->
                 <div id="tabReparaciones" class="ficha-tab-content" style="display:none;">
-                    <button id="btnToggleFormReparacion" onclick="toggleFormReparacion()" style="margin-bottom:1.25rem;background:linear-gradient(135deg,var(--danger),#c93030);border:none;color:#fff;padding:.7rem 1.5rem;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;display:flex;align-items:center;gap:.5rem;">
-                        <i class="bi bi-plus-circle"></i> Registrar Nueva Reparación
-                    </button>
+                    <div style="display:flex;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center;">
+                        <button id="btnToggleFormReparacion" onclick="toggleFormReparacion()"
+                            style="background:linear-gradient(135deg,var(--danger),#c93030);
+                            border:none;color:#fff;padding:.7rem 1.5rem;border-radius:8px;
+                            font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;
+                            cursor:pointer;display:flex;align-items:center;gap:.5rem;">
+                            <i class="bi bi-plus-circle"></i> Registrar Nueva Reparación
+                        </button>
+                        <button onclick="verHistorialReparaciones()"
+                            style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
+                            color:var(--danger);padding:.7rem 1.5rem;border-radius:8px;
+                            font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;
+                            cursor:pointer;display:flex;align-items:center;gap:.5rem;">
+                            <i class="bi bi-clock-history"></i> Historial de Reparaciones
+                        </button>
+                    </div>
                     <div id="formNuevaReparacion" style="display:none;background:var(--dark-3);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
                         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;">
                             <div><label class="form-label"><i class="bi bi-wrench"></i> Tipo *</label><select id="repTipo" class="form-select"></select></div>
@@ -2010,9 +2036,22 @@
 
                 <!-- TAB ACCIDENTES -->
                 <div id="tabAccidentes" class="ficha-tab-content" style="display:none;">
-                    <button id="btnToggleFormAccidente" onclick="toggleFormAccidente()" style="margin-bottom:1.25rem;background:linear-gradient(135deg,var(--danger),#c93030);border:none;color:#fff;padding:.7rem 1.5rem;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;display:flex;align-items:center;gap:.5rem;">
-                        <i class="bi bi-plus-circle"></i> Registrar Accidente / Choque
-                    </button>
+                    <div style="display:flex;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center;">
+                        <button id="btnToggleFormAccidente" onclick="toggleFormAccidente()"
+                            style="background:linear-gradient(135deg,var(--danger),#c93030);
+                            border:none;color:#fff;padding:.7rem 1.5rem;border-radius:8px;
+                            font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;
+                            cursor:pointer;display:flex;align-items:center;gap:.5rem;">
+                            <i class="bi bi-plus-circle"></i> Registrar Accidente / Choque
+                        </button>
+                        <button onclick="verHistorialAccidentes()"
+                            style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
+                            color:var(--danger);padding:.7rem 1.5rem;border-radius:8px;
+                            font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;
+                            cursor:pointer;display:flex;align-items:center;gap:.5rem;">
+                            <i class="bi bi-clock-history"></i> Historial de Accidentes
+                        </button>
+                    </div>
                     <div id="formNuevoAccidente" style="display:none;background:var(--dark-3);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
                         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;">
                             <div><label class="form-label"><i class="bi bi-calendar-event"></i> Fecha del Accidente *</label><input type="date" id="acFecha" class="form-control"></div>

@@ -30,6 +30,8 @@ $router->get('/API/vehiculos/foto',       [VehiculosController::class, 'servirFo
 // ── FICHA ────────────────────────────────────────────────────────────────────
 $router->get('/API/vehiculos/ficha',                    [FichaController::class, 'fichaAPI']);
 $router->get('/API/vehiculos/tipos-servicio',           [FichaController::class, 'tiposServicioAPI']);
+$router->get('/API/vehiculos/hoja-vida', [FichaController::class, 'hojaVidaAPI']);
+$router->get('/API/vehiculos/hoja-vida-reparaciones', [FichaController::class, 'hojaVidaReparacionesAPI']);
 
 // ── ÓRDENES DE SERVICIO ───────────────────────────────────────────────────────
 $router->post('/API/vehiculos/orden/crear',             [FichaController::class, 'crearOrdenAPI']);
@@ -40,11 +42,13 @@ $router->post('/API/vehiculos/orden/eliminar',          [FichaController::class,
 $router->get('/API/vehiculos/orden/obtener',            [FichaController::class, 'obtenerOrdenAPI']);
 $router->get('/API/vehiculos/alertas-orden', [FichaController::class, 'alertasOrdenAPI']);
 
+
 // ── FICHA — REPARACIONES ─────────────────────────────────────────────────────
 $router->get('/API/vehiculos/tipos-reparacion',        [FichaController::class, 'tiposReparacionAPI']);
 $router->post('/API/vehiculos/reparacion/guardar',     [FichaController::class, 'guardarReparacionAPI']);
 $router->post('/API/vehiculos/reparacion/modificar',   [FichaController::class, 'modificarReparacionAPI']);
 $router->post('/API/vehiculos/reparacion/eliminar',    [FichaController::class, 'eliminarReparacionAPI']);
+$router->get('/API/vehiculos/hoja-vida-accidentes', [FichaController::class, 'hojaVidaAccidentesAPI']);
 
 // ── SEGUROS ──────────────────────────────────────────────────────────────────
 $router->get('/API/vehiculos/seguros/listar',      [SegurosController::class, 'listarAPI']);

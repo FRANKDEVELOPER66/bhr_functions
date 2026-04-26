@@ -137,4 +137,32 @@ class Accidentes extends ActiveRecord
         $stmt->execute([':placa' => $placa]);
         return (float)$stmt->fetchColumn();
     }
+    public static function traerHistorialAgrupado(string $placa): array
+    {
+        $sql = "SELECT 
+                a.fecha_accidente,
+                a.tipo_accidente,
+                a.lugar,
+                a.descripcion,
+                a.conductor_responsable,
+                a.costo_estimado,
+                a.costo_real,
+                a.estado_caso,
+                a.numero_expediente,
+                a.observaciones
+            FROM accidentes a
+            WHERE a.placa = ?
+            ORDER BY a.tipo_accidente ASC, a.fecha_accidente ASC";
+
+        $rows = self::fetchArray($sql, [$placa]) ?? [];
+
+        $grupos = [];
+        foreach ($rows as $r) {
+            $tipo = $r['tipo_accidente'];
+            if (!isset($grupos[$tipo])) $grupos[$tipo] = [];
+            $grupos[$tipo][] = $r;
+        }
+
+        return $grupos;
+    }
 }

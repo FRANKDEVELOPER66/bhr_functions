@@ -1887,8 +1887,149 @@ const renderTablaServicios = (ordenes) => {
         ${o.responsable ? `<div style="font-size:.75rem;color:var(--text-muted);margin-top:-.4rem;margin-bottom:.4rem;padding-left:.25rem;"><i class="bi bi-person"></i> ${o.responsable}${o.observaciones ? ' · ' + o.observaciones : ''}</div>` : ''}`;
     }).join('');
 };
+const verHistorialServicios = async () => {
+    try {
+        mostrarLoader('Cargando historial...');
+        const r = await fetch(`${BASE}/API/vehiculos/hoja-vida?placa=${fichaPlacaActual}`);
+        const d = await r.json();
+        if (d.codigo !== 1) {
+            Toast.fire({ icon: 'error', title: 'Error al cargar historial' });
+            return;
+        }
 
-// ── VER ORDEN ─────────────────────────────────────────────────────────────────
+        if (!d.grupos.length) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Sin historial',
+                text: 'Este vehículo no tiene servicios completados registrados.',
+                background: '#1a1d27', color: '#e8eaf0',
+                confirmButtonColor: '#e8b84b',
+                customClass: { container: 'swal-over-modal' }
+            });
+            return;
+        }
+
+        const coloresCumplimiento = {
+            primer_registro: { color: '#7c8398', icono: '🔵', texto: 'Primer registro' },
+            exacto: { color: '#4caf7d', icono: '🟢', texto: 'A tiempo' },
+            antes: { color: '#4caf7d', icono: '🟢', texto: 'Antes' },
+            tarde: { color: '#e05252', icono: '🔴', texto: 'Tarde' },
+        };
+
+        const gruposHtml = d.grupos.map((g, gi) => {
+            const filasHtml = g.items.map((item, i) => {
+                const c = coloresCumplimiento[item.cumplimiento] ?? coloresCumplimiento.primer_registro;
+                const bg = i % 2 === 0 ? 'rgba(255,255,255,.02)' : 'transparent';
+
+                let cumplimientoTexto = c.icono + ' ' + c.texto;
+                if (item.cumplimiento === 'tarde') {
+                    cumplimientoTexto += ` (+${Number(item.diferencia).toLocaleString()} km)`;
+                } else if (item.cumplimiento === 'antes') {
+                    cumplimientoTexto += ` (-${Number(item.diferencia).toLocaleString()} km)`;
+                }
+
+                return `
+                <tr style="background:${bg};border-bottom:1px solid rgba(255,255,255,.04);">
+                    <td style="padding:.5rem .75rem;font-size:.8rem;color:#e8eaf0;">
+                        ${item.fecha}
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.8rem;color:#e8b84b;font-weight:600;">
+                        ${Number(item.km_real).toLocaleString()} km
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.8rem;color:#7c8398;">
+                        ${item.km_proximo ? Number(item.km_proximo).toLocaleString() + ' km' : '—'}
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.8rem;color:${c.color};font-weight:600;">
+                        ${cumplimientoTexto}
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.75rem;color:#7c8398;">
+                        ${item.responsable || '—'}
+                    </td>
+                </tr>`;
+            }).join('');
+
+            return `
+            <div style="margin-bottom:1rem;">
+                <div style="background:#1f2335;border-left:3px solid #a78bfa;
+                    padding:.6rem 1rem;margin-bottom:0;
+                    display:flex;align-items:center;justify-content:space-between;
+                    cursor:pointer;border-radius:6px 6px 0 0;"
+                    onclick="
+                        const t=document.getElementById('hv_tabla_${gi}');
+                        const i=document.getElementById('hv_icon_${gi}');
+                        if(t.style.display==='none'){t.style.display='';i.style.transform='rotate(0deg)';}
+                        else{t.style.display='none';i.style.transform='rotate(-90deg)';}
+                    ">
+                    <div>
+                        <span style="font-family:Rajdhani,sans-serif;font-size:.95rem;
+                            font-weight:700;color:#e8eaf0;">
+                            ${g.tipo}
+                        </span>
+                        <span style="font-size:.72rem;color:#7c8398;margin-left:.5rem;">
+                            ${g.total} registro(s)
+                        </span>
+                    </div>
+                    <i id="hv_icon_${gi}" class="bi bi-chevron-down"
+                        style="color:#a78bfa;font-size:.8rem;transition:transform .2s;"></i>
+                </div>
+                <div id="hv_tabla_${gi}" style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;">
+                        <thead>
+                            <tr style="background:#242837;">
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;
+                                    text-align:left;text-transform:uppercase;letter-spacing:.4px;">
+                                    Fecha
+                                </th>
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;
+                                    text-align:left;text-transform:uppercase;letter-spacing:.4px;">
+                                    KM Real
+                                </th>
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;
+                                    text-align:left;text-transform:uppercase;letter-spacing:.4px;">
+                                    Próximo KM
+                                </th>
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;
+                                    text-align:left;text-transform:uppercase;letter-spacing:.4px;">
+                                    Cumplimiento
+                                </th>
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;
+                                    text-align:left;text-transform:uppercase;letter-spacing:.4px;">
+                                    Responsable
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>${filasHtml}</tbody>
+                    </table>
+                </div>
+            </div>`;
+        }).join('');
+
+        Swal.fire({
+            title: `<span style="font-family:Rajdhani,sans-serif;font-size:1.1rem;">
+                <i class="bi bi-clock-history" style="color:#a78bfa;"></i>
+                Historial de Servicios — ${fichaPlacaActual}
+            </span>`,
+            html: `
+            <div style="text-align:left;max-height:480px;overflow-y:auto;padding-right:.25rem;">
+                ${gruposHtml}
+            </div>`,
+            background: '#1a1d27', color: '#e8eaf0',
+            confirmButtonColor: '#6f42c1',
+            confirmButtonText: '<i class="bi bi-x"></i> Cerrar',
+            width: '700px',
+            customClass: { container: 'swal-over-modal' }
+        });
+
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    } finally {
+        ocultarLoader();
+    }
+};
+
+
+
+// ── VER ORDEN ─────────────────────────────────────────
 const verOrden = async (idOrden) => {
     try {
         mostrarLoader('Cargando orden...');
@@ -1968,6 +2109,202 @@ const toggleFormReparacion = () => {
         : '<i class="bi bi-x-circle"></i> Cancelar';
 };
 
+const verHistorialReparaciones = async () => {
+    try {
+        mostrarLoader('Cargando historial...');
+        const r = await fetch(`${BASE}/API/vehiculos/hoja-vida-reparaciones?placa=${fichaPlacaActual}`);
+        const d = await r.json();
+        if (d.codigo !== 1) {
+            Toast.fire({ icon: 'error', title: 'Error al cargar historial' });
+            return;
+        }
+
+        if (!d.grupos.length) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Sin historial',
+                text: 'Este vehículo no tiene reparaciones registradas.',
+                background: '#1a1d27', color: '#e8eaf0',
+                confirmButtonColor: '#e05252',
+                customClass: { container: 'swal-over-modal' }
+            });
+            return;
+        }
+
+        const estadoColor = {
+            'En proceso': '#e8b84b',
+            'Finalizada': '#4caf7d',
+        };
+
+        const gruposHtml = d.grupos.map((g, gi) => {
+            const filasHtml = g.items.map((item, i) => {
+                const bg = i % 2 === 0 ? 'rgba(255,255,255,.02)' : 'transparent';
+                const color = estadoColor[item.estado] || '#7c8398';
+                const fechaFin = item.fecha_fin || '—';
+                const costo = item.costo
+                    ? `Q ${Number(item.costo).toLocaleString()}`
+                    : '—';
+
+                return `
+                <tr style="background:${bg};border-bottom:1px solid rgba(255,255,255,.04);">
+                    <td style="padding:.5rem .75rem;font-size:.8rem;color:#e8eaf0;">
+                        ${item.fecha_inicio}
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.8rem;color:#7c8398;">
+                        ${fechaFin}
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.8rem;color:#e8b84b;font-weight:600;">
+                        ${Number(item.km_al_momento).toLocaleString()} km
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.78rem;color:#e8eaf0;max-width:180px;">
+                        ${item.descripcion}
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.8rem;color:${color};font-weight:600;">
+                        ${item.estado}
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.8rem;color:#4caf7d;font-weight:600;">
+                        ${costo}
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.75rem;color:#7c8398;">
+                        ${item.responsable || '—'}
+                    </td>
+                </tr>`;
+            }).join('');
+
+            const costoTotalStr = g.costo_total > 0
+                ? `<span style="color:#e05252;font-weight:700;">
+                       Q ${Number(g.costo_total).toLocaleString()}
+                   </span>`
+                : '';
+
+            return `
+            <div style="margin-bottom:1rem;">
+                <div style="background:#1f2335;border-left:3px solid #e05252;
+                    padding:.6rem 1rem;
+                    display:flex;align-items:center;justify-content:space-between;
+                    cursor:pointer;border-radius:6px 6px 0 0;"
+                    onclick="
+                        const t=document.getElementById('hr_tabla_${gi}');
+                        const ic=document.getElementById('hr_icon_${gi}');
+                        if(t.style.display==='none'){t.style.display='';ic.style.transform='rotate(0deg)';}
+                        else{t.style.display='none';ic.style.transform='rotate(-90deg)';}
+                    ">
+                    <div style="display:flex;align-items:center;gap:.75rem;">
+                        <span style="font-family:Rajdhani,sans-serif;font-size:.95rem;
+                            font-weight:700;color:#e8eaf0;">
+                            ${g.tipo}
+                        </span>
+                        <span style="font-size:.72rem;color:#7c8398;">
+                            ${g.total} registro(s)
+                        </span>
+                        ${costoTotalStr}
+                    </div>
+                    <i id="hr_icon_${gi}" class="bi bi-chevron-down"
+                        style="color:#e05252;font-size:.8rem;transition:transform .2s;"></i>
+                </div>
+                <div id="hr_tabla_${gi}" style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;">
+                        <thead>
+                            <tr style="background:#242837;">
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;">F. Inicio</th>
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;">F. Fin</th>
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;">KM</th>
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;min-width:140px;">Descripción</th>
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;">Estado</th>
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;">Costo</th>
+                                    <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;">Resp.</th>
+                            </tr>
+                        </thead>
+                        <tbody>${filasHtml}</tbody>
+                    </table>
+                </div>
+            </div>`;
+        }).join('');
+
+        Swal.fire({
+            title: `<span style="font-family:Rajdhani,sans-serif;font-size:1.1rem;">
+                <i class="bi bi-wrench-adjustable" style="color:#e05252;"></i>
+                Historial de Reparaciones — ${fichaPlacaActual}
+            </span>`,
+            html: `
+            <div style="text-align:left;max-height:480px;overflow-y:auto;padding-right:.25rem;">
+                ${gruposHtml}
+            </div>`,
+            background: '#1a1d27', color: '#e8eaf0',
+            confirmButtonColor: '#e05252',
+            confirmButtonText: '<i class="bi bi-x"></i> Cerrar',
+            width: '900px',
+            customClass: { container: 'swal-over-modal' }
+        });
+
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    } finally {
+        ocultarLoader();
+    }
+};
+
+
+const verDetalleReparacion = (r) => {
+    const estadoColor = { 'En proceso': '#e8b84b', 'Finalizada': '#4caf7d' };
+    const color = estadoColor[r.estado] || '#7c8398';
+
+    Swal.fire({
+        title: `<span style="font-family:Rajdhani,sans-serif;font-size:1.1rem;">
+            <i class="bi bi-wrench-adjustable" style="color:#e05252;"></i>
+            ${r.tipo_nombre}
+        </span>`,
+        html: `
+        <div style="text-align:left;font-size:.85rem;">
+            <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;">
+                <span style="background:${color}22;color:${color};border:1px solid ${color}44;
+                    padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:700;">
+                    ${r.estado}
+                </span>
+                <span style="color:#7c8398;font-size:.78rem;">
+                    <i class="bi bi-calendar3"></i> ${r.fecha_inicio}
+                    ${r.fecha_fin ? ' → ' + r.fecha_fin : ''}
+                </span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem;">
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
+                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">KM al momento</div>
+                    <div style="color:#e8b84b;font-weight:700;">${Number(r.km_al_momento).toLocaleString()} km</div>
+                </div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
+                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Costo</div>
+                    <div style="color:#4caf7d;font-weight:700;">${r.costo ? 'Q ' + Number(r.costo).toLocaleString() : '—'}</div>
+                </div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
+                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Proveedor</div>
+                    <div style="color:#c8cfe0;">${r.proveedor || '—'}</div>
+                </div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
+                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Responsable</div>
+                    <div style="color:#c8cfe0;">${r.responsable || '—'}</div>
+                </div>
+            </div>
+            <div style="background:#1e2130;border-left:3px solid #e05252;
+                padding:.75rem 1rem;border-radius:0 8px 8px 0;margin-bottom:.75rem;">
+                <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.3rem;">Descripción</div>
+                <div style="color:#c8cfe0;line-height:1.5;">${r.descripcion || '—'}</div>
+            </div>
+            ${r.observaciones ? `
+            <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
+                <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Observaciones</div>
+                <div style="color:#888;">${r.observaciones}</div>
+            </div>` : ''}
+        </div>`,
+        background: '#1a1d27', color: '#e8eaf0',
+        confirmButtonColor: '#e05252',
+        confirmButtonText: '<i class="bi bi-x"></i> Cerrar',
+        width: '500px',
+        customClass: { container: 'swal-over-modal' }
+    });
+};
+
+
+
 const renderTablaReparaciones = (reparaciones) => {
     const wrap = document.getElementById('tablaReparacionesWrap');
     if (!reparaciones.length) {
@@ -1981,17 +2318,30 @@ const renderTablaReparaciones = (reparaciones) => {
     wrap.innerHTML = reparaciones.map(r => `
         <div class="svc-row" style="grid-template-columns:1.5fr 1fr 1fr 1fr 1fr auto;">
             <div><div class="svc-label">Tipo</div><div class="svc-val">${r.tipo_nombre}</div></div>
-            <div><div class="svc-label">Estado</div><div class="svc-val" style="color:${r.estado === 'En proceso' ? 'var(--accent)' : 'var(--success)'}">${r.estado}</div></div>
+            <div><div class="svc-label">Estado</div>
+                <div class="svc-val" style="color:${r.estado === 'En proceso' ? 'var(--accent)' : 'var(--success)'}">
+                    ${r.estado}
+                </div>
+            </div>
             <div><div class="svc-label">Inicio</div><div class="svc-val">${r.fecha_inicio}</div></div>
             <div><div class="svc-label">Fin</div><div class="svc-val">${r.fecha_fin || '—'}</div></div>
-            <div><div class="svc-label">Costo</div><div class="svc-val">${r.costo ? 'Q ' + Number(r.costo).toLocaleString() : '—'}</div></div>
+            <div><div class="svc-label">Costo</div>
+                <div class="svc-val">${r.costo ? 'Q ' + Number(r.costo).toLocaleString() : '—'}</div>
+            </div>
             <div style="display:flex;gap:.4rem;align-items:center;">
+                <button onclick="verDetalleReparacion(${JSON.stringify(r).replace(/"/g, '&quot;')})"
+                    style="background:rgba(111,66,193,.15);border:1px solid rgba(111,66,193,.3);
+                    color:#a78bfa;border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;">
+                    <i class="bi bi-eye"></i>
+                </button>
                 <button onclick="editarReparacion(${JSON.stringify(r).replace(/"/g, '&quot;')})"
-                    style="background:rgba(58,123,213,.15);border:1px solid rgba(58,123,213,.3);color:#5b9bd5;border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;">
+                    style="background:rgba(58,123,213,.15);border:1px solid rgba(58,123,213,.3);
+                    color:#5b9bd5;border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;">
                     <i class="bi bi-pencil-square"></i>
                 </button>
                 <button onclick="eliminarReparacion(${r.id_reparacion})"
-                    style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);color:var(--danger);border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;">
+                    style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
+                    color:var(--danger);border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.8rem;">
                     <i class="bi bi-trash3"></i>
                 </button>
             </div>
@@ -2580,42 +2930,288 @@ const eliminarAccidente = async (id) => {
 const verAccidente = (id) => {
     const a = accidentesData.find(x => x.id_accidente == id);
     if (!a) return;
-    const estadoColor = { 'Cerrado': '#4caf7d', 'En trámite': '#e8b84b', 'Reportado': '#5b9bd5', 'Sin seguro': '#e05252' };
+    const estadoColor = {
+        'Cerrado': '#4caf7d',
+        'En trámite': '#e8b84b',
+        'Reportado': '#5b9bd5',
+        'Sin seguro': '#e05252'
+    };
+    const dias = (() => {
+        if (!a.fecha_vencimiento) return null;
+        const hoy = new Date();
+        const vence = new Date(a.fecha_vencimiento);
+        return Math.ceil((vence - hoy) / (1000 * 60 * 60 * 24));
+    })();
+
+    // ── Fotos como links a nueva pestaña ──────────────────────────────
     const fotosURLs = [a.foto_1_url, a.foto_2_url, a.foto_3_url, a.foto_4_url].filter(Boolean);
-    const fotosLightbox = fotosURLs.map((url, j) => ({ url, caption: `Foto ${j + 1} — Accidente ${a.tipo_accidente}` }));
     const fotosHTML = fotosURLs.length
-        ? fotosURLs.map((url, i) => `<a href="#" onclick="event.preventDefault();event.stopPropagation();abrirLightbox(${JSON.stringify(fotosLightbox).replace(/"/g, '&quot;')},${i})" style="display:inline-flex;align-items:center;gap:.4rem;background:rgba(58,123,213,.1);border:1px solid rgba(58,123,213,.25);color:#5b9bd5;padding:.35rem .75rem;border-radius:6px;font-size:.78rem;text-decoration:none;margin:.2rem;cursor:zoom-in;"><i class="bi bi-image"></i> Foto ${i + 1}</a>`).join('')
+        ? fotosURLs.map((url, i) =>
+            `<a href="${url}" target="_blank"
+                style="display:inline-flex;align-items:center;gap:.4rem;
+                background:rgba(58,123,213,.1);border:1px solid rgba(58,123,213,.25);
+                color:#5b9bd5;padding:.35rem .75rem;border-radius:6px;
+                font-size:.78rem;text-decoration:none;margin:.2rem;">
+                <i class="bi bi-image"></i> Foto ${i + 1}
+            </a>`).join('')
         : '<span style="color:#555;font-size:.78rem;">Sin fotos adjuntas</span>';
+
     const informeHTML = a.informe_url
-        ? `<a href="${a.informe_url}" target="_blank" style="display:inline-flex;align-items:center;gap:.4rem;background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.25);color:var(--accent);padding:.35rem .75rem;border-radius:6px;font-size:.78rem;text-decoration:none;margin:.2rem;"><i class="bi bi-file-earmark-pdf"></i> Informe Policial</a>`
+        ? `<a href="${a.informe_url}" target="_blank"
+                style="display:inline-flex;align-items:center;gap:.4rem;
+                background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.25);
+                color:var(--accent);padding:.35rem .75rem;border-radius:6px;
+                font-size:.78rem;text-decoration:none;margin:.2rem;">
+                <i class="bi bi-file-earmark-pdf"></i> Informe Policial
+            </a>`
         : '<span style="color:#555;font-size:.78rem;">Sin informe adjunto</span>';
+
+    const color = estadoColor[a.estado] || '#888';
+
     Swal.fire({
-        title: `<span style="font-family:Rajdhani,sans-serif;font-size:1.1rem;"><i class="bi bi-cone-striped" style="color:#e05252;"></i> Accidente — ${a.tipo_accidente}</span>`,
+        title: `<span style="font-family:Rajdhani,sans-serif;font-size:1.1rem;">
+            <i class="bi bi-cone-striped" style="color:#e05252;"></i>
+            Accidente — ${a.tipo_accidente}
+        </span>`,
         html: `
         <div style="text-align:left;font-size:.82rem;">
             <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;">
-                <span style="background:${estadoColor[a.estado] || '#888'}22;color:${estadoColor[a.estado] || '#888'};border:1px solid ${estadoColor[a.estado] || '#888'}44;padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:700;">${a.estado}</span>
-                <span style="color:#888;font-size:.78rem;"><i class="bi bi-calendar3"></i> ${a.fecha_accidente}</span>
-                ${a.no_expediente ? `<span style="color:#888;font-size:.78rem;"><i class="bi bi-journal-text"></i> Exp. ${a.no_expediente}</span>` : ''}
+                <span style="background:${color}22;color:${color};
+                    border:1px solid ${color}44;padding:.25rem .75rem;
+                    border-radius:20px;font-size:.75rem;font-weight:700;">
+                    ${a.estado}
+                </span>
+                <span style="color:#888;font-size:.78rem;">
+                    <i class="bi bi-calendar3"></i> ${a.fecha_accidente}
+                </span>
+                ${a.no_expediente
+                ? `<span style="color:#888;font-size:.78rem;">
+                           <i class="bi bi-journal-text"></i> Exp. ${a.no_expediente}
+                       </span>`
+                : ''}
             </div>
-            <div style="background:#1e2130;border-left:3px solid #e05252;padding:.75rem 1rem;border-radius:0 8px 8px 0;margin-bottom:1rem;color:#c8cfe0;line-height:1.5;">${a.descripcion}</div>
+            <div style="background:#1e2130;border-left:3px solid #e05252;
+                padding:.75rem 1rem;border-radius:0 8px 8px 0;margin-bottom:1rem;
+                color:#c8cfe0;line-height:1.5;">
+                ${a.descripcion}
+            </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem;">
-                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;"><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Lugar</div><div style="color:#c8cfe0;">${a.lugar || '—'}</div></div>
-                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;"><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Conductor</div><div style="color:#c8cfe0;">${a.conductor_responsable || '—'}</div></div>
-                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;"><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Costo Daños</div><div style="color:#e05252;font-weight:700;">${a.costo_danos ? 'Q ' + Number(a.costo_danos).toLocaleString() : '—'}</div></div>
-                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;"><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Costo Reparación</div><div style="color:#e05252;font-weight:700;">${a.costo_reparacion ? 'Q ' + Number(a.costo_reparacion).toLocaleString() : '—'}</div></div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
+                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Lugar</div>
+                    <div style="color:#c8cfe0;">${a.lugar || '—'}</div>
+                </div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
+                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Conductor</div>
+                    <div style="color:#c8cfe0;">${a.conductor_responsable || '—'}</div>
+                </div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
+                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Costo Daños</div>
+                    <div style="color:#e05252;font-weight:700;">
+                        ${a.costo_danos ? 'Q ' + Number(a.costo_danos).toLocaleString() : '—'}
+                    </div>
+                </div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
+                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Costo Reparación</div>
+                    <div style="color:#e05252;font-weight:700;">
+                        ${a.costo_reparacion ? 'Q ' + Number(a.costo_reparacion).toLocaleString() : '—'}
+                    </div>
+                </div>
             </div>
-            ${(a.costo_danos || a.costo_reparacion) ? `<div style="background:rgba(224,82,82,.08);border:1px solid rgba(224,82,82,.2);border-radius:8px;padding:.6rem 1rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;"><span style="color:#888;font-size:.78rem;">Costo total</span><span style="color:#e05252;font-weight:700;font-size:1rem;font-family:Rajdhani,sans-serif;">Q ${Number((parseFloat(a.costo_danos) || 0) + (parseFloat(a.costo_reparacion) || 0)).toLocaleString()}</span></div>` : ''}
-            ${a.observaciones ? `<div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;margin-bottom:1rem;"><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Observaciones</div><div style="color:#888;">${a.observaciones}</div></div>` : ''}
-            <div style="margin-bottom:.75rem;"><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.5rem;"><i class="bi bi-images"></i> Fotografías</div><div>${fotosHTML}</div></div>
-            <div><div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.5rem;"><i class="bi bi-file-earmark-text"></i> Informe Policial</div><div>${informeHTML}</div></div>
+            ${(a.costo_danos || a.costo_reparacion) ? `
+            <div style="background:rgba(224,82,82,.08);border:1px solid rgba(224,82,82,.2);
+                border-radius:8px;padding:.6rem 1rem;margin-bottom:1rem;
+                display:flex;justify-content:space-between;align-items:center;">
+                <span style="color:#888;font-size:.78rem;">Costo total</span>
+                <span style="color:#e05252;font-weight:700;font-size:1rem;font-family:Rajdhani,sans-serif;">
+                    Q ${Number((parseFloat(a.costo_danos) || 0) + (parseFloat(a.costo_reparacion) || 0)).toLocaleString()}
+                </span>
+            </div>` : ''}
+            ${a.observaciones ? `
+            <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;margin-bottom:1rem;">
+                <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Observaciones</div>
+                <div style="color:#888;">${a.observaciones}</div>
+            </div>` : ''}
+            <div style="margin-bottom:.75rem;">
+                <div style="font-size:.68rem;color:#555;text-transform:uppercase;
+                    margin-bottom:.5rem;">
+                    <i class="bi bi-images"></i> Fotografías
+                </div>
+                <div>${fotosHTML}</div>
+            </div>
+            <div>
+                <div style="font-size:.68rem;color:#555;text-transform:uppercase;
+                    margin-bottom:.5rem;">
+                    <i class="bi bi-file-earmark-text"></i> Informe Policial
+                </div>
+                <div>${informeHTML}</div>
+            </div>
         </div>`,
         background: '#1a1d27', color: '#e8eaf0',
-        confirmButtonColor: '#6f42c1', confirmButtonText: '<i class="bi bi-x"></i> Cerrar',
-        width: '600px', customClass: { container: 'swal-over-modal' }
+        confirmButtonColor: '#6f42c1',
+        confirmButtonText: '<i class="bi bi-x"></i> Cerrar',
+        width: '600px',
+        customClass: { container: 'swal-over-modal' }
     });
 };
 window.verAccidente = verAccidente;
+
+
+
+const verHistorialAccidentes = async () => {
+    try {
+        mostrarLoader('Cargando historial...');
+        const r = await fetch(`${BASE}/API/vehiculos/hoja-vida-accidentes?placa=${fichaPlacaActual}`);
+        const d = await r.json();
+        if (d.codigo !== 1) {
+            Toast.fire({ icon: 'error', title: 'Error al cargar historial' });
+            return;
+        }
+
+        if (!d.grupos.length) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Sin historial',
+                text: 'Este vehículo no tiene accidentes registrados.',
+                background: '#1a1d27', color: '#e8eaf0',
+                confirmButtonColor: '#e05252',
+                customClass: { container: 'swal-over-modal' }
+            });
+            return;
+        }
+
+        const estadoColor = {
+            'Reportado': '#5b9bd5',
+            'En trámite': '#e8b84b',
+            'Cerrado': '#4caf7d',
+            'Sin seguro': '#7c8398',
+        };
+
+        const gruposHtml = d.grupos.map((g, gi) => {
+            const filasHtml = g.items.map((item, i) => {
+                const bg = i % 2 === 0 ? 'rgba(255,255,255,.02)' : 'transparent';
+                const color = estadoColor[item.estado] || '#7c8398';
+                const costoEst = item.costo_estimado
+                    ? `Q ${Number(item.costo_estimado).toLocaleString()}` : '—';
+                const costoReal = item.costo_real
+                    ? `Q ${Number(item.costo_real).toLocaleString()}` : '—';
+
+                // ── Fotos como links que abren en nueva pestaña ────────
+                const fotosHtml = [item.foto_1_url, item.foto_2_url, item.foto_3_url, item.foto_4_url]
+                    .filter(Boolean)
+                    .map((url, fi) => `
+                        <a href="${url}" target="_blank"
+                            style="display:inline-flex;align-items:center;gap:.3rem;
+                            background:rgba(58,123,213,.1);border:1px solid rgba(58,123,213,.25);
+                            color:#5b9bd5;padding:.2rem .5rem;border-radius:6px;
+                            font-size:.7rem;text-decoration:none;margin:.15rem 0;">
+                            <i class="bi bi-image"></i> Foto ${fi + 1}
+                        </a>`)
+                    .join('');
+
+                return `
+                <tr style="background:${bg};border-bottom:1px solid rgba(255,255,255,.04);">
+                    <td style="padding:.5rem .75rem;font-size:.8rem;color:#e8eaf0;white-space:nowrap;">
+                        ${item.fecha_accidente}
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.78rem;color:#7c8398;max-width:100px;">
+                        ${item.lugar || '—'}
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.78rem;color:#e8eaf0;max-width:150px;">
+                        ${item.descripcion || '—'}
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.8rem;color:${color};font-weight:600;white-space:nowrap;">
+                        ${item.estado || '—'}
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.8rem;color:#e8b84b;white-space:nowrap;">
+                        ${costoEst}
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.8rem;color:#e05252;font-weight:600;white-space:nowrap;">
+                        ${costoReal}
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.75rem;color:#7c8398;">
+                        ${item.conductor || '—'}
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.75rem;">
+                        ${fotosHtml || '<span style="color:#555;">—</span>'}
+                    </td>
+                </tr>`;
+            }).join('');
+
+            const costoTotalStr = g.costo_total > 0
+                ? `<span style="color:#e05252;font-weight:700;font-size:.8rem;">
+                       Total: Q ${Number(g.costo_total).toLocaleString()}
+                   </span>`
+                : '';
+
+            return `
+            <div style="margin-bottom:1rem;">
+                <div style="background:#1f2335;border-left:3px solid #e05252;
+                    padding:.6rem 1rem;
+                    display:flex;align-items:center;justify-content:space-between;
+                    cursor:pointer;border-radius:6px 6px 0 0;"
+                    onclick="
+                        const t=document.getElementById('ha_tabla_${gi}');
+                        const ic=document.getElementById('ha_icon_${gi}');
+                        if(t.style.display==='none'){t.style.display='';ic.style.transform='rotate(0deg)';}
+                        else{t.style.display='none';ic.style.transform='rotate(-90deg)';}
+                    ">
+                    <div style="display:flex;align-items:center;gap:.75rem;">
+                        <span style="font-family:Rajdhani,sans-serif;font-size:.95rem;
+                            font-weight:700;color:#e8eaf0;">
+                            ${g.tipo}
+                        </span>
+                        <span style="font-size:.72rem;color:#7c8398;">
+                            ${g.total} registro(s)
+                        </span>
+                        ${costoTotalStr}
+                    </div>
+                    <i id="ha_icon_${gi}" class="bi bi-chevron-down"
+                        style="color:#e05252;font-size:.8rem;transition:transform .2s;"></i>
+                </div>
+                <div id="ha_tabla_${gi}" style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;">
+                        <thead>
+                            <tr style="background:#242837;">
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;">Fecha</th>
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;">Lugar</th>
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;">Descripción</th>
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;">Estado</th>
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;">Costo Est.</th>
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;">Costo Real</th>
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;">Conductor</th>
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;">Fotos</th>
+                            </tr>
+                        </thead>
+                        <tbody>${filasHtml}</tbody>
+                    </table>
+                </div>
+            </div>`;
+        }).join('');
+
+        Swal.fire({
+            title: `<span style="font-family:Rajdhani,sans-serif;font-size:1.1rem;">
+                <i class="bi bi-cone-striped" style="color:#e05252;"></i>
+                Historial de Accidentes — ${fichaPlacaActual}
+            </span>`,
+            html: `
+            <div style="text-align:left;max-height:480px;overflow-y:auto;padding-right:.25rem;">
+                ${gruposHtml}
+            </div>`,
+            background: '#1a1d27', color: '#e8eaf0',
+            confirmButtonColor: '#e05252',
+            confirmButtonText: '<i class="bi bi-x"></i> Cerrar',
+            width: '900px',
+            customClass: { container: 'swal-over-modal' }
+        });
+
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    } finally {
+        ocultarLoader();
+    }
+};
+
+
 // ════════════════════════════════════════════════════════════════════════════
 // ── CHEQUEOS ──────────────────────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
@@ -3330,6 +3926,13 @@ window.completarOrden = completarOrden;
 window.confirmarEliminarOrden = confirmarEliminarOrden;
 window.abrirOrdenEnProceso = abrirOrdenEnProceso;
 window.verOrden = verOrden;
+
+// HISTORIALES
+window.verHistorialServicios = verHistorialServicios;
+window.verHistorialReparaciones = verHistorialReparaciones;
+window.verHistorialAccidentes = verHistorialAccidentes;
+window.verDetalleReparacion = verDetalleReparacion;
+
 
 // Reparaciones
 window.toggleFormReparacion = toggleFormReparacion;
