@@ -143,10 +143,10 @@ class OrdenesServicio extends ActiveRecord
     public static function traerTodosProximosServicios(string $placa): array
     {
         $sql = "SELECT 
+                ts.nombre            AS tipo_nombre,
                 i.km_proximo,
                 i.fecha_proximo,
-                ts.nombre AS tipo_nombre,
-                MAX(o.id_orden) AS id_orden
+                o.id_orden
             FROM orden_servicio_items i
             JOIN ordenes_servicio o  ON i.id_orden        = o.id_orden
             JOIN tipos_servicio   ts ON i.id_tipo_servicio = ts.id_tipo_servicio
@@ -154,8 +154,16 @@ class OrdenesServicio extends ActiveRecord
               AND o.estado    = 'Completado'
               AND i.km_proximo IS NOT NULL
               AND i.resultado = 'Realizado'
-            GROUP BY i.id_tipo_servicio, ts.nombre, i.km_proximo, i.fecha_proximo
-            ORDER BY MAX(o.id_orden) DESC, i.km_proximo ASC";
+              AND o.id_orden = (
+                  SELECT MAX(o2.id_orden)
+                  FROM ordenes_servicio o2
+                  JOIN orden_servicio_items i2 ON i2.id_orden = o2.id_orden
+                  WHERE o2.placa   = o.placa
+                    AND o2.estado  = 'Completado'
+                    AND i2.id_tipo_servicio = i.id_tipo_servicio
+                    AND i2.resultado = 'Realizado'
+              )
+            ORDER BY i.km_proximo ASC";
 
         return self::fetchArray($sql, [$placa]) ?? [];
     }
