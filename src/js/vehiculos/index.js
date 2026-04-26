@@ -2798,7 +2798,13 @@ const renderTablaAccidentes = (accidentes) => {
     }
     const costoTotal = accidentes.reduce((sum, a) => sum + (parseFloat(a.costo_reparacion) || 0) + (parseFloat(a.costo_danos) || 0), 0);
     const resumenHTML = costoTotal > 0
-        ? `<div style="background:rgba(224,82,82,.08);border:1px solid rgba(224,82,82,.2);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:.75rem;"><i class="bi bi-currency-dollar" style="color:var(--danger);font-size:1.25rem;"></i><div><div style="font-size:.75rem;color:var(--text-muted);">Costo total acumulado</div><div style="font-weight:700;color:var(--danger);">Q ${Number(costoTotal).toLocaleString()}</div></div></div>`
+        ? `<div style="background:rgba(224,82,82,.08);border:1px solid rgba(224,82,82,.2);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:.75rem;">
+        <span style="color:var(--danger);font-size:1.25rem;font-weight:700;font-family:'Rajdhani',sans-serif;">Q</span>
+        <div>
+            <div style="font-size:.75rem;color:var(--text-muted);">Costo total acumulado</div>
+            <div style="font-weight:700;color:var(--danger);">Q ${Number(costoTotal).toLocaleString()}</div>
+        </div>
+       </div>`
         : '';
     const estadoColor = (e) => ({ 'Cerrado': 'var(--success)', 'En proceso': 'var(--accent)', 'Pendiente': '#888' }[e] || 'inherit');
     const culpaBadge = (c) => { if (!c) return ''; const map = { 'Propio': 'rgba(224,82,82,.15)', 'Tercero': 'rgba(58,123,213,.15)', 'Compartida': 'rgba(232,184,75,.15)', 'Sin determinar': 'rgba(150,150,150,.15)' }; return `<span style="background:${map[c] || 'rgba(150,150,150,.15)'};padding:.15rem .5rem;border-radius:20px;font-size:.7rem;color:var(--text-secondary);">${c}</span>`; };
