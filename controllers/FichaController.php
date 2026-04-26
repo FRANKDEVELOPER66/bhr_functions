@@ -129,23 +129,46 @@ class FichaController
     {
         isAuthApi();
         header('Content-Type: application/json; charset=UTF-8');
+
+        $tipoVehiculo = strtolower(trim($_GET['tipo_vehiculo'] ?? ''));
+
         try {
-            $tipos = TiposServicio::traerTodos();
-            echo json_encode(['codigo' => 1, 'datos' => $tipos], JSON_UNESCAPED_UNICODE);
-        } catch (Exception $e) {
+            $sql = "SELECT 
+                    ts.id_tipo_servicio,
+                    ts.nombre,
+                    ts.descripcion,
+                    ts.intervalo_km AS intervalo_km_base,
+                    COALESCE(
+                        (SELECT tsi.intervalo_km
+                         FROM tipos_servicio_intervalo tsi
+                         WHERE tsi.id_tipo_servicio = ts.id_tipo_servicio
+                           AND LOWER(tsi.tipo_vehiculo) = ?
+                         LIMIT 1),
+                        ts.intervalo_km
+                    ) AS intervalo_km
+                FROM tipos_servicio ts
+                ORDER BY ts.nombre ASC";
+
+            $tipos = \Model\OrdenesServicio::fetchArray($sql, [$tipoVehiculo]);
+
+            echo json_encode([
+                'codigo' => 1,
+                'tipos'  => $tipos
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (\Exception $e) {
             http_response_code(500);
-            echo json_encode(['codigo' => 0, 'mensaje' => 'Error al obtener tipos'], JSON_UNESCAPED_UNICODE);
+            echo json_encode(['codigo' => 0, 'mensaje' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
         }
     }
 
     // ── CREAR ORDEN ───────────────────────────────────────────────────────────
     public static function crearOrdenAPI(): void
     {
-        $placa        = trim($_POST['placa']        ?? '');
-        $fecha        = trim($_POST['fecha_ingreso'] ?? '');
-        $km           = intval($_POST['km_al_ingreso'] ?? 0);
-        $responsable  = trim($_POST['responsable']   ?? '');
-        $obs          = trim($_POST['observaciones'] ?? '');
+        $placa       = trim($_POST['placa']         ?? '');
+        $fecha       = trim($_POST['fecha_ingreso'] ?? '');
+        $km          = intval($_POST['km_al_ingreso'] ?? 0);
+        $responsable = trim($_POST['responsable']   ?? '');
+        $obs         = trim($_POST['observaciones'] ?? '');
 
         if (!$placa || !$fecha || !$km) {
             http_response_code(400);
@@ -158,10 +181,19 @@ class FichaController
             return;
         }
 
+        // ── Guardar KM anterior antes de actualizar ───────────────────────
+        $vehiculoAntes = Vehiculos::find($placa);
+        if (!$vehiculoAntes) {
+            echo json_encode(['codigo' => 0, 'mensaje' => 'Vehículo no encontrado']);
+            return;
+        }
+        $kmAnterior = (int)$vehiculoAntes->km_actuales;
+
         $orden = new OrdenesServicio();
         $orden->placa         = $placa;
         $orden->fecha_ingreso = $fecha;
         $orden->km_al_ingreso = $km;
+        $orden->km_anterior   = $kmAnterior;
         $orden->responsable   = $responsable;
         $orden->observaciones = $obs;
         $orden->estado        = 'En proceso';
@@ -172,21 +204,18 @@ class FichaController
             return;
         }
 
-        // ── Cambiar estado del vehículo a Taller ──────────────────────────────
-        Vehiculos::consultarSQL("UPDATE vehiculos SET estado = 'Taller' WHERE placa = '{$placa}'");
-        // ── Actualizar KM actuales del vehículo ───────────────────────────────
-        Vehiculos::consultarSQL("UPDATE vehiculos SET km_actuales = {$km} WHERE placa = '{$placa}'");
+        // ── Cambiar estado y actualizar KM del vehículo ───────────────────
+        Vehiculos::consultarSQL("UPDATE vehiculos SET estado = 'Taller', km_actuales = {$km} WHERE placa = '{$placa}'");
 
-        // Obtener la orden recién creada desde la BD
+        // Obtener la orden recién creada
         $ordenCreada = OrdenesServicio::traerEnProceso($placa);
         if (!$ordenCreada) {
             echo json_encode(['codigo' => 0, 'mensaje' => 'Error al recuperar la orden creada']);
             return;
         }
 
-        $idOrden = (int) $ordenCreada['id_orden'];
+        $idOrden = (int)$ordenCreada['id_orden'];
 
-        // ── Devolver la orden completa para que el JS no necesite recargar ────
         echo json_encode([
             'codigo'   => 1,
             'mensaje'  => 'Orden creada correctamente',
@@ -196,6 +225,7 @@ class FichaController
                 'placa'         => $placa,
                 'fecha_ingreso' => $ordenCreada['fecha_ingreso'],
                 'km_al_ingreso' => $ordenCreada['km_al_ingreso'],
+                'km_anterior'   => $kmAnterior,
                 'responsable'   => $ordenCreada['responsable'],
                 'observaciones' => $ordenCreada['observaciones'],
                 'estado'        => 'En proceso',
@@ -237,14 +267,36 @@ class FichaController
             $orden = OrdenesServicio::find($idOrden);
 
             if ($tipo && $orden) {
-                if (!empty($tipo->intervalo_km)) {
-                    // Usar KM actual real del vehículo
-                    $vehiculoActual = Vehiculos::find($orden->placa);
-                    $kmBase    = $vehiculoActual
-                        ? (int)$vehiculoActual->km_actuales
-                        : (int)$orden->km_al_ingreso;
-                    $kmIngreso = $kmBase + (int)$tipo->intervalo_km;
+                // ── Obtener vehículo para saber su tipo ──────────────────
+                $vehiculoActual = Vehiculos::find($orden->placa);
+                $tipoVehiculo   = $vehiculoActual ? strtolower(trim($vehiculoActual->tipo)) : '';
+                $kmBase         = $vehiculoActual
+                    ? (int)$vehiculoActual->km_actuales
+                    : (int)$orden->km_al_ingreso;
+
+                // ── Buscar intervalo específico para este tipo de vehículo
+                // Si no existe, usar el intervalo genérico del tipo de servicio
+                $sqlIntervalo = "SELECT COALESCE(
+                                (SELECT tsi.intervalo_km
+                                 FROM tipos_servicio_intervalo tsi
+                                 WHERE tsi.id_tipo_servicio = ?
+                                   AND LOWER(tsi.tipo_vehiculo) = ?
+                                 LIMIT 1),
+                                ts.intervalo_km
+                             ) AS intervalo_km
+                             FROM tipos_servicio ts
+                             WHERE ts.id_tipo_servicio = ?";
+
+                $intervaloRow = OrdenesServicio::fetchFirst(
+                    $sqlIntervalo,
+                    [$idTipoServicio, $tipoVehiculo, $idTipoServicio]
+                );
+                $intervaloKm = (int)($intervaloRow['intervalo_km'] ?? 0);
+
+                if ($intervaloKm > 0) {
+                    $kmIngreso = $kmBase + $intervaloKm;
                 }
+
                 if (!empty($tipo->intervalo_dias)) {
                     $fechaProximo = date(
                         'Y-m-d',
@@ -253,7 +305,7 @@ class FichaController
                 }
             }
 
-            // Respetar km_proximo real si el mecánico lo envió
+            // ── Respetar km_proximo si el mecánico lo envió manualmente ──
             if (!empty($_POST['km_proximo'])) {
                 $kmIngreso = (int)$_POST['km_proximo'];
             }
@@ -288,6 +340,7 @@ class FichaController
             ], JSON_UNESCAPED_UNICODE);
         }
     }
+
 
     // ── ELIMINAR ITEM DE ORDEN ────────────────────────────────────────────────
     public static function eliminarItemAPI(Router $router)
@@ -405,20 +458,23 @@ class FichaController
                 return;
             }
 
-            $placa = $orden->placa;
+            $placa      = $orden->placa;
+            $kmAnterior = (int)$orden->km_anterior;
 
-            // Eliminar items primero
+            // ── Eliminar items primero ────────────────────────────────────
             Vehiculos::consultarSQL("DELETE FROM orden_servicio_items WHERE id_orden = {$idOrden}");
 
-            // Eliminar la orden
+            // ── Eliminar la orden ─────────────────────────────────────────
             Vehiculos::consultarSQL("DELETE FROM ordenes_servicio WHERE id_orden = {$idOrden}");
 
-            // Verificar si quedan otras órdenes en proceso
+            // ── Verificar si quedan otras órdenes en proceso ──────────────
             $otraOrdenEnProceso = OrdenesServicio::existeEnProceso($placa);
 
-            // Solo volver a Alta si no hay otra orden abierta
             if (!$otraOrdenEnProceso) {
-                Vehiculos::consultarSQL("UPDATE vehiculos SET estado = 'Alta' WHERE placa = '{$placa}'");
+                // ── Revertir KM al valor anterior y volver a Alta ─────────
+                Vehiculos::consultarSQL(
+                    "UPDATE vehiculos SET estado = 'Alta', km_actuales = {$kmAnterior} WHERE placa = '{$placa}'"
+                );
             }
 
             echo json_encode([

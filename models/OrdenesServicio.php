@@ -10,6 +10,7 @@ class OrdenesServicio extends ActiveRecord
         'placa',
         'fecha_ingreso',
         'km_al_ingreso',
+        'km_anterior',
         'responsable',
         'observaciones',
         'estado',
@@ -20,6 +21,7 @@ class OrdenesServicio extends ActiveRecord
     public $placa;
     public $fecha_ingreso;
     public $km_al_ingreso;
+    public $km_anterior;
     public $responsable;
     public $observaciones;
     public $estado;
@@ -27,17 +29,17 @@ class OrdenesServicio extends ActiveRecord
 
     public function __construct($args = [])
     {
-        $this->id_orden        = $args['id_orden']        ?? null;
-        $this->placa           = $args['placa']           ?? '';
-        $this->fecha_ingreso   = $args['fecha_ingreso']   ?? date('Y-m-d');
-        $this->km_al_ingreso   = $args['km_al_ingreso']   ?? 0;
-        $this->responsable     = $args['responsable']     ?? '';
-        $this->observaciones   = $args['observaciones']   ?? '';
-        $this->estado          = $args['estado']          ?? 'En proceso';
+        $this->id_orden         = $args['id_orden']         ?? null;
+        $this->placa            = $args['placa']            ?? '';
+        $this->fecha_ingreso    = $args['fecha_ingreso']    ?? date('Y-m-d');
+        $this->km_al_ingreso    = $args['km_al_ingreso']    ?? 0;
+        $this->km_anterior      = $args['km_anterior']      ?? 0;
+        $this->responsable      = $args['responsable']      ?? '';
+        $this->observaciones    = $args['observaciones']    ?? '';
+        $this->estado           = $args['estado']           ?? 'En proceso';
         $this->fecha_completado = $args['fecha_completado'] ?? null;
     }
 
-    // Traer todas las órdenes de un vehículo con conteo de items
     public static function traerPorPlaca(string $placa): array
     {
         $sql = "SELECT 
@@ -53,7 +55,6 @@ class OrdenesServicio extends ActiveRecord
         return self::fetchArray($sql, [$placa]);
     }
 
-    // Traer una orden con todos sus items
     public static function traerConItems(int $idOrden): ?array
     {
         $sql = "SELECT 
@@ -69,7 +70,6 @@ class OrdenesServicio extends ActiveRecord
 
         $orden = $resultado[0];
 
-        // Traer items con nombre del tipo
         $sqlItems = "SELECT 
                         i.*,
                         ts.nombre          AS tipo_nombre,
@@ -84,7 +84,6 @@ class OrdenesServicio extends ActiveRecord
         return $orden;
     }
 
-    // Verificar si hay una orden en proceso para un vehículo
     public static function existeEnProceso(string $placa): bool
     {
         $sql = "SELECT COUNT(*) AS total 
@@ -94,7 +93,6 @@ class OrdenesServicio extends ActiveRecord
         return (int)($resultado[0]['total'] ?? 0) > 0;
     }
 
-    // Traer la orden en proceso activa
     public static function traerEnProceso(string $placa): ?array
     {
         $sql = "SELECT o.*,
@@ -117,7 +115,6 @@ class OrdenesServicio extends ActiveRecord
         return $orden;
     }
 
-    // Próximo servicio más cercano por km
     public static function traerProximoServicio(string $placa): ?array
     {
         $sql = "SELECT 
@@ -167,6 +164,7 @@ class OrdenesServicio extends ActiveRecord
 
         return self::fetchArray($sql, [$placa]) ?? [];
     }
+
     public static function traerServiciosParaPDF(string $placa): array
     {
         $sql = "SELECT 
@@ -209,7 +207,6 @@ class OrdenesServicio extends ActiveRecord
 
         $rows = self::fetchArray($sql, [$placa]) ?? [];
 
-        // Agrupar por tipo
         $grupos = [];
         foreach ($rows as $r) {
             $tipo = $r['tipo_nombre'];

@@ -814,29 +814,20 @@ let reparacionEditandoId = null;
 
 // ── CARGAR TIPOS SERVICIO ─────────────────────────────────────────────────────
 const cargarTiposServicio = async () => {
-    if (tiposServicio.length) {
-        // ya cargados, solo re-asignar listener
-        const sel = document.getElementById('itemTipo');
-        if (sel) sel.onchange = _onTipoServicioChange;
-        return;
-    }
     try {
-        const r = await fetch(`${BASE}/API/vehiculos/tipos-servicio`);
+        const tipoParam = fichaTipoVehiculo
+            ? `?tipo_vehiculo=${encodeURIComponent(fichaTipoVehiculo.toLowerCase())}`
+            : '';
+        const r = await fetch(`${BASE}/API/vehiculos/tipos-servicio${tipoParam}`);
         const d = await r.json();
-        if (d.codigo === 1) {
-            tiposServicio = d.datos;
-            const sel = document.getElementById('itemTipo');
-            if (sel) {
-                sel.innerHTML = '<option value="">Seleccione tipo...</option>' +
-                    tiposServicio.map(t =>
-                        `<option value="${t.id_tipo_servicio}">${t.nombre}</option>`
-                    ).join('');
-                // ← listener dinámico
-                sel.onchange = _onTipoServicioChange;
-            }
-        }
-    } catch (err) { console.error('Error cargando tipos servicio:', err); }
+        if (d.codigo === 1) tiposServicio = d.tipos;
+    } catch (e) {
+        console.error('Error cargando tipos servicio:', e);
+    }
 };
+
+
+
 // ── KM PRÓXIMO DINÁMICO ───────────────────────────────────────────────────────
 // Servicios con intervalo fijo (km que se suma al actual)
 const KM_INTERVALOS = {
@@ -975,6 +966,7 @@ const abrirFicha = async (placa) => {
 
     fichaPlacaActual = placa;
     fichaTipoVehiculo = '';
+    tiposServicio = [];
 
     const modal = document.getElementById('modalFicha');
     modal.style.display = 'flex';
@@ -995,7 +987,6 @@ const abrirFicha = async (placa) => {
 
     mostrarLoader('Cargando ficha del vehículo...');
 
-    await cargarTiposServicio();
     await cargarTiposReparacion();
 
     const ordenFechaEl = document.getElementById('ordenFecha');
@@ -1012,6 +1003,20 @@ const abrirFicha = async (placa) => {
 
         const v = d.vehiculo;
         fichaTipoVehiculo = v.tipo || '';
+
+        // ── Cargar tipos servicio ahora que ya tenemos el tipo de vehículo
+        // ── Cargar tipos servicio ahora que ya tenemos el tipo de vehículo
+        await cargarTiposServicio();
+
+        // ── Llenar select de tipos de servicio ───────────────────────────────
+        const itemTipoSel = document.getElementById('itemTipo');
+        if (itemTipoSel && tiposServicio.length) {
+            itemTipoSel.innerHTML = '<option value="">Seleccione tipo...</option>' +
+                tiposServicio.map(t =>
+                    `<option value="${t.id_tipo_servicio}">${t.nombre}</option>`
+                ).join('');
+            itemTipoSel.onchange = _onTipoServicioChange;
+        }
 
         if (fichaPlacaEl) fichaPlacaEl.textContent = v.placa;
         if (fichaVehiculoEl) fichaVehiculoEl.textContent = `${v.marca} ${v.modelo} · ${v.anio}`;
@@ -1108,12 +1113,13 @@ const abrirFicha = async (placa) => {
                 const kmMinimo = parseInt(ordenKmEl.dataset.kmMinimo || '0');
                 const diferencia = kmIngresado - kmMinimo;
 
+                // ── Validación 1: no puede ser menor al registrado ────────────────
                 if (!kmIngresado || kmIngresado < kmMinimo) {
                     Swal.fire({
                         icon: 'warning', title: 'KM inválido',
                         html: `El kilometraje ingresado (<strong>${kmIngresado.toLocaleString()} km</strong>) 
-                               no puede ser menor al registrado 
-                               (<strong>${kmMinimo.toLocaleString()} km</strong>).`,
+                   no puede ser menor al registrado 
+                   (<strong>${kmMinimo.toLocaleString()} km</strong>).`,
                         confirmButtonText: 'Corregir', confirmButtonColor: '#e8b84b',
                         background: '#1a1d27', color: '#e8eaf0',
                         customClass: { container: 'swal-over-modal' }
@@ -1121,20 +1127,29 @@ const abrirFicha = async (placa) => {
                     return;
                 }
 
-                if (diferencia > 0 && diferencia < 1000) {
-                    Swal.fire({
-                        icon: 'warning', title: 'Kilometraje Inválido',
-                        html: `La diferencia entre el KM ingresado 
-                               (<strong>${kmIngresado.toLocaleString()} km</strong>) y el registrado 
-                               (<strong>${kmMinimo.toLocaleString()} km</strong>) es de solo 
-                               <strong>${diferencia.toLocaleString()} km</strong>.<br><br>
-                               <span style="font-size:.82rem;color:#7c8398;">
-                                   Se esperaría un mínimo de 1,000 km entre servicios.
-                               </span>`,
-                        confirmButtonText: 'Corregir', confirmButtonColor: '#e8b84b',
-                        background: '#1a1d27', color: '#e8eaf0',
-                        customClass: { container: 'swal-over-modal' }
-                    }).then(() => { ordenKmEl.value = kmMinimo; ordenKmEl.focus(); });
+                // ── Validación 2: diferencia mínima solo si ya tiene km registrados
+                if (kmMinimo > 0) {
+                    const esMoto = fichaTipoVehiculo.toLowerCase().includes('motocicleta');
+                    const intervaloMinimo = esMoto ? 500 : 1000;
+
+                    if (diferencia >= 0 && diferencia < intervaloMinimo) {
+                        Swal.fire({
+                            icon: 'warning', title: 'Kilometraje inválido',
+                            html: `La diferencia entre el KM ingresado 
+                       (<strong>${kmIngresado.toLocaleString()} km</strong>) y el registrado 
+                       (<strong>${kmMinimo.toLocaleString()} km</strong>) es de solo 
+                       <strong>${diferencia.toLocaleString()} km</strong>.<br><br>
+                       <span style="font-size:.82rem;color:#7c8398;">
+                           Para un <strong style="color:#e8b84b;">${fichaTipoVehiculo || 'vehículo'}</strong> 
+                           se esperaría un mínimo de 
+                           <strong style="color:#e8b84b;">${intervaloMinimo.toLocaleString()} km</strong> 
+                           entre servicios.
+                       </span>`,
+                            confirmButtonText: 'Corregir', confirmButtonColor: '#e8b84b',
+                            background: '#1a1d27', color: '#e8eaf0',
+                            customClass: { container: 'swal-over-modal' }
+                        }).then(() => { ordenKmEl.value = kmMinimo; ordenKmEl.focus(); });
+                    }
                 }
             };
         }
@@ -1322,6 +1337,7 @@ const crearOrden = async () => {
         });
         return;
     }
+
     if (km === '' || parseInt(km) < 0) {
         Swal.fire({
             icon: 'warning', title: 'KM requerido',
@@ -1331,6 +1347,33 @@ const crearOrden = async () => {
         });
         return;
     }
+
+    // ── Validar diferencia mínima según tipo de vehículo ─────────────────
+    const kmIngresadoVal = parseInt(km);
+    const kmMinimoVal = parseInt(document.getElementById('ordenKm')?.dataset.kmMinimo || '0');
+    const diferenciaVal = kmIngresadoVal - kmMinimoVal;
+    const esMotoVal = fichaTipoVehiculo.toLowerCase().includes('motocicleta');
+    const intervaloMinVal = esMotoVal ? 500 : 1000;
+
+    if (kmMinimoVal > 0 && diferenciaVal >= 0 && diferenciaVal < intervaloMinVal) {
+        Swal.fire({
+            icon: 'warning', title: 'KM inválido',
+            html: `El kilometraje ingresado (<strong>${kmIngresadoVal.toLocaleString()} km</strong>) 
+                   debe ser al menos <strong>${intervaloMinVal.toLocaleString()} km</strong> mayor 
+                   al registrado (<strong>${kmMinimoVal.toLocaleString()} km</strong>).<br><br>
+                   <span style="font-size:.82rem;color:#7c8398;">
+                       Para un <strong style="color:#e8b84b;">${fichaTipoVehiculo || 'vehículo'}</strong> 
+                       se esperaría un mínimo de 
+                       <strong style="color:#e8b84b;">${intervaloMinVal.toLocaleString()} km</strong> 
+                       entre servicios.
+                   </span>`,
+            confirmButtonText: 'Corregir', confirmButtonColor: '#e8b84b',
+            background: '#1a1d27', color: '#e8eaf0',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+
     if (!responsable) {
         Swal.fire({
             icon: 'warning', title: 'Responsable requerido',
@@ -1413,7 +1456,6 @@ const crearOrden = async () => {
             }
         }
     } catch (e) {
-        // Si falla la consulta de alertas, continuar igual
         console.warn('No se pudieron cargar alertas:', e);
     }
 

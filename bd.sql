@@ -412,3 +412,15 @@ INSERT INTO tipos_servicio (nombre, descripcion, intervalo_km, intervalo_dias) V
 ('Revision del Sistema Electrico', 'Luces, fusibles, alternador', 5000, 30),
 ('Alineacion y Balanceo', 'Alineacion de direccion y balanceo de ruedas', 5000, 30);
 "
+
+
+
+CREATE TABLE tipos_servicio_intervalo (
+    id                INT AUTO_INCREMENT PRIMARY KEY,
+    id_tipo_servicio  INT NOT NULL,
+    tipo_vehiculo     VARCHAR(50) NOT NULL,
+    intervalo_km      INT NOT NULL,
+    UNIQUE KEY uq_tipo_vehiculo (id_tipo_servicio, tipo_vehiculo),
+    FOREIGN KEY (id_tipo_servicio) REFERENCES tipos_servicio(id_tipo_servicio)
+);
+
