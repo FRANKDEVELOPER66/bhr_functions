@@ -39,6 +39,16 @@ class FichaController
                 return;
             }
 
+            // ── Motivo del taller ─────────────────────────────────────────
+            $motivoTaller = null;
+            if ($vehiculo['estado'] === 'Taller') {
+                if (OrdenesServicio::existeEnProceso($placa)) {
+                    $motivoTaller = 'Servicio';
+                } elseif (Reparaciones::contarEnProceso($placa) > 0) {
+                    $motivoTaller = 'Reparación';
+                }
+            }
+
             $urlBase = rtrim($_ENV['SFTP_PUBLIC_URL'] ?? '', '/');
             $vehiculo['foto_url']            = $vehiculo['foto_frente']     ? "{$urlBase}/{$vehiculo['foto_frente']}"     : null;
             $vehiculo['foto_lateral_url']    = $vehiculo['foto_lateral']    ? "{$urlBase}/{$vehiculo['foto_lateral']}"    : null;
@@ -47,13 +57,9 @@ class FichaController
             $vehiculo['cert_inventario_url'] = $vehiculo['cert_inventario'] ? "{$urlBase}/{$vehiculo['cert_inventario']}" : null;
             $vehiculo['cert_sicoin_url']     = $vehiculo['cert_sicoin']     ? "{$urlBase}/{$vehiculo['cert_sicoin']}"     : null;
 
-            // Órdenes de servicio
-            $ordenes = OrdenesServicio::traerPorPlaca($placa);
-
-            // Orden en proceso activa
+            $ordenes        = OrdenesServicio::traerPorPlaca($placa);
             $ordenEnProceso = OrdenesServicio::traerEnProceso($placa);
 
-            // Próximo servicio — 3 niveles de alerta
             $proximoServicio = OrdenesServicio::traerProximoServicio($placa);
             $alertaKm        = false;
             $alertaAmarilla  = false;
@@ -64,17 +70,14 @@ class FichaController
                 $diferencia = $kmProximo - $kmActual;
 
                 if ($diferencia <= 0) {
-                    $alertaKm = true;        // 🔴 Vencido
+                    $alertaKm = true;
                 } elseif ($diferencia <= 500) {
-                    $alertaAmarilla = true;  // 🟡 Por vencer
+                    $alertaAmarilla = true;
                 }
-                // 🟢 Verde — sin alerta, faltan más de 500 km
             }
 
-            // Reparaciones
             $reparaciones = Reparaciones::traerPorPlaca($placa);
 
-            // Seguros
             Seguros::actualizarEstadosVencidos($placa);
             $seguros = Seguros::traerPorPlaca($placa);
             foreach ($seguros as &$s) {
@@ -84,14 +87,13 @@ class FichaController
             }
             unset($s);
 
-            // Accidentes
             $accidentes = Accidentes::traerPorPlaca($placa);
             foreach ($accidentes as &$a) {
-                $a['foto_1_url']  = $a['archivo_foto_1']  ? "{$urlBase}/{$a['archivo_foto_1']}"  : null;
-                $a['foto_2_url']  = $a['archivo_foto_2']  ? "{$urlBase}/{$a['archivo_foto_2']}"  : null;
-                $a['foto_3_url']  = $a['archivo_foto_3']  ? "{$urlBase}/{$a['archivo_foto_3']}"  : null;
-                $a['foto_4_url']  = $a['archivo_foto_4']  ? "{$urlBase}/{$a['archivo_foto_4']}"  : null;
-                $a['informe_url'] = $a['archivo_informe'] ? "{$urlBase}/{$a['archivo_informe']}" : null;
+                $a['foto_1_url']       = $a['archivo_foto_1']  ? "{$urlBase}/{$a['archivo_foto_1']}"  : null;
+                $a['foto_2_url']       = $a['archivo_foto_2']  ? "{$urlBase}/{$a['archivo_foto_2']}"  : null;
+                $a['foto_3_url']       = $a['archivo_foto_3']  ? "{$urlBase}/{$a['archivo_foto_3']}"  : null;
+                $a['foto_4_url']       = $a['archivo_foto_4']  ? "{$urlBase}/{$a['archivo_foto_4']}"  : null;
+                $a['informe_url']      = $a['archivo_informe'] ? "{$urlBase}/{$a['archivo_informe']}" : null;
                 $a['costo_danos']      = $a['costo_estimado']    ?? null;
                 $a['costo_reparacion'] = $a['costo_real']        ?? null;
                 $a['no_expediente']    = $a['numero_expediente'] ?? null;
@@ -109,7 +111,8 @@ class FichaController
                 'accidentes'       => $accidentes,
                 'proximo_servicio' => $proximoServicio,
                 'alerta_km'        => $alertaKm,
-                'alerta_amarilla'  => $alertaAmarilla
+                'alerta_amarilla'  => $alertaAmarilla,
+                'motivo_taller'    => $motivoTaller,
             ], JSON_UNESCAPED_UNICODE);
         } catch (Exception $e) {
             http_response_code(500);

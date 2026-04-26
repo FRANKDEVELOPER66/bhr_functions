@@ -63,6 +63,13 @@ const SVG_TIPOS = {
     'Todos': () => `<img src="${BASE}/images/tipos/todos.png"  style="width:100%;height:100%;object-fit:cover;display:block;">`,
 };
 
+const fmtFecha = (fecha) => {
+    if (!fecha) return '—';
+    const [y, m, d] = fecha.split('-');
+    if (!y || !m || !d) return fecha;
+    return `${d}/${m}/${y}`;
+};
+
 // ── RENDER PANTALLA TIPOS ─────────────────────────────────────────────────────
 const renderTipos = (vehiculos) => {
     const grid = document.getElementById('tiposGrid');
@@ -1067,15 +1074,21 @@ const abrirFicha = async (placa) => {
         _set('fd-color', v.color);
         _set('fd-tipo', v.tipo);
         _set('fd-km', Number(v.km_actuales).toLocaleString() + ' km');
-        _set('fd-ingreso', v.fecha_ingreso);
+        _set('fd-ingreso', fmtFecha(v.fecha_ingreso));
         _set('fd-obs', v.observaciones || '—');
         _set('fd-unidad', v.unidad_nombre || '—');
-        _set('fd-destacamento', v.destacamento_nombre ? `${v.destacamento_nombre} (${v.destacamento_depto})` : '—');
+        _set('fd-destacamento', v.destacamento_nombre
+            ? `${v.destacamento_nombre} (${v.destacamento_depto})` : '—');
 
+        // ── Estado con motivo taller ──────────────────────────────────
         const estadoEl = document.getElementById('fd-estado');
         if (estadoEl) {
             const colores = { Alta: '#4caf7d', Baja: '#e05252', Taller: '#e8b84b' };
-            estadoEl.textContent = v.estado;
+            let estadoTexto = v.estado;
+            if (v.estado === 'Taller' && d.motivo_taller) {
+                estadoTexto = `Taller — Por ${d.motivo_taller}`;
+            }
+            estadoEl.textContent = estadoTexto;
             estadoEl.style.color = colores[v.estado] || 'inherit';
         }
 
@@ -1090,7 +1103,6 @@ const abrirFicha = async (placa) => {
             ordenKmEl.title = '';
             ordenKmEl.dataset.kmMinimo = v.km_actuales;
 
-            // ── Validar al salir del campo ────────────────────────────
             ordenKmEl.onblur = () => {
                 const kmIngresado = parseInt(ordenKmEl.value || '0');
                 const kmMinimo = parseInt(ordenKmEl.dataset.kmMinimo || '0');
@@ -1098,41 +1110,31 @@ const abrirFicha = async (placa) => {
 
                 if (!kmIngresado || kmIngresado < kmMinimo) {
                     Swal.fire({
-                        icon: 'warning',
-                        title: 'KM inválido',
+                        icon: 'warning', title: 'KM inválido',
                         html: `El kilometraje ingresado (<strong>${kmIngresado.toLocaleString()} km</strong>) 
-                   no puede ser menor al registrado 
-                   (<strong>${kmMinimo.toLocaleString()} km</strong>).`,
-                        confirmButtonText: 'Corregir',
-                        confirmButtonColor: '#e8b84b',
+                               no puede ser menor al registrado 
+                               (<strong>${kmMinimo.toLocaleString()} km</strong>).`,
+                        confirmButtonText: 'Corregir', confirmButtonColor: '#e8b84b',
                         background: '#1a1d27', color: '#e8eaf0',
                         customClass: { container: 'swal-over-modal' }
-                    }).then(() => {
-                        ordenKmEl.value = kmMinimo;
-                        ordenKmEl.focus();
-                    });
+                    }).then(() => { ordenKmEl.value = kmMinimo; ordenKmEl.focus(); });
                     return;
                 }
 
                 if (diferencia > 0 && diferencia < 1000) {
                     Swal.fire({
-                        icon: 'warning',
-                        title: 'Kilometraje Inválido',
+                        icon: 'warning', title: 'Kilometraje Inválido',
                         html: `La diferencia entre el KM ingresado 
-                   (<strong>${kmIngresado.toLocaleString()} km</strong>) y el registrado 
-                   (<strong>${kmMinimo.toLocaleString()} km</strong>) es de solo 
-                   <strong>${diferencia.toLocaleString()} km</strong>.<br><br>
-                   <span style="font-size:.82rem;color:#7c8398;">
-                       Se esperaría un mínimo de 1,000 km entre servicios.
-                   </span>`,
-                        confirmButtonText: 'Corregir',
-                        confirmButtonColor: '#e8b84b',
+                               (<strong>${kmIngresado.toLocaleString()} km</strong>) y el registrado 
+                               (<strong>${kmMinimo.toLocaleString()} km</strong>) es de solo 
+                               <strong>${diferencia.toLocaleString()} km</strong>.<br><br>
+                               <span style="font-size:.82rem;color:#7c8398;">
+                                   Se esperaría un mínimo de 1,000 km entre servicios.
+                               </span>`,
+                        confirmButtonText: 'Corregir', confirmButtonColor: '#e8b84b',
                         background: '#1a1d27', color: '#e8eaf0',
                         customClass: { container: 'swal-over-modal' }
-                    }).then(() => {
-                        ordenKmEl.value = kmMinimo;
-                        ordenKmEl.focus();
-                    });
+                    }).then(() => { ordenKmEl.value = kmMinimo; ordenKmEl.focus(); });
                 }
             };
         }
@@ -1173,7 +1175,7 @@ const abrirFicha = async (placa) => {
                 if (fichaProximoEl) {
                     fichaProximoEl.style.display = 'flex';
                     let texto = `${ps.tipo_nombre} a los ${Number(ps.km_proximo).toLocaleString()} km`;
-                    if (ps.fecha_proximo) texto += ` · Fecha límite: ${ps.fecha_proximo}`;
+                    if (ps.fecha_proximo) texto += ` · Fecha límite: ${fmtFecha(ps.fecha_proximo)}`;
                     const textoEl = document.getElementById('fichaProximoTexto');
                     if (textoEl) textoEl.textContent = texto;
                 }
@@ -1203,13 +1205,12 @@ const abrirFicha = async (placa) => {
             _ordenIdRespaldo = parseInt(d.orden_en_proceso.id_orden);
             const textoEl = document.getElementById('ordenEnProcesoTexto');
             if (textoEl) textoEl.innerHTML =
-                `Abierta el ${d.orden_en_proceso.fecha_ingreso} · 
+                `Abierta el ${fmtFecha(d.orden_en_proceso.fecha_ingreso)} · 
                 ${Number(d.orden_en_proceso.km_al_ingreso).toLocaleString()} km · 
                 ${d.orden_en_proceso.total_items || 0} servicio(s)`;
             if (ordenAlerta) ordenAlerta.style.display = 'flex';
             if (btnNuevaOrden) btnNuevaOrden.style.display = 'none';
 
-            // ── Ir directo al tab servicios cuando hay orden activa ───
             switchTab(
                 document.querySelector('.ficha-tab[data-tab="servicios"]'),
                 'servicios'
@@ -1502,7 +1503,7 @@ const _mostrarPanelOrden = (orden) => {
     const info = document.getElementById('ordenHeaderInfo');
     panel.style.display = 'block';
     info.innerHTML = `
-        <i class="bi bi-calendar3"></i> ${orden.fecha_ingreso}
+        <i class="bi bi-calendar3"></i> ${fmtFecha(orden.fecha_ingreso)}
         &nbsp;·&nbsp; <i class="bi bi-speedometer"></i> ${Number(orden.km_al_ingreso).toLocaleString()} km
         ${orden.responsable ? `&nbsp;·&nbsp; <i class="bi bi-person"></i> ${orden.responsable}` : ''}
         &nbsp;·&nbsp; <span style="color:var(--accent);">
@@ -1867,7 +1868,7 @@ const renderTablaServicios = (ordenes) => {
     wrap.innerHTML = ordenesCompletadas.map(o => {
         return `
         <div class="svc-row" style="grid-template-columns:1fr 1fr 1fr 1fr auto;">
-            <div><div class="svc-label">Fecha ingreso</div><div class="svc-val">${o.fecha_ingreso}</div></div>
+            <div><div class="svc-label">Fecha ingreso</div><div class="svc-val">${fmtFecha(o.fecha_ingreso)}</div></div>
             <div><div class="svc-label">KM</div><div class="svc-val">${Number(o.km_al_ingreso).toLocaleString()} km</div></div>
             <div><div class="svc-label">Servicios</div><div class="svc-val">${o.total_items || 0} servicio(s)</div></div>
             <div><div class="svc-label">Estado</div><div class="svc-val">
@@ -2061,7 +2062,7 @@ const verOrden = async (idOrden) => {
         await Swal.fire({
             title: `<span style="font-family:Rajdhani,sans-serif;font-size:1.1rem;">
                 <i class="bi bi-tools" style="color:var(--accent);"></i>
-                Orden de Servicio — ${o.fecha_ingreso}
+                Orden de Servicio — ${fmtFecha(o.fecha_ingreso)}
             </span>`,
             html: `
             <div style="text-align:left;font-size:.82rem;margin-bottom:1rem;color:#7c8398;">
@@ -2262,7 +2263,7 @@ const verDetalleReparacion = (r) => {
                     ${r.estado}
                 </span>
                 <span style="color:#7c8398;font-size:.78rem;">
-                    <i class="bi bi-calendar3"></i> ${r.fecha_inicio}
+                    <i class="bi bi-calendar3"></i> ${fmtFecha(r.fecha_inicio)}
                     ${r.fecha_fin ? ' → ' + r.fecha_fin : ''}
                 </span>
             </div>
@@ -2323,8 +2324,8 @@ const renderTablaReparaciones = (reparaciones) => {
                     ${r.estado}
                 </div>
             </div>
-            <div><div class="svc-label">Inicio</div><div class="svc-val">${r.fecha_inicio}</div></div>
-            <div><div class="svc-label">Fin</div><div class="svc-val">${r.fecha_fin || '—'}</div></div>
+            <div><div class="svc-label">Inicio</div><div class="svc-val">${fmtFecha(r.fecha_inicio)}</div></div>
+            <div><div class="svc-label">Fin</div><div class="svc-val">${fmtFecha(r.fecha_fin)}</div></div>
             <div><div class="svc-label">Costo</div>
                 <div class="svc-val">${r.costo ? 'Q ' + Number(r.costo).toLocaleString() : '—'}</div>
             </div>
@@ -2548,7 +2549,7 @@ const renderTablaSeguros = (seguros) => {
         <div class="svc-row" style="grid-template-columns:1.5fr 1fr 1fr 1fr 1fr auto;">
             <div><div class="svc-label">Póliza</div><div class="svc-val" style="font-weight:600;">${s.numero_poliza}</div></div>
             <div><div class="svc-label">Aseguradora</div><div class="svc-val">${s.aseguradora}</div></div>
-            <div><div class="svc-label">Vigencia</div><div class="svc-val">${s.fecha_inicio} → ${s.fecha_vencimiento || '—'}</div></div>
+            <div><div class="svc-label">Vigencia</div><div class="svc-val">${fmtFecha(s.fecha_inicio)} → ${fmtFecha(s.fecha_vencimiento)}</div></div>
             <div><div class="svc-label">Estado</div><div class="svc-val">${seguroEstadoBadge(s.fecha_vencimiento)}</div></div>
             <div><div class="svc-label">Costo Anual</div><div class="svc-val">${s.prima_anual ? 'Q ' + Number(s.prima_anual).toLocaleString() : '—'}</div></div>
             <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
@@ -2804,7 +2805,7 @@ const renderTablaAccidentes = (accidentes) => {
     wrap.innerHTML = resumenHTML + accidentes.map(a => `
         <div class="svc-row" style="grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;">
             <div><div class="svc-label">Tipo</div><div class="svc-val">${a.tipo_accidente}</div></div>
-            <div><div class="svc-label">Fecha</div><div class="svc-val">${a.fecha_accidente}</div></div>
+            <div><div class="svc-label">Fecha</div><div class="svc-val">${fmtFecha(a.fecha_accidente)}</div></div>
             <div><div class="svc-label">Estado</div><div class="svc-val" style="color:${estadoColor(a.estado)}">${a.estado}</div></div>
             <div><div class="svc-label">Costo Daños</div><div class="svc-val">${a.costo_danos ? 'Q ' + Number(a.costo_danos).toLocaleString() : '—'}</div></div>
             <div><div class="svc-label">Costo Reparación</div><div class="svc-val">${a.costo_reparacion ? 'Q ' + Number(a.costo_reparacion).toLocaleString() : '—'}</div></div>
@@ -2982,7 +2983,7 @@ const verAccidente = (id) => {
                     ${a.estado}
                 </span>
                 <span style="color:#888;font-size:.78rem;">
-                    <i class="bi bi-calendar3"></i> ${a.fecha_accidente}
+                    <i class="bi bi-calendar3"></i> ${fmtFecha(a.fecha_accidente)}
                 </span>
                 ${a.no_expediente
                 ? `<span style="color:#888;font-size:.78rem;">
@@ -3323,7 +3324,7 @@ const renderTablaChequeos = (chequeos) => {
         const estadoBorder = c.estado === 'Completado' ? 'rgba(76,175,125,.3)' : 'rgba(232,184,75,.3)';
         return `
         <div class="svc-row" style="grid-template-columns:1fr 1fr 1fr 1fr auto;">
-            <div><div class="svc-label">Fecha</div><div class="svc-val">${c.fecha_chequeo}</div></div>
+            <div><div class="svc-label">Fecha</div><div class="svc-val">${fmtFecha(c.fecha_chequeo)}</div></div>
             <div><div class="svc-label">KM</div><div class="svc-val">${Number(c.km_al_chequeo).toLocaleString()} km</div></div>
             <div><div class="svc-label">Realizado por</div><div class="svc-val">${c.realizado_por || '—'}</div></div>
             <div><div class="svc-label">Estado</div><div class="svc-val">

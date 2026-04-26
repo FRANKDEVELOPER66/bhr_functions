@@ -1791,7 +1791,7 @@
                                     <i class="bi bi-file-earmark-pdf-fill me-1"></i> Cert. Inventario
                                 </a>
                                 <a id="fichaCertSicoinBtn" href="#" target="_blank" style="display:none;padding:.6rem 1rem;border-radius:8px;text-align:center;background:rgba(76,175,125,.15);border:1px solid rgba(76,175,125,.3);color:var(--success);font-size:.78rem;font-weight:600;text-decoration:none;">
-                                    <i class="bi bi-file-earmark-pdf-fill me-1"></i> Cert. SICOIN
+                                    <i class="bi bi-file-earmark-pdf-fill me-1"></i> Cert. SICOIN WEB
                                 </a>
                                 <button id="btnIrAChequeo" onclick="abrirModalChequeo()" style="padding:.75rem;border-radius:8px;background:linear-gradient(135deg,#6f42c1,#5a2d9e);border:none;color:#fff;font-size:.85rem;font-weight:700;cursor:pointer;font-family:'Rajdhani',sans-serif;display:flex;align-items:center;justify-content:center;gap:.5rem;box-shadow:0 4px 15px rgba(111,66,193,.3);">
                                     <i class="bi bi-clipboard2-check-fill"></i> Realizar Chequeo Mensual
