@@ -31,6 +31,6 @@ class TiposServicio extends ActiveRecord
 
     public static function traerTodos(): array
     {
-        return self::fetchArray("SELECT * FROM tipos_servicio ORDER BY nombre");
+        return self::fetchArray("SELECT * FROM tipos_servicio ORDER BY id_tipo_servicio");
     }
 }
