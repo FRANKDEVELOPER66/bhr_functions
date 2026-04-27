@@ -418,8 +418,13 @@ class FichaController
             ]);
             $orden->actualizar();
 
-            // Cambiar estado del vehículo a Alta
-            Vehiculos::consultarSQL("UPDATE vehiculos SET estado = 'Alta' WHERE placa = '{$placa}'");
+            // Cambiar estado del vehículo solo si no hay reparaciones en proceso
+            $enProcesoRep   = Reparaciones::contarEnProceso($placa);
+            $ordenEnProceso = OrdenesServicio::existeEnProceso($placa);
+
+            if ($enProcesoRep === 0 && !$ordenEnProceso) {
+                Vehiculos::consultarSQL("UPDATE vehiculos SET estado = 'Alta' WHERE placa = '{$placa}'");
+            }
 
             echo json_encode([
                 'codigo'  => 1,
@@ -555,16 +560,17 @@ class FichaController
             return;
         }
 
-        $fechaInicio       = $_POST['fecha_inicio']        ?? '';
-        $fechaFin          = !empty($_POST['fecha_fin'])    ? $_POST['fecha_fin'] : null;
-        $fechaIndefinida   = (int)($_POST['fecha_fin_indefinida'] ?? 0);
-        $esExterna         = (int)($_POST['es_externa']     ?? 0);
-        $destino           = htmlspecialchars($_POST['destino_externo'] ?? '');
-        $costo             = !empty($_POST['costo'])         ? $_POST['costo']        : null;
-        $proveedor         = htmlspecialchars($_POST['proveedor']       ?? '');
-        $responsable       = htmlspecialchars($_POST['responsable']     ?? '');
-        $observaciones     = htmlspecialchars($_POST['observaciones']   ?? '');
-        // ── Determinar estado automáticamente ────────────────────────────────────
+        $fechaInicio     = $_POST['fecha_inicio']             ?? '';
+        $fechaFin        = !empty($_POST['fecha_fin'])         ? $_POST['fecha_fin'] : null;
+        $fechaIndefinida = (int)($_POST['fecha_fin_indefinida'] ?? 0);
+        $esExterna       = (int)($_POST['es_externa']          ?? 0);
+        $destino         = htmlspecialchars($_POST['destino_externo'] ?? '');
+        $costo           = !empty($_POST['costo'])             ? $_POST['costo']     : null;
+        $proveedor       = htmlspecialchars($_POST['proveedor']       ?? '');
+        $responsable     = htmlspecialchars($_POST['responsable']     ?? '');
+        $observaciones   = htmlspecialchars($_POST['observaciones']   ?? '');
+
+        // Determinar estado automáticamente
         if ($esExterna) {
             $estado = 'Externa';
         } elseif (!$fechaIndefinida && $fechaFin && $fechaFin <= date('Y-m-d')) {
@@ -572,7 +578,8 @@ class FichaController
         } else {
             $estado = 'En proceso';
         }
-        $itemsJson         = $_POST['items']                ?? '[]';
+
+        $itemsJson = $_POST['items'] ?? '[]';
         if (!$fechaInicio) {
             echo json_encode(['codigo' => 0, 'mensaje' => 'Fecha de inicio requerida'], JSON_UNESCAPED_UNICODE);
             return;
@@ -586,31 +593,19 @@ class FichaController
 
         try {
             $reparacion = new Reparaciones([
-                'placa'               => $placa,
-                'fecha_inicio'        => $fechaInicio,
-                'fecha_fin'           => $fechaFin,
+                'placa'                => $placa,
+                'fecha_inicio'         => $fechaInicio,
+                'fecha_fin'            => $fechaFin,
                 'fecha_fin_indefinida' => $fechaIndefinida,
-                'es_externa'          => $esExterna,
-                'destino_externo'     => $destino,
-                'costo'               => $costo,
-                'proveedor'           => $proveedor,
-                'responsable'         => $responsable,
-                'observaciones'       => $observaciones,
-                'estado'              => $estado,
+                'es_externa'           => $esExterna,
+                'destino_externo'      => $destino,
+                'costo'                => $costo,
+                'proveedor'            => $proveedor,
+                'responsable'          => $responsable,
+                'observaciones'        => $observaciones,
+                'estado'               => $estado,
             ]);
-            error_log("objeto reparacion es_externa: " . var_export($reparacion->es_externa, true));
-            error_log("objeto reparacion fecha_fin_indefinida: " . var_export($reparacion->fecha_fin_indefinida, true));
-            error_log("objeto reparacion estado: " . var_export($reparacion->estado, true));
             $reparacion->guardar();
-            // ── LOG TEMPORAL ──────────────────────────────────────────────────────────────
-            $verificar = Reparaciones::fetchFirst(
-                "SELECT es_externa, fecha_fin_indefinida, estado FROM reparaciones WHERE placa = ? ORDER BY id_reparacion DESC LIMIT 1",
-                [$placa]
-            );
-            error_log("BD después de guardar es_externa: " . var_export($verificar['es_externa'], true));
-            error_log("BD después de guardar fecha_fin_indefinida: " . var_export($verificar['fecha_fin_indefinida'], true));
-            error_log("BD después de guardar estado: " . var_export($verificar['estado'], true));
-            // ─────────────────────────────────────────────────────────────────────────────
 
             // Obtener el id insertado
             $idReparacion = (int)Reparaciones::fetchFirst(
@@ -634,19 +629,19 @@ class FichaController
                 $ri->guardar();
             }
 
-            // Actualizar estado vehículo
-            $estadoVehiculo = $esExterna ? 'Baja' : 'Taller';
-            Vehiculos::consultarSQL(
-                "UPDATE vehiculos SET estado = '{$estadoVehiculo}' WHERE placa = '{$placa}'"
-            );
-
-            // Si es externa, actualizar también el motivo en observaciones del vehículo
-            if ($esExterna && $destino) {
-                $destinoEsc = addslashes($destino);
-                Vehiculos::consultarSQL(
-                    "UPDATE vehiculos SET estado = 'Baja' WHERE placa = '{$placa}'"
-                );
+            // Actualizar estado vehículo según estado de la reparación
+            if ($esExterna) {
+                $estadoVehiculo = 'Baja';
+            } elseif ($estado === 'En proceso') {
+                $estadoVehiculo = 'Taller';
+            } else {
+                // Reparación finalizada — verificar si hay otras pendientes
+                $enProceso      = Reparaciones::contarEnProceso($placa);
+                $ordenEnProceso = OrdenesServicio::existeEnProceso($placa);
+                $estadoVehiculo = ($enProceso > 0 || $ordenEnProceso) ? 'Taller' : 'Alta';
             }
+
+            Vehiculos::consultarSQL("UPDATE vehiculos SET estado = '{$estadoVehiculo}' WHERE placa = '{$placa}'");
 
             echo json_encode(['codigo' => 1, 'mensaje' => 'Reparación registrada exitosamente'], JSON_UNESCAPED_UNICODE);
         } catch (Exception $e) {
