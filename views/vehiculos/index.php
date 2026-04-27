@@ -1923,6 +1923,16 @@
                             </div>
                         </div>
                         <div id="itemsOrdenWrap" style="margin-bottom:1.25rem;"></div>
+                        <!-- Botón cargar últimos servicios -->
+                        <div id="btnCargarUltimosWrap" style="margin-bottom:.75rem;">
+                            <button onclick="cargarUltimosServicios()"
+                                style="background:rgba(111,66,193,.15);border:1px solid rgba(111,66,193,.3);
+                                color:#a78bfa;padding:.6rem 1.25rem;border-radius:8px;
+                                font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.9rem;
+                                cursor:pointer;display:flex;align-items:center;gap:.5rem;">
+                                <i class="bi bi-lightning-charge-fill"></i> Cargar últimos servicios
+                            </button>
+                        </div>
                         <div style="background:var(--dark-2);border:1px solid var(--border);border-radius:10px;padding:1rem;">
                             <div style="font-size:.78rem;color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:.75rem;">
                                 <i class="bi bi-plus-circle"></i> Agregar servicio a la orden

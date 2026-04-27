@@ -2065,6 +2065,103 @@ const verHistorialServicios = async () => {
     }
 };
 
+// ── CARGAR ÚLTIMOS SERVICIOS ──────────────────────────────────────────────────
+const cargarUltimosServicios = async () => {
+    if (!ordenActualId) return;
+
+    try {
+        mostrarLoader('Cargando últimos servicios...');
+
+        // Traer la última orden completada
+        const r = await fetch(`${BASE}/API/vehiculos/orden/ultima-completada?placa=${fichaPlacaActual}`);
+        const d = await r.json();
+
+        if (d.codigo !== 1 || !d.items?.length) {
+            Swal.fire({
+                icon: 'info', title: 'Sin historial',
+                text: 'No hay una orden completada anterior para cargar los servicios.',
+                background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b',
+                customClass: { container: 'swal-over-modal' }
+            });
+            return;
+        }
+
+        // Obtener items ya en la orden actual para no duplicar
+        const rOrden = await fetch(`${BASE}/API/vehiculos/orden/obtener?id=${ordenActualId}`);
+        const dOrden = await rOrden.json();
+        const idsActuales = new Set(
+            (dOrden.datos?.items || []).map(i => parseInt(i.id_tipo_servicio))
+        );
+
+        const itemsNuevos = d.items.filter(i => !idsActuales.has(parseInt(i.id_tipo_servicio)));
+
+        if (!itemsNuevos.length) {
+            Swal.fire({
+                icon: 'info', title: 'Ya están cargados',
+                text: 'Todos los servicios de la última orden ya están en esta orden.',
+                background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b',
+                customClass: { container: 'swal-over-modal' }
+            });
+            return;
+        }
+
+        // Confirmar antes de agregar
+        const conf = await Swal.fire({
+            icon: 'question',
+            title: 'Cargar últimos servicios',
+            html: `Se agregarán <strong style="color:var(--accent);">${itemsNuevos.length} servicio(s)</strong> 
+                   de la última orden completada:<br><br>
+                   <div style="text-align:left;max-height:200px;overflow-y:auto;">
+                   ${itemsNuevos.map(i => `
+                       <div style="background:var(--dark-3);border:1px solid var(--border);
+                           border-radius:6px;padding:.4rem .75rem;margin-bottom:.3rem;
+                           font-size:.82rem;color:var(--text-main);">
+                           <i class="bi bi-check-circle" style="color:var(--accent);"></i>
+                           ${i.tipo_nombre}
+                       </div>`).join('')}
+                   </div>`,
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-lightning-charge-fill"></i> Sí, cargar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#6f42c1',
+            cancelButtonColor: '#555',
+            background: '#1a1d27', color: '#e8eaf0',
+            width: '480px',
+            customClass: { container: 'swal-over-modal' }
+        });
+
+        if (!conf.isConfirmed) return;
+
+        // Agregar cada item
+        let agregados = 0;
+        for (const item of itemsNuevos) {
+            const body = new FormData();
+            body.append('id_orden', ordenActualId);
+            body.append('id_tipo_servicio', item.id_tipo_servicio);
+            const rItem = await fetch(`${BASE}/API/vehiculos/orden/agregar-item`, { method: 'POST', body });
+            const dItem = await rItem.json();
+            if (dItem.codigo === 1) agregados++;
+        }
+
+        // Recargar panel
+        const rOrdenActual = await fetch(`${BASE}/API/vehiculos/orden/obtener?id=${ordenActualId}`);
+        const dOrdenActual = await rOrdenActual.json();
+        if (dOrdenActual.codigo === 1) _mostrarPanelOrden(dOrdenActual.datos);
+
+        Swal.fire({
+            position: 'top-end', icon: 'success',
+            title: `${agregados} servicio(s) cargados`,
+            showConfirmButton: false, timer: 2000, timerProgressBar: true,
+            background: '#1a1d27', color: '#e8eaf0'
+        });
+
+    } catch (err) {
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
+    } finally {
+        ocultarLoader();
+    }
+};
+
 
 
 // ── VER ORDEN ─────────────────────────────────────────
@@ -4401,6 +4498,7 @@ window.completarOrden = completarOrden;
 window.confirmarEliminarOrden = confirmarEliminarOrden;
 window.abrirOrdenEnProceso = abrirOrdenEnProceso;
 window.verOrden = verOrden;
+window.cargarUltimosServicios = cargarUltimosServicios;
 
 // HISTORIALES
 window.verHistorialServicios = verHistorialServicios;

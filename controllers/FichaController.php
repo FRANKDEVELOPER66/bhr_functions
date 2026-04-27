@@ -564,16 +564,15 @@ class FichaController
         $proveedor         = htmlspecialchars($_POST['proveedor']       ?? '');
         $responsable       = htmlspecialchars($_POST['responsable']     ?? '');
         $observaciones     = htmlspecialchars($_POST['observaciones']   ?? '');
-        $estado            = htmlspecialchars($_POST['estado']          ?? 'En proceso');
+        // ── Determinar estado automáticamente ────────────────────────────────────
+        if ($esExterna) {
+            $estado = 'Externa';
+        } elseif (!$fechaIndefinida && $fechaFin && $fechaFin <= date('Y-m-d')) {
+            $estado = 'Finalizada';
+        } else {
+            $estado = 'En proceso';
+        }
         $itemsJson         = $_POST['items']                ?? '[]';
-        // ── LOGS TEMPORALES ───────────────────────────────────────────────────────────
-        error_log("=== guardarReparacionAPI ===");
-        error_log("es_externa recibido: " . var_export($_POST['es_externa'] ?? 'NO VIENE', true));
-        error_log("fecha_fin_indefinida: " . var_export($_POST['fecha_fin_indefinida'] ?? 'NO VIENE', true));
-        error_log("estado recibido: " . var_export($_POST['estado'] ?? 'NO VIENE', true));
-        error_log("fecha_fin recibido: " . var_export($_POST['fecha_fin'] ?? 'NO VIENE', true));
-        // ─────────────────────────────────────────────────────────────────────────────
-
         if (!$fechaInicio) {
             echo json_encode(['codigo' => 0, 'mensaje' => 'Fecha de inicio requerida'], JSON_UNESCAPED_UNICODE);
             return;
@@ -740,7 +739,11 @@ class FichaController
                 'proveedor'            => htmlspecialchars($_POST['proveedor']     ?? ''),
                 'responsable'          => htmlspecialchars($_POST['responsable']   ?? ''),
                 'observaciones'        => htmlspecialchars($_POST['observaciones'] ?? ''),
-                'estado'               => htmlspecialchars($_POST['estado']        ?? $reparacion->estado),
+                'estado' => $esExterna
+                    ? 'Externa'
+                    : (!$fechaIndefinida && !empty($_POST['fecha_fin']) && $_POST['fecha_fin'] <= date('Y-m-d')
+                        ? 'Finalizada'
+                        : 'En proceso'),
             ]);
             $reparacion->actualizar();
 
@@ -1065,6 +1068,53 @@ class FichaController
                 'mensaje' => 'Error al guardar categoría',
                 'detalle' => $e->getMessage()
             ], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    public static function ultimaOrdenCompletadaAPI(Router $router)
+    {
+        isAuthApi();
+        header('Content-Type: application/json; charset=UTF-8');
+
+        $placa = strtoupper(trim($_GET['placa'] ?? ''));
+        if (!$placa) {
+            http_response_code(400);
+            echo json_encode(['codigo' => 0, 'mensaje' => 'Placa requerida'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        try {
+            $sql = "SELECT 
+                    i.id_tipo_servicio,
+                    ts.nombre AS tipo_nombre
+                FROM ordenes_servicio o
+                JOIN orden_servicio_items i ON i.id_orden = o.id_orden
+                JOIN tipos_servicio ts ON ts.id_tipo_servicio = i.id_tipo_servicio
+                WHERE o.placa = ?
+                  AND o.estado = 'Completado'
+                  AND i.resultado = 'Realizado'
+                  AND o.id_orden = (
+                      SELECT MAX(o2.id_orden)
+                      FROM ordenes_servicio o2
+                      WHERE o2.placa = ?
+                        AND o2.estado = 'Completado'
+                  )
+                ORDER BY ts.nombre ASC";
+
+            $items = OrdenesServicio::fetchArray($sql, [$placa, $placa]);
+
+            if (!$items) {
+                echo json_encode(['codigo' => 0, 'mensaje' => 'Sin historial'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            echo json_encode([
+                'codigo' => 1,
+                'items'  => $items
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['codigo' => 0, 'mensaje' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
         }
     }
 }
