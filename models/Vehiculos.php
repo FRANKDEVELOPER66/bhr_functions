@@ -76,37 +76,38 @@ class Vehiculos extends ActiveRecord
     public static function traerVehiculos()
     {
         $sql = "SELECT 
-                v.*,
-                u.nombre           AS unidad_nombre,
-                d.nombre           AS destacamento_nombre,
-                d.departamento     AS destacamento_depto,
-                COUNT(DISTINCT o.id_orden)      AS total_servicios,
-                COUNT(DISTINCT r.id_reparacion) AS total_reparaciones,
-                MAX(o.fecha_ingreso)             AS ultimo_servicio,
-                CASE
-                    WHEN seg.placa IS NULL        THEN 'ninguno'
-                    WHEN seg.max_venc < CURDATE() THEN 'vencido'
-                    ELSE 'vigente'
-                END AS seguro_estado
-            FROM vehiculos v
-            LEFT JOIN unidades        u   ON v.id_unidad       = u.id_unidad
-            LEFT JOIN destacamentos   d   ON u.id_destacamento = d.id_destacamento
-            LEFT JOIN ordenes_servicio o  ON v.placa = o.placa
-            LEFT JOIN reparaciones     r  ON v.placa = r.placa
-            LEFT JOIN (
-                SELECT placa, MAX(fecha_vencimiento) AS max_venc
-                FROM seguros
-                WHERE estado = 'Vigente'
-                GROUP BY placa
-            ) seg ON v.placa = seg.placa
-            GROUP BY 
-                v.placa, v.numero_serie, v.marca, v.modelo, v.anio,
-                v.color, v.tipo, v.km_actuales, v.estado, v.fecha_ingreso,
-                v.observaciones, v.foto_frente, v.foto_lateral, v.foto_trasera,
-                v.tarjeta_pdf, v.cert_inventario, v.cert_sicoin, v.id_unidad,
-                u.nombre, d.nombre, d.departamento,
-                seg.placa, seg.max_venc
-            ORDER BY v.marca, v.modelo";
+            v.*,
+            u.nombre           AS unidad_nombre,
+            d.nombre           AS destacamento_nombre,
+            d.departamento     AS destacamento_depto,
+            COUNT(DISTINCT o.id_orden)      AS total_servicios,
+            COUNT(DISTINCT r.id_reparacion) AS total_reparaciones,
+            MAX(o.fecha_ingreso)             AS ultimo_servicio,
+            CASE
+                WHEN seg.placa IS NULL        THEN 'ninguno'
+                WHEN seg.max_venc < CURDATE() THEN 'vencido'
+                ELSE 'vigente'
+            END AS seguro_estado
+        FROM vehiculos v
+        LEFT JOIN unidades        u   ON v.id_unidad       = u.id_unidad
+        LEFT JOIN destacamentos   d   ON u.id_destacamento = d.id_destacamento
+        LEFT JOIN ordenes_servicio o  ON v.placa = o.placa
+        LEFT JOIN reparaciones     r  ON v.placa = r.placa
+        LEFT JOIN (
+            SELECT placa, MAX(fecha_vencimiento) AS max_venc
+            FROM seguros
+            WHERE estado = 'Vigente'
+            GROUP BY placa
+        ) seg ON v.placa = seg.placa
+        WHERE v.situacion = 'activo'
+        GROUP BY 
+            v.placa, v.numero_serie, v.marca, v.modelo, v.anio,
+            v.color, v.tipo, v.km_actuales, v.estado, v.fecha_ingreso,
+            v.observaciones, v.foto_frente, v.foto_lateral, v.foto_trasera,
+            v.tarjeta_pdf, v.cert_inventario, v.cert_sicoin, v.id_unidad,
+            u.nombre, d.nombre, d.departamento,
+            seg.placa, seg.max_venc
+        ORDER BY v.marca, v.modelo";
 
         return self::fetchArray($sql);
     }

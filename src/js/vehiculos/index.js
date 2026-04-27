@@ -763,10 +763,17 @@ const modificar = async () => {
 const eliminar = async (e) => {
     const placa = e.currentTarget.dataset.placa;
     const confirmacion = await Swal.fire({
-        icon: 'warning', title: '¿Eliminar vehículo?',
-        html: `Se eliminará el vehículo con placa <strong>${placa}</strong> y sus archivos.<br>Esta acción no se puede deshacer.`,
-        showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#e05252', cancelButtonColor: '#3a7bd5',
+        icon: 'warning',
+        title: '¿Dar de baja el vehículo?',
+        html: `El vehículo con catálogo <strong>${placa}</strong> será dado de baja.<br><br>
+               <span style="font-size:.82rem;color:#7c8398;">
+                   El historial de servicios, reparaciones y accidentes se conservará.
+               </span>`,
+        showCancelButton: true,
+        confirmButtonText: 'Sí, dar de baja',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#e05252',
+        cancelButtonColor: '#3a7bd5',
         background: '#1a1d27', color: '#e8eaf0'
     });
     if (!confirmacion.isConfirmed) return;
@@ -779,7 +786,7 @@ const eliminar = async (e) => {
         Toast.fire({ icon: data.codigo == 1 ? 'success' : 'error', title: data.mensaje });
     } catch (error) {
         console.error(error);
-        Toast.fire({ icon: 'error', title: 'Error de conexión al eliminar' });
+        Toast.fire({ icon: 'error', title: 'Error de conexión' });
     }
 };
 

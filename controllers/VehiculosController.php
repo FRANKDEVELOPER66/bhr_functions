@@ -338,20 +338,22 @@ class VehiculosController
                 return;
             }
 
-            // Eliminar todos los archivos del SFTP
-            if ($vehiculo->foto_frente)    Vehiculos::eliminarArchivoSFTP('fotos',           $vehiculo->foto_frente);
-            if ($vehiculo->foto_lateral)   Vehiculos::eliminarArchivoSFTP('fotos',           $vehiculo->foto_lateral);
-            if ($vehiculo->foto_trasera)   Vehiculos::eliminarArchivoSFTP('fotos',           $vehiculo->foto_trasera);
-            if ($vehiculo->tarjeta_pdf)    Vehiculos::eliminarArchivoSFTP('tarjetas',        $vehiculo->tarjeta_pdf);
-            if ($vehiculo->cert_inventario) Vehiculos::eliminarArchivoSFTP('certificaciones', $vehiculo->cert_inventario);
-            if ($vehiculo->cert_sicoin)    Vehiculos::eliminarArchivoSFTP('certificaciones', $vehiculo->cert_sicoin);
+            // ── Baja lógica — no se elimina, solo se marca como Baja ─────────
+            Vehiculos::consultarSQL(
+                "UPDATE vehiculos SET situacion = 'eliminado' WHERE placa = '{$placa}'"
+            );
 
-            $vehiculo->eliminar();
-
-            echo json_encode(['codigo' => 1, 'mensaje' => 'Vehículo eliminado exitosamente'], JSON_UNESCAPED_UNICODE);
+            echo json_encode([
+                'codigo'  => 1,
+                'mensaje' => 'Vehículo dado de baja correctamente'
+            ], JSON_UNESCAPED_UNICODE);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(['codigo' => 0, 'mensaje' => 'Error al eliminar el vehículo', 'detalle' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+            echo json_encode([
+                'codigo'  => 0,
+                'mensaje' => 'Error al dar de baja el vehículo',
+                'detalle' => $e->getMessage()
+            ], JSON_UNESCAPED_UNICODE);
         }
     }
 
