@@ -2307,31 +2307,46 @@ const _renderRepItems = () => {
     const wrap = document.getElementById('repItemsWrap');
     if (!wrap) return;
     if (!_repItems.length) { wrap.innerHTML = ''; return; }
+
+    // Agrupar por categoría
+    const grupos = {};
+    _repItems.forEach((item, i) => {
+        const cat = item.categoria_nombre;
+        if (!grupos[cat]) grupos[cat] = [];
+        grupos[cat].push({ ...item, idx: i });
+    });
+
     wrap.innerHTML = `
         <div style="margin-bottom:.5rem;font-size:.78rem;color:var(--accent);font-weight:600;
             text-transform:uppercase;letter-spacing:.5px;">
             <i class="bi bi-list-check"></i> Ítems agregados (${_repItems.length})
         </div>` +
-        _repItems.map((item, i) => `
-        <div style="display:flex;align-items:center;gap:.75rem;background:var(--dark-2);
-            border:1px solid var(--border);border-radius:8px;padding:.6rem .85rem;margin-bottom:.4rem;">
-            <i class="bi bi-wrench" style="color:var(--danger);flex-shrink:0;"></i>
-            <div style="flex:1;min-width:0;">
-                <div style="font-size:.82rem;font-weight:600;color:var(--text-main);">
-                    ${item.categoria_nombre}
-                </div>
-                <div style="font-size:.75rem;color:var(--text-muted);">${item.especifico}</div>
+        Object.entries(grupos).map(([categoria, items]) => `
+        <div style="background:var(--dark-2);border:1px solid var(--border);
+            border-radius:8px;padding:.6rem .85rem;margin-bottom:.5rem;">
+            <div style="font-size:.78rem;font-weight:700;color:var(--accent);
+                margin-bottom:.4rem;display:flex;align-items:center;gap:.4rem;">
+                <i class="bi bi-tag-fill" style="font-size:.65rem;"></i>
+                ${categoria}
             </div>
-            ${item.costo ? `
-            <div style="font-size:.78rem;color:#4caf7d;font-weight:600;white-space:nowrap;flex-shrink:0;">
-                Q ${Number(item.costo).toLocaleString()}
-            </div>` : ''}
-            <button onclick="_quitarItemRep(${i})"
-                style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
-                color:var(--danger);border-radius:6px;padding:.3rem .5rem;
-                cursor:pointer;font-size:.8rem;flex-shrink:0;">
-                <i class="bi bi-x"></i>
-            </button>
+            ${items.map(item => `
+            <div style="display:flex;align-items:center;gap:.6rem;
+                padding:.3rem 0;border-top:1px solid var(--border);">
+                <i class="bi bi-wrench" style="color:var(--danger);flex-shrink:0;font-size:.75rem;"></i>
+                <div style="flex:1;min-width:0;font-size:.8rem;color:var(--text-muted);">
+                    ${item.especifico}
+                </div>
+                ${item.costo ? `
+                <div style="font-size:.75rem;color:#4caf7d;font-weight:600;white-space:nowrap;flex-shrink:0;">
+                    Q ${Number(item.costo).toLocaleString()}
+                </div>` : ''}
+                <button onclick="_quitarItemRep(${item.idx})"
+                    style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
+                    color:var(--danger);border-radius:6px;padding:.2rem .45rem;
+                    cursor:pointer;font-size:.75rem;flex-shrink:0;">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>`).join('')}
         </div>`
         ).join('');
 };
