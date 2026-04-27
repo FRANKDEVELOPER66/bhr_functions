@@ -816,30 +816,80 @@ class ExpedienteController
         } else {
             $filas = '';
             foreach ($reparaciones as $r) {
-                $estadoClass = $r['estado'] === 'En proceso' ? 'badge-taller' : 'badge-alta';
+                $estadoClass = match ($r['estado']) {
+                    'En proceso' => 'badge-taller',
+                    'Finalizada' => 'badge-alta',
+                    'Externa'    => 'badge-baja',
+                    default      => 'badge-taller'
+                };
+
+                $fechaFin = '';
+                if ((int)($r['fecha_fin_indefinida'] ?? 0) === 1) {
+                    $fechaFin = '<span style="color:#e8b84b;">Indefinida</span>';
+                } elseif (!empty($r['fecha_fin'])) {
+                    $fechaFin = date('d/m/Y', strtotime($r['fecha_fin']));
+                } else {
+                    $fechaFin = '—';
+                }
+
+                $externaBadge = (int)($r['es_externa'] ?? 0) === 1
+                    ? '<br><span style="font-size:6.5pt;background:#fce8e8;color:#c62828;
+                    border:0.5pt solid #c62828;padding:1px 5px;border-radius:2px;">
+                    EXT: ' . htmlspecialchars($r['destino_externo'] ?? '') . '
+                   </span>'
+                    : '';
+
+                // Agrupar items por categoría
+                $items = $r['items'] ?? [];
+                $gruposItems = [];
+                foreach ($items as $item) {
+                    $cat = $item['categoria_nombre'] ?? 'Sin categoría';
+                    if (!isset($gruposItems[$cat])) $gruposItems[$cat] = [];
+                    $gruposItems[$cat][] = $item;
+                }
+
+                $itemsHtml = '';
+                foreach ($gruposItems as $cat => $citems) {
+                    $itemsHtml .= '<div style="font-size:7pt;color:#C75B00;font-weight:bold;margin-top:3px;">'
+                        . htmlspecialchars($cat) . '</div>';
+                    foreach ($citems as $ci) {
+                        $costo = $ci['costo'] ? ' <span style="color:#2e7d32;">Q' . number_format((float)$ci['costo'], 2) . '</span>' : '';
+                        $itemsHtml .= '<div style="font-size:7.5pt;color:#444;padding-left:6px;">· '
+                            . htmlspecialchars($ci['especifico'] ?? '') . $costo . '</div>';
+                    }
+                }
+
+                $costoTotal = array_sum(array_column($items, 'costo'));
+
                 $filas .= '
-                <tr>
-                    <td>' . date('d/m/Y', strtotime($r['fecha_inicio'])) . '</td>
-                    <td>' . ($r['fecha_fin'] ? date('d/m/Y', strtotime($r['fecha_fin'])) : '—') . '</td>
-                    <td style="text-align:left;">' . htmlspecialchars($r['tipo_nombre']) . '</td>
-                    <td style="text-align:left;">' . htmlspecialchars($r['descripcion']) . '</td>
-                    <td>' . number_format((int)$r['km_al_momento']) . ' km</td>
-                    <td>' . ($r['costo'] ? 'Q ' . number_format((float)$r['costo'], 2) : '—') . '</td>
-                    <td><span class="' . $estadoClass . '">' . htmlspecialchars($r['estado']) . '</span></td>
-                </tr>';
+            <tr>
+                <td>' . date('d/m/Y', strtotime($r['fecha_inicio'])) . '</td>
+                <td>' . $fechaFin . '</td>
+                <td style="text-align:left;">' . $itemsHtml . $externaBadge . '</td>
+                <td>' . ($costoTotal > 0 ? 'Q ' . number_format($costoTotal, 2) : '—') . '</td>
+                <td style="text-align:left;">' . htmlspecialchars($r['proveedor'] ?? '—') . '</td>
+                <td style="text-align:left;">' . htmlspecialchars($r['responsable'] ?? '—') . '</td>
+                <td><span class="' . $estadoClass . '">' . htmlspecialchars($r['estado']) . '</span></td>
+            </tr>';
             }
+
             $tabla = '<table class="tabla-control"><thead><tr>
-                <th>F. Inicio</th><th>F. Fin</th><th>Tipo</th>
-                <th>Descripción</th><th>KM</th><th>Costo</th><th>Estado</th>
-            </tr></thead><tbody>' . $filas . '</tbody></table>';
+            <th>F. Inicio</th>
+            <th>F. Fin</th>
+            <th style="text-align:left;">Ítems</th>
+            <th>Costo</th>
+            <th style="text-align:left;">Proveedor</th>
+            <th style="text-align:left;">Responsable</th>
+            <th>Estado</th>
+        </tr></thead><tbody>' . $filas . '</tbody></table>';
         }
 
         return '
-        ' . self::encabezado('REPARACIONES') . '
-        ' . self::fichaIdentificacion($v) . '
-        <div class="titulo-sub">Reparaciones Registradas</div>
-        ' . $tabla . '
-        ' . self::pie($v['placa'], '11 – REPARACIONES');
+    ' . self::encabezado('REPARACIONES') . '
+    ' . self::fichaIdentificacion($v) . '
+    <div class="titulo-sub">Reparaciones Registradas</div>
+    ' . $tabla . '
+    ' . self::pie($v['placa'], '11 – REPARACIONES');
     }
 
     private static function paginaHojaChequeo(array $v, ?array $chequeo = null): string
