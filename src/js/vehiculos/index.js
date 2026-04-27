@@ -2764,17 +2764,31 @@ const renderTablaReparaciones = (reparaciones) => {
         const items = r.items || [];
         const costoTotal = items.reduce((sum, i) => sum + (parseFloat(i.costo) || 0), 0);
 
+        // Agrupar items por categoría
+        const gruposItems = {};
+        items.forEach(i => {
+            const cat = i.categoria_nombre;
+            if (!gruposItems[cat]) gruposItems[cat] = [];
+            gruposItems[cat].push(i);
+        });
+
         const itemsHTML = items.length
-            ? items.map(i => `
-                <span style="display:inline-flex;align-items:center;gap:.3rem;
-                    background:var(--dark-2);border:1px solid var(--border);
-                    border-radius:6px;padding:.2rem .55rem;font-size:.72rem;
-                    color:var(--text-muted);margin:.2rem;">
-                    <i class="bi bi-wrench" style="color:var(--danger);font-size:.65rem;"></i>
-                    <strong style="color:var(--text-main);">${i.categoria_nombre}</strong>
-                    — ${i.especifico}
-                    ${i.costo ? `<span style="color:#4caf7d;"> · Q${Number(i.costo).toLocaleString()}</span>` : ''}
-                </span>`).join('')
+            ? Object.entries(gruposItems).map(([cat, citems]) => `
+        <div style="display:inline-flex;flex-direction:column;gap:.2rem;
+            background:var(--dark-2);border:1px solid var(--border);
+            border-radius:6px;padding:.3rem .65rem;margin:.2rem;
+            font-size:.72rem;vertical-align:top;">
+            <div style="color:var(--accent);font-weight:700;font-size:.68rem;
+                text-transform:uppercase;letter-spacing:.3px;">
+                <i class="bi bi-tag-fill" style="font-size:.6rem;"></i> ${cat}
+            </div>
+            ${citems.map(i => `
+            <div style="color:var(--text-muted);display:flex;align-items:center;gap:.3rem;">
+                <i class="bi bi-wrench" style="color:var(--danger);font-size:.6rem;"></i>
+                ${i.especifico}
+                ${i.costo ? `<span style="color:#4caf7d;margin-left:.3rem;">Q${Number(i.costo).toLocaleString()}</span>` : ''}
+            </div>`).join('')}
+        </div>`).join('')
             : `<span style="color:var(--text-muted);font-size:.75rem;">Sin ítems</span>`;
 
         const externaBadge = parseInt(r.es_externa) === 1
@@ -2855,26 +2869,39 @@ const verDetalleReparacion = (r) => {
     const items = r.items || [];
     const costoTotal = items.reduce((sum, i) => sum + (parseFloat(i.costo) || 0), 0);
 
+    // Agrupar por categoría
+    const gruposDetalle = {};
+    items.forEach(i => {
+        const cat = i.categoria_nombre;
+        if (!gruposDetalle[cat]) gruposDetalle[cat] = [];
+        gruposDetalle[cat].push(i);
+    });
+
     const itemsHTML = items.length
-        ? items.map(i => `
-            <div style="display:flex;align-items:center;gap:.75rem;
-                background:var(--dark-2);border:1px solid var(--border);
-                border-radius:8px;padding:.6rem .85rem;margin-bottom:.4rem;">
-                <i class="bi bi-wrench" style="color:var(--danger);flex-shrink:0;"></i>
-                <div style="flex:1;min-width:0;">
-                    <div style="font-size:.82rem;font-weight:600;color:var(--text-main);">
-                        ${i.categoria_nombre}
-                    </div>
-                    <div style="font-size:.75rem;color:var(--text-muted);">${i.especifico}</div>
+        ? Object.entries(gruposDetalle).map(([cat, citems]) => `
+        <div style="background:var(--dark-2);border:1px solid var(--border);
+            border-radius:8px;padding:.6rem .85rem;margin-bottom:.5rem;">
+            <div style="font-size:.75rem;font-weight:700;color:var(--accent);
+                margin-bottom:.4rem;display:flex;align-items:center;gap:.4rem;">
+                <i class="bi bi-tag-fill" style="font-size:.65rem;"></i>
+                ${cat}
+            </div>
+            ${citems.map(i => `
+            <div style="display:flex;align-items:center;gap:.6rem;
+                padding:.3rem 0;border-top:1px solid var(--border);">
+                <i class="bi bi-wrench" style="color:var(--danger);flex-shrink:0;font-size:.75rem;"></i>
+                <div style="flex:1;min-width:0;font-size:.8rem;color:var(--text-muted);">
+                    ${i.especifico}
                 </div>
                 ${i.costo ? `
-                <div style="font-size:.78rem;color:#4caf7d;font-weight:600;white-space:nowrap;flex-shrink:0;">
+                <div style="font-size:.75rem;color:#4caf7d;font-weight:600;white-space:nowrap;">
                     Q ${Number(i.costo).toLocaleString()}
                 </div>` : ''}
-            </div>`).join('')
+            </div>`).join('')}
+        </div>`).join('')
         : `<div style="color:var(--text-muted);font-size:.82rem;text-align:center;padding:1rem;">
-               Sin ítems registrados
-           </div>`;
+           Sin ítems registrados
+       </div>`;
 
     Swal.fire({
         title: `<span style="font-family:Rajdhani,sans-serif;font-size:1.1rem;">
