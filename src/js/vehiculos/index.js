@@ -949,19 +949,7 @@ const resetFormServicio = () => {
     if (panel) panel.style.display = 'none';
 };
 
-// ── RESET FORM REPARACION ─────────────────────────────────────────────────────
-const resetFormReparacion = () => {
-    const form = document.getElementById('formNuevaReparacion');
-    const btn = document.getElementById('btnToggleFormReparacion');
-    if (form) form.style.display = 'none';
-    if (btn) btn.innerHTML = '<i class="bi bi-plus-circle"></i> Registrar Nueva Reparación';
-    reparacionEditandoId = null;
-    const btnGuardarRep = document.querySelector('#formNuevaReparacion button[onclick="guardarReparacion()"]');
-    if (btnGuardarRep) {
-        btnGuardarRep.innerHTML = '<i class="bi bi-save me-1"></i> Guardar Reparación';
-        btnGuardarRep.style.background = 'linear-gradient(135deg,var(--danger),#c93030)';
-    }
-};
+
 
 // ── ABRIR FICHA ───────────────────────────────────────────────────────────────
 
@@ -2149,144 +2137,419 @@ const verOrden = async (idOrden) => {
 // ── REPARACIONES ──────────────────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
 
-const toggleFormReparacion = () => {
-    const form = document.getElementById('formNuevaReparacion');
-    const btn = document.getElementById('btnToggleFormReparacion');
-    const visible = form.style.display !== 'none';
-    form.style.display = visible ? 'none' : 'block';
-    btn.innerHTML = visible
-        ? '<i class="bi bi-plus-circle"></i> Registrar Nueva Reparación'
-        : '<i class="bi bi-x-circle"></i> Cancelar';
+let _repItems = [];
+let _repEditandoId = null;
+let _repEsExterna = null;
+let _repTieneFechaFin = null;
+
+// ── CARGAR CATEGORÍAS EN SELECTS ──────────────────────────────────────────────
+const _llenarSelectsCategorias = () => {
+    const opciones = '<option value="">Seleccione...</option>' +
+        '<option value="__nueva__">+ Nueva categoría...</option>' +
+        tiposReparacion.map(t =>
+            `<option value="${t.id_tipo_reparacion}">${t.nombre}</option>`
+        ).join('');
+    const selItem = document.getElementById('itemRepCategoria');
+    if (selItem) selItem.innerHTML = opciones;
 };
 
-const verHistorialReparaciones = async () => {
-    try {
-        mostrarLoader('Cargando historial...');
-        const r = await fetch(`${BASE}/API/vehiculos/hoja-vida-reparaciones?placa=${fichaPlacaActual}`);
-        const d = await r.json();
-        if (d.codigo !== 1) {
-            Toast.fire({ icon: 'error', title: 'Error al cargar historial' });
-            return;
-        }
+// ── TOGGLE EXTERNA ────────────────────────────────────────────────────────────
+const setRepExterna = (esExterna) => {
+    console.trace('setRepExterna llamado con:', esExterna);
+    _repEsExterna = esExterna;
+    const btnSi = document.getElementById('btnRepExternaSi');
+    const btnNo = document.getElementById('btnRepExternaNo');
+    const wrap = document.getElementById('repDestinoWrap');
 
-        if (!d.grupos.length) {
+    btnSi.style.background = esExterna ? 'rgba(224,82,82,.15)' : 'var(--dark-2)';
+    btnSi.style.borderColor = esExterna ? 'rgba(224,82,82,.5)' : 'var(--border)';
+    btnSi.style.color = esExterna ? '#e05252' : 'var(--text-muted)';
+    btnNo.style.background = !esExterna ? 'rgba(76,175,125,.15)' : 'var(--dark-2)';
+    btnNo.style.borderColor = !esExterna ? 'rgba(76,175,125,.5)' : 'var(--border)';
+    btnNo.style.color = !esExterna ? '#4caf7d' : 'var(--text-muted)';
+
+    wrap.style.display = esExterna ? 'block' : 'none';
+    if (!esExterna) document.getElementById('repDestino').value = '';
+};
+
+// ── TOGGLE FECHA FIN ──────────────────────────────────────────────────────────
+const setFechaFin = (tieneFecha) => {
+    _repTieneFechaFin = tieneFecha;
+    const btnSi = document.getElementById('btnFechaFinSi');
+    const btnNo = document.getElementById('btnFechaFinNo');
+    const wrapFin = document.getElementById('repFechaFinWrap');
+    const wrapInd = document.getElementById('repFechaIndefinidaInfo');
+
+    btnSi.style.background = tieneFecha ? 'rgba(76,175,125,.15)' : 'var(--dark-2)';
+    btnSi.style.borderColor = tieneFecha ? 'rgba(76,175,125,.5)' : 'var(--border)';
+    btnSi.style.color = tieneFecha ? '#4caf7d' : 'var(--text-muted)';
+    btnNo.style.background = !tieneFecha ? 'rgba(232,184,75,.15)' : 'var(--dark-2)';
+    btnNo.style.borderColor = !tieneFecha ? 'rgba(232,184,75,.5)' : 'var(--border)';
+    btnNo.style.color = !tieneFecha ? 'var(--accent)' : 'var(--text-muted)';
+
+    wrapFin.style.display = tieneFecha ? 'block' : 'none';
+    wrapInd.style.display = !tieneFecha ? 'block' : 'none';
+    if (!tieneFecha) document.getElementById('repFechaFin').value = '';
+};
+
+// ── TOGGLE NUEVA CATEGORÍA (panel de items) ───────────────────────────────────
+const onItemCategoriaChange = () => {
+    const sel = document.getElementById('itemRepCategoria');
+    const wrap = document.getElementById('itemNuevaCategoriaWrap');
+    if (!sel || !wrap) return;
+    wrap.style.display = sel.value === '__nueva__' ? 'block' : 'none';
+    if (sel.value !== '__nueva__') document.getElementById('itemNuevaCategoria').value = '';
+};
+
+const onCategoriaChange = () => { };
+const toggleFechaIndefinida = () => { };
+const toggleRepExterna = () => { };
+
+// ── RENDER ITEMS EN EL FORMULARIO ─────────────────────────────────────────────
+const _renderRepItems = () => {
+    const wrap = document.getElementById('repItemsWrap');
+    if (!wrap) return;
+    if (!_repItems.length) { wrap.innerHTML = ''; return; }
+    wrap.innerHTML = `
+        <div style="margin-bottom:.5rem;font-size:.78rem;color:var(--accent);font-weight:600;
+            text-transform:uppercase;letter-spacing:.5px;">
+            <i class="bi bi-list-check"></i> Ítems agregados (${_repItems.length})
+        </div>` +
+        _repItems.map((item, i) => `
+        <div style="display:flex;align-items:center;gap:.75rem;background:var(--dark-2);
+            border:1px solid var(--border);border-radius:8px;padding:.6rem .85rem;margin-bottom:.4rem;">
+            <i class="bi bi-wrench" style="color:var(--danger);flex-shrink:0;"></i>
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:.82rem;font-weight:600;color:var(--text-main);">
+                    ${item.categoria_nombre}
+                </div>
+                <div style="font-size:.75rem;color:var(--text-muted);">${item.especifico}</div>
+            </div>
+            ${item.costo ? `
+            <div style="font-size:.78rem;color:#4caf7d;font-weight:600;white-space:nowrap;flex-shrink:0;">
+                Q ${Number(item.costo).toLocaleString()}
+            </div>` : ''}
+            <button onclick="_quitarItemRep(${i})"
+                style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
+                color:var(--danger);border-radius:6px;padding:.3rem .5rem;
+                cursor:pointer;font-size:.8rem;flex-shrink:0;">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>`
+        ).join('');
+};
+
+const _quitarItemRep = (i) => {
+    _repItems.splice(i, 1);
+    _renderRepItems();
+};
+
+// ── AGREGAR ÍTEM AL FORMULARIO ────────────────────────────────────────────────
+const agregarItemReparacion = async () => {
+    const sel = document.getElementById('itemRepCategoria');
+    const especifico = document.getElementById('itemRepEspecifico').value.trim();
+    const costo = document.getElementById('itemRepCosto').value;
+
+    if (!sel.value) {
+        Swal.fire({
+            icon: 'warning', title: 'Categoría requerida',
+            text: 'Seleccioná o creá una categoría para el ítem.',
+            background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+    if (!especifico) {
+        Swal.fire({
+            icon: 'warning', title: 'Específico requerido',
+            text: 'Describí exactamente qué se hizo.',
+            background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+
+    let idCategoria = sel.value;
+    let nombreCategoria = sel.options[sel.selectedIndex]?.text || '';
+
+    if (idCategoria === '__nueva__') {
+        const nuevaNombre = document.getElementById('itemNuevaCategoria').value.trim();
+        if (!nuevaNombre) {
             Swal.fire({
-                icon: 'info',
-                title: 'Sin historial',
-                text: 'Este vehículo no tiene reparaciones registradas.',
-                background: '#1a1d27', color: '#e8eaf0',
-                confirmButtonColor: '#e05252',
+                icon: 'warning', title: 'Nombre requerido',
+                text: 'Escribí el nombre de la nueva categoría.',
+                background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b',
                 customClass: { container: 'swal-over-modal' }
             });
             return;
         }
+        try {
+            const body = new FormData();
+            body.append('nombre', nuevaNombre);
+            const r = await fetch(`${BASE}/API/vehiculos/categorias-reparacion/guardar`, { method: 'POST', body });
+            const d = await r.json();
+            if (d.codigo !== 1) {
+                Swal.fire({
+                    icon: 'error', title: 'Error', text: d.mensaje,
+                    background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e05252',
+                    customClass: { container: 'swal-over-modal' }
+                });
+                return;
+            }
+            idCategoria = d.id;
+            nombreCategoria = nuevaNombre;
+            tiposReparacion.push({ id_tipo_reparacion: d.id, nombre: nuevaNombre });
+            _llenarSelectsCategorias();
+            document.getElementById('itemNuevaCategoriaWrap').style.display = 'none';
+        } catch (err) {
+            Toast.fire({ icon: 'error', title: 'Error de conexión' });
+            return;
+        }
+    }
 
-        const estadoColor = {
-            'En proceso': '#e8b84b',
-            'Finalizada': '#4caf7d',
-        };
+    _repItems.push({
+        id_categoria: idCategoria,
+        categoria_nombre: nombreCategoria,
+        especifico,
+        costo: costo ? parseFloat(costo) : null
+    });
 
-        const gruposHtml = d.grupos.map((g, gi) => {
-            const filasHtml = g.items.map((item, i) => {
-                const bg = i % 2 === 0 ? 'rgba(255,255,255,.02)' : 'transparent';
-                const color = estadoColor[item.estado] || '#7c8398';
-                const fechaFin = item.fecha_fin || '—';
-                const costo = item.costo
-                    ? `Q ${Number(item.costo).toLocaleString()}`
-                    : '—';
+    sel.value = '';
+    document.getElementById('itemRepEspecifico').value = '';
+    document.getElementById('itemRepCosto').value = '';
+    document.getElementById('itemNuevaCategoriaWrap').style.display = 'none';
 
-                return `
-                <tr style="background:${bg};border-bottom:1px solid rgba(255,255,255,.04);">
-                    <td style="padding:.5rem .75rem;font-size:.8rem;color:#e8eaf0;">
-                        ${item.fecha_inicio}
-                    </td>
-                    <td style="padding:.5rem .75rem;font-size:.8rem;color:#7c8398;">
-                        ${fechaFin}
-                    </td>
-                    <td style="padding:.5rem .75rem;font-size:.8rem;color:#e8b84b;font-weight:600;">
-                        ${Number(item.km_al_momento).toLocaleString()} km
-                    </td>
-                    <td style="padding:.5rem .75rem;font-size:.78rem;color:#e8eaf0;max-width:180px;">
-                        ${item.descripcion}
-                    </td>
-                    <td style="padding:.5rem .75rem;font-size:.8rem;color:${color};font-weight:600;">
-                        ${item.estado}
-                    </td>
-                    <td style="padding:.5rem .75rem;font-size:.8rem;color:#4caf7d;font-weight:600;">
-                        ${costo}
-                    </td>
-                    <td style="padding:.5rem .75rem;font-size:.75rem;color:#7c8398;">
-                        ${item.responsable || '—'}
-                    </td>
-                </tr>`;
-            }).join('');
+    _renderRepItems();
+};
 
-            const costoTotalStr = g.costo_total > 0
-                ? `<span style="color:#e05252;font-weight:700;">
-                       Q ${Number(g.costo_total).toLocaleString()}
-                   </span>`
-                : '';
+// ── TOGGLE FORM ───────────────────────────────────────────────────────────────
+const toggleFormReparacion = async () => {
+    const form = document.getElementById('formNuevaReparacion');
+    const btn = document.getElementById('btnToggleFormReparacion');
+    const visible = form.style.display !== 'none';
+    if (visible) {
+        form.style.display = 'none';
+        btn.innerHTML = '<i class="bi bi-plus-circle"></i> Registrar Nueva Reparación';
+        _resetFormReparacion();
+    } else {
+        // Forzar fetch directo siempre
+        try {
+            const r = await fetch(`${BASE}/API/vehiculos/tipos-reparacion`);
+            const d = await r.json();
+            if (d.codigo === 1) tiposReparacion = d.datos;
+        } catch (e) {
+            console.error('Error cargando categorías:', e);
+        }
+        _llenarSelectsCategorias();
+        _resetFormReparacion();
+        form.style.display = 'block';
+        btn.innerHTML = '<i class="bi bi-x-circle"></i> Cancelar';
+        document.getElementById('repFechaInicio').value = new Date().toISOString().split('T')[0];
+    }
+};
 
-            return `
-            <div style="margin-bottom:1rem;">
-                <div style="background:#1f2335;border-left:3px solid #e05252;
-                    padding:.6rem 1rem;
-                    display:flex;align-items:center;justify-content:space-between;
-                    cursor:pointer;border-radius:6px 6px 0 0;"
-                    onclick="
-                        const t=document.getElementById('hr_tabla_${gi}');
-                        const ic=document.getElementById('hr_icon_${gi}');
-                        if(t.style.display==='none'){t.style.display='';ic.style.transform='rotate(0deg)';}
-                        else{t.style.display='none';ic.style.transform='rotate(-90deg)';}
-                    ">
-                    <div style="display:flex;align-items:center;gap:.75rem;">
-                        <span style="font-family:Rajdhani,sans-serif;font-size:.95rem;
-                            font-weight:700;color:#e8eaf0;">
-                            ${g.tipo}
-                        </span>
-                        <span style="font-size:.72rem;color:#7c8398;">
-                            ${g.total} registro(s)
-                        </span>
-                        ${costoTotalStr}
-                    </div>
-                    <i id="hr_icon_${gi}" class="bi bi-chevron-down"
-                        style="color:#e05252;font-size:.8rem;transition:transform .2s;"></i>
-                </div>
-                <div id="hr_tabla_${gi}" style="overflow-x:auto;">
-                    <table style="width:100%;border-collapse:collapse;">
-                        <thead>
-                            <tr style="background:#242837;">
-                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;">F. Inicio</th>
-                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;">F. Fin</th>
-                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;">KM</th>
-                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;min-width:140px;">Descripción</th>
-                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;">Estado</th>
-                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;">Costo</th>
-                                    <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;">Resp.</th>
-                            </tr>
-                        </thead>
-                        <tbody>${filasHtml}</tbody>
-                    </table>
-                </div>
-            </div>`;
-        }).join('');
+// ── RESET FORM ────────────────────────────────────────────────────────────────
+const _resetFormReparacion = () => {
+    _repItems = [];
+    _repEditandoId = null;
+    _repEsExterna = null;
+    _repTieneFechaFin = null;
 
-        Swal.fire({
-            title: `<span style="font-family:Rajdhani,sans-serif;font-size:1.1rem;">
-                <i class="bi bi-wrench-adjustable" style="color:#e05252;"></i>
-                Historial de Reparaciones — ${fichaPlacaActual}
-            </span>`,
-            html: `
-            <div style="text-align:left;max-height:480px;overflow-y:auto;padding-right:.25rem;">
-                ${gruposHtml}
-            </div>`,
-            background: '#1a1d27', color: '#e8eaf0',
-            confirmButtonColor: '#e05252',
-            confirmButtonText: '<i class="bi bi-x"></i> Cerrar',
-            width: '900px',
-            customClass: { container: 'swal-over-modal' }
+    _renderRepItems();
+
+    ['repFechaInicio', 'repFechaFin', 'repCosto', 'repProveedor',
+        'repResponsable', 'repObs', 'repDestino',
+        'itemRepEspecifico', 'itemRepCosto', 'itemNuevaCategoria'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
         });
 
+    const selItem = document.getElementById('itemRepCategoria');
+    if (selItem) selItem.value = '';
+
+    // Reset botones toggle
+    const estiloBase = { background: 'var(--dark-2)', borderColor: 'var(--border)', color: 'var(--text-muted)' };
+    ['btnRepExternaSi', 'btnRepExternaNo', 'btnFechaFinSi', 'btnFechaFinNo'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.style.background = estiloBase.background;
+        btn.style.borderColor = estiloBase.borderColor;
+        btn.style.color = estiloBase.color;
+    });
+
+    // Ocultar wraps
+    ['repDestinoWrap', 'repFechaFinWrap', 'repFechaIndefinidaInfo',
+        'itemNuevaCategoriaWrap'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+
+    // Reset botón guardar
+    const btnGuardar = document.querySelector('#formNuevaReparacion button[onclick="guardarReparacion()"]');
+    if (btnGuardar) {
+        btnGuardar.innerHTML = '<i class="bi bi-save me-1"></i> Guardar Reparación';
+        btnGuardar.style.background = 'linear-gradient(135deg,var(--danger),#c93030)';
+    }
+};
+
+// Alias para abrirFicha
+const resetFormReparacion = () => {
+    const form = document.getElementById('formNuevaReparacion');
+    const btn = document.getElementById('btnToggleFormReparacion');
+    if (form) form.style.display = 'none';
+    if (btn) btn.innerHTML = '<i class="bi bi-plus-circle"></i> Registrar Nueva Reparación';
+    _resetFormReparacion();
+};
+
+// ── GUARDAR REPARACIÓN ────────────────────────────────────────────────────────
+const guardarReparacion = async () => {
+    const fechaInicio = document.getElementById('repFechaInicio').value;
+    const destino = document.getElementById('repDestino').value.trim();
+    const fechaFin = document.getElementById('repFechaFin').value;
+    const esEdicion = _repEditandoId !== null;
+
+    if (!fechaInicio) {
+        Swal.fire({
+            icon: 'warning', title: 'Fecha requerida',
+            text: 'Seleccioná la fecha de inicio de la reparación.',
+            background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+
+    if (_repEsExterna === null) {
+        Swal.fire({
+            icon: 'warning', title: 'Tipo de reparación requerido',
+            text: 'Indicá si la reparación es externa o interna.',
+            background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+
+    if (_repEsExterna && !destino) {
+        Swal.fire({
+            icon: 'warning', title: 'Destino requerido',
+            text: 'Indicá a dónde se envía el vehículo para la reparación externa.',
+            background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+
+    if (_repTieneFechaFin === null) {
+        Swal.fire({
+            icon: 'warning', title: 'Fecha de finalización requerida',
+            text: 'Indicá si la reparación tiene fecha fin o es indefinida.',
+            background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+
+    if (!_repItems.length) {
+        Swal.fire({
+            icon: 'warning', title: 'Sin ítems',
+            text: 'Agregá al menos un ítem a la reparación antes de guardar.',
+            background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+    // ── Validar fecha fin si tiene fecha ─────────────────────────────────────
+    if (_repTieneFechaFin === true) {
+        const fechaFinVal = document.getElementById('repFechaFin').value;
+        if (!fechaFinVal) {
+            Swal.fire({
+                icon: 'warning', title: 'Fecha fin requerida',
+                text: 'Seleccioná la fecha de finalización de la reparación.',
+                background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b',
+                customClass: { container: 'swal-over-modal' }
+            });
+            return;
+        }
+        if (fechaFinVal < fechaInicio) {
+            Swal.fire({
+                icon: 'warning', title: 'Fecha inválida',
+                html: `La fecha de finalización (<strong>${fmtFecha(fechaFinVal)}</strong>) 
+                   no puede ser anterior a la fecha de inicio 
+                   (<strong>${fmtFecha(fechaInicio)}</strong>).`,
+                confirmButtonText: 'Corregir', confirmButtonColor: '#e8b84b',
+                background: '#1a1d27', color: '#e8eaf0',
+                customClass: { container: 'swal-over-modal' }
+            });
+            return;
+        }
+    }
+
+    // ── Validar proveedor y responsable ──────────────────────────────────────
+    const proveedorVal = document.getElementById('repProveedor').value.trim();
+    const responsableVal = document.getElementById('repResponsable').value.trim();
+
+    if (!proveedorVal) {
+        Swal.fire({
+            icon: 'warning', title: 'Proveedor requerido',
+            text: 'Indicá el taller o proveedor que realiza la reparación.',
+            background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+    if (!responsableVal) {
+        Swal.fire({
+            icon: 'warning', title: 'Responsable requerido',
+            text: 'Indicá quién es el responsable de la reparación.',
+            background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b',
+            customClass: { container: 'swal-over-modal' }
+        });
+        return;
+    }
+
+    const esExterna = _repEsExterna === true;
+    const fechaInd = _repTieneFechaFin === false;
+
+    const body = new FormData();
+    body.append('placa', fichaPlacaActual);
+    body.append('fecha_inicio', fechaInicio);
+    body.append('fecha_fin', fechaInd ? '' : (fechaFin || ''));
+    body.append('fecha_fin_indefinida', fechaInd ? '1' : '0');
+    body.append('es_externa', esExterna ? '1' : '0');
+    body.append('destino_externo', destino);
+    body.append('costo', document.getElementById('repCosto').value || '');
+    body.append('proveedor', document.getElementById('repProveedor').value.trim());
+    body.append('responsable', document.getElementById('repResponsable').value.trim());
+    body.append('observaciones', document.getElementById('repObs').value.trim());
+    body.append('estado', esExterna ? 'Externa' : 'En proceso');
+    body.append('items', JSON.stringify(_repItems));
+    if (esEdicion) body.append('id_reparacion', _repEditandoId);
+
+
+    const url = esEdicion
+        ? `${BASE}/API/vehiculos/reparacion/modificar`
+        : `${BASE}/API/vehiculos/reparacion/guardar`;
+
+    console.log('esExterna al guardar:', esExterna, '_repEsExterna:', _repEsExterna);
+    body.append('es_externa', esExterna ? '1' : '0');
+    console.log('fechaInd al guardar:', fechaInd, '_repTieneFechaFin:', _repTieneFechaFin);
+
+    try {
+        mostrarLoader('Guardando reparación...');
+        const r = await fetch(url, { method: 'POST', body });
+        const d = await r.json();
+
+        Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
+
+        if (d.codigo === 1) {
+            _resetFormReparacion();
+            const form = document.getElementById('formNuevaReparacion');
+            const btn = document.getElementById('btnToggleFormReparacion');
+            if (form) form.style.display = 'none';
+            if (btn) btn.innerHTML = '<i class="bi bi-plus-circle"></i> Registrar Nueva Reparación';
+            await abrirFicha(fichaPlacaActual);
+            switchTab(document.querySelector('.ficha-tab[data-tab="reparaciones"]'), 'reparaciones');
+            buscar();
+        }
     } catch (err) {
         Toast.fire({ icon: 'error', title: 'Error de conexión' });
     } finally {
@@ -2294,67 +2557,80 @@ const verHistorialReparaciones = async () => {
     }
 };
 
+// ── EDITAR REPARACIÓN ─────────────────────────────────────────────────────────
+const editarReparacion = async (r) => {
+    _repEditandoId = r.id_reparacion;
+    _repItems = [];
 
-const verDetalleReparacion = (r) => {
-    const estadoColor = { 'En proceso': '#e8b84b', 'Finalizada': '#4caf7d' };
-    const color = estadoColor[r.estado] || '#7c8398';
+    await cargarTiposReparacion();
+    _llenarSelectsCategorias();
 
-    Swal.fire({
-        title: `<span style="font-family:Rajdhani,sans-serif;font-size:1.1rem;">
-            <i class="bi bi-wrench-adjustable" style="color:#e05252;"></i>
-            ${r.tipo_nombre}
-        </span>`,
-        html: `
-        <div style="text-align:left;font-size:.85rem;">
-            <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;">
-                <span style="background:${color}22;color:${color};border:1px solid ${color}44;
-                    padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:700;">
-                    ${r.estado}
-                </span>
-                <span style="color:#7c8398;font-size:.78rem;">
-                    <i class="bi bi-calendar3"></i> ${fmtFecha(r.fecha_inicio)}
-                    ${r.fecha_fin ? ' → ' + r.fecha_fin : ''}
-                </span>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem;">
-                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
-                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">KM al momento</div>
-                    <div style="color:#e8b84b;font-weight:700;">${Number(r.km_al_momento).toLocaleString()} km</div>
-                </div>
-                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
-                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Costo</div>
-                    <div style="color:#4caf7d;font-weight:700;">${r.costo ? 'Q ' + Number(r.costo).toLocaleString() : '—'}</div>
-                </div>
-                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
-                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Proveedor</div>
-                    <div style="color:#c8cfe0;">${r.proveedor || '—'}</div>
-                </div>
-                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
-                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Responsable</div>
-                    <div style="color:#c8cfe0;">${r.responsable || '—'}</div>
-                </div>
-            </div>
-            <div style="background:#1e2130;border-left:3px solid #e05252;
-                padding:.75rem 1rem;border-radius:0 8px 8px 0;margin-bottom:.75rem;">
-                <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.3rem;">Descripción</div>
-                <div style="color:#c8cfe0;line-height:1.5;">${r.descripcion || '—'}</div>
-            </div>
-            ${r.observaciones ? `
-            <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
-                <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Observaciones</div>
-                <div style="color:#888;">${r.observaciones}</div>
-            </div>` : ''}
-        </div>`,
-        background: '#1a1d27', color: '#e8eaf0',
-        confirmButtonColor: '#e05252',
-        confirmButtonText: '<i class="bi bi-x"></i> Cerrar',
-        width: '500px',
-        customClass: { container: 'swal-over-modal' }
-    });
+    const form = document.getElementById('formNuevaReparacion');
+    const btn = document.getElementById('btnToggleFormReparacion');
+    form.style.display = 'block';
+    btn.innerHTML = '<i class="bi bi-x-circle"></i> Cancelar';
+
+    document.getElementById('repFechaInicio').value = r.fecha_inicio || '';
+    document.getElementById('repCosto').value = r.costo || '';
+    document.getElementById('repProveedor').value = r.proveedor || '';
+    document.getElementById('repResponsable').value = r.responsable || '';
+    document.getElementById('repObs').value = r.observaciones || '';
+
+    // Toggle externa
+    setRepExterna(parseInt(r.es_externa) === 1);
+    if (parseInt(r.es_externa) === 1 && r.destino_externo) {
+        document.getElementById('repDestino').value = r.destino_externo;
+    }
+
+    // Toggle fecha fin
+    const tieneFecha = parseInt(r.fecha_fin_indefinida) !== 1 && !!r.fecha_fin;
+    setFechaFin(tieneFecha);
+    if (tieneFecha) {
+        document.getElementById('repFechaFin').value = r.fecha_fin || '';
+    }
+
+    // Cargar items existentes
+    if (r.items && r.items.length) {
+        _repItems = r.items.map(item => ({
+            id_categoria: item.id_categoria,
+            categoria_nombre: item.categoria_nombre,
+            especifico: item.especifico,
+            costo: item.costo ? parseFloat(item.costo) : null
+        }));
+        _renderRepItems();
+    }
+
+    const btnGuardar = document.querySelector('#formNuevaReparacion button[onclick="guardarReparacion()"]');
+    if (btnGuardar) {
+        btnGuardar.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Actualizar Reparación';
+        btnGuardar.style.background = 'linear-gradient(135deg,#3a7bd5,#2563b0)';
+    }
+
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
+// ── ELIMINAR REPARACIÓN ───────────────────────────────────────────────────────
+const eliminarReparacion = async (id) => {
+    const conf = await Swal.fire({
+        icon: 'warning', title: '¿Eliminar reparación?',
+        text: 'Se eliminarán todos los ítems asociados. Esta acción no se puede deshacer.',
+        showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#e05252', cancelButtonColor: '#3a7bd5',
+        background: '#1a1d27', color: '#e8eaf0', customClass: { container: 'swal-over-modal' }
+    });
+    if (!conf.isConfirmed) return;
+    const body = new FormData();
+    body.append('id_reparacion', id);
+    const r = await fetch(`${BASE}/API/vehiculos/reparacion/eliminar`, { method: 'POST', body });
+    const d = await r.json();
+    Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
+    if (d.codigo === 1) {
+        await abrirFicha(fichaPlacaActual);
+        switchTab(document.querySelector('.ficha-tab[data-tab="reparaciones"]'), 'reparaciones');
+    }
+};
 
-
+// ── RENDER TABLA REPARACIONES ─────────────────────────────────────────────────
 const renderTablaReparaciones = (reparaciones) => {
     const wrap = document.getElementById('tablaReparacionesWrap');
     if (!reparaciones.length) {
@@ -2365,18 +2641,63 @@ const renderTablaReparaciones = (reparaciones) => {
             </div>`;
         return;
     }
-    wrap.innerHTML = reparaciones.map(r => `
-        <div class="svc-row" style="grid-template-columns:1.5fr 1fr 1fr 1fr 1fr auto;">
-            <div><div class="svc-label">Tipo</div><div class="svc-val">${r.tipo_nombre}</div></div>
-            <div><div class="svc-label">Estado</div>
-                <div class="svc-val" style="color:${r.estado === 'En proceso' ? 'var(--accent)' : 'var(--success)'}">
-                    ${r.estado}
+
+    const estadoColor = (e) => ({
+        'En proceso': 'var(--accent)',
+        'Finalizada': 'var(--success)',
+        'Externa': '#e05252'
+    }[e] || 'var(--text-muted)');
+
+    wrap.innerHTML = reparaciones.map(r => {
+        const items = r.items || [];
+        const costoTotal = items.reduce((sum, i) => sum + (parseFloat(i.costo) || 0), 0);
+
+        const itemsHTML = items.length
+            ? items.map(i => `
+                <span style="display:inline-flex;align-items:center;gap:.3rem;
+                    background:var(--dark-2);border:1px solid var(--border);
+                    border-radius:6px;padding:.2rem .55rem;font-size:.72rem;
+                    color:var(--text-muted);margin:.2rem;">
+                    <i class="bi bi-wrench" style="color:var(--danger);font-size:.65rem;"></i>
+                    <strong style="color:var(--text-main);">${i.categoria_nombre}</strong>
+                    — ${i.especifico}
+                    ${i.costo ? `<span style="color:#4caf7d;"> · Q${Number(i.costo).toLocaleString()}</span>` : ''}
+                </span>`).join('')
+            : `<span style="color:var(--text-muted);font-size:.75rem;">Sin ítems</span>`;
+
+        const externaBadge = parseInt(r.es_externa) === 1
+            ? `<span style="background:rgba(224,82,82,.15);color:#e05252;
+                border:1px solid rgba(224,82,82,.3);padding:.15rem .5rem;
+                border-radius:20px;font-size:.68rem;font-weight:700;margin-left:.4rem;">
+                <i class="bi bi-truck"></i> EXTERNA
+               </span>`
+            : '';
+
+        return `
+        <div class="svc-row" style="grid-template-columns:1fr 1fr 1fr 1fr auto;margin-bottom:.25rem;">
+            <div>
+                <div class="svc-label">Estado</div>
+                <div class="svc-val" style="color:${estadoColor(r.estado)};">
+                    ${r.estado}${externaBadge}
                 </div>
             </div>
-            <div><div class="svc-label">Inicio</div><div class="svc-val">${fmtFecha(r.fecha_inicio)}</div></div>
-            <div><div class="svc-label">Fin</div><div class="svc-val">${fmtFecha(r.fecha_fin)}</div></div>
-            <div><div class="svc-label">Costo</div>
-                <div class="svc-val">${r.costo ? 'Q ' + Number(r.costo).toLocaleString() : '—'}</div>
+            <div>
+                <div class="svc-label">Inicio</div>
+                <div class="svc-val">${fmtFecha(r.fecha_inicio)}</div>
+            </div>
+            <div>
+                <div class="svc-label">Fin</div>
+                <div class="svc-val">
+                    ${parseInt(r.fecha_fin_indefinida) === 1
+                ? '<span style="color:var(--accent);"><i class="bi bi-infinity"></i> Indefinida</span>'
+                : (fmtFecha(r.fecha_fin) || '—')}
+                </div>
+            </div>
+            <div>
+                <div class="svc-label">Costo total</div>
+                <div class="svc-val">
+                    ${costoTotal > 0 ? 'Q ' + Number(costoTotal).toLocaleString() : '—'}
+                </div>
             </div>
             <div style="display:flex;gap:.4rem;align-items:center;">
                 <button onclick="verDetalleReparacion(${JSON.stringify(r).replace(/"/g, '&quot;')})"
@@ -2396,135 +2717,233 @@ const renderTablaReparaciones = (reparaciones) => {
                 </button>
             </div>
         </div>
-        <div style="font-size:.75rem;color:var(--text-muted);margin-top:-.4rem;margin-bottom:.6rem;padding-left:.25rem;">
-            ${r.descripcion}
-            ${r.proveedor ? ' · <i class="bi bi-shop"></i> ' + r.proveedor : ''}
-            ${r.responsable ? ' · <i class="bi bi-person"></i> ' + r.responsable : ''}
-            ${r.km_al_momento ? ' · <i class="bi bi-speedometer"></i> ' + Number(r.km_al_momento).toLocaleString() + ' km' : ''}
-        </div>`
-    ).join('');
+        <div style="padding:.4rem .25rem .75rem;border-bottom:1px solid var(--border);margin-bottom:.4rem;">
+            ${parseInt(r.es_externa) === 1 && r.destino_externo ? `
+            <div style="font-size:.75rem;color:#e05252;margin-bottom:.35rem;">
+                <i class="bi bi-geo-alt-fill"></i> ${r.destino_externo}
+            </div>` : ''}
+            ${r.responsable || r.proveedor ? `
+            <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:.35rem;">
+                ${r.responsable ? `<i class="bi bi-person"></i> ${r.responsable}` : ''}
+                ${r.proveedor ? ` · <i class="bi bi-shop"></i> ${r.proveedor}` : ''}
+            </div>` : ''}
+            <div>${itemsHTML}</div>
+        </div>`;
+    }).join('');
 };
 
-const guardarReparacion = async (forzar = false) => {
-    const tipo = document.getElementById('repTipo').value;
-    const desc = document.getElementById('repDescripcion').value;
-    const fecha = document.getElementById('repFechaInicio').value;
-    const km = document.getElementById('repKm').value;
+// ── VER DETALLE REPARACIÓN ────────────────────────────────────────────────────
+const verDetalleReparacion = (r) => {
+    const estadoColor = {
+        'En proceso': '#e8b84b',
+        'Finalizada': '#4caf7d',
+        'Externa': '#e05252'
+    };
+    const color = estadoColor[r.estado] || '#7c8398';
+    const items = r.items || [];
+    const costoTotal = items.reduce((sum, i) => sum + (parseFloat(i.costo) || 0), 0);
 
-    if (!tipo) { Swal.fire({ icon: 'info', title: 'Seleccione el tipo', text: 'Debe seleccionar un tipo antes de guardar.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); return; }
-    if (!desc) { Swal.fire({ icon: 'info', title: 'Ingrese una descripción', text: 'Debe describir la reparación.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); return; }
-    if (!km || parseInt(km) <= 0) { Swal.fire({ icon: 'info', title: 'Ingrese el KM', text: 'El kilometraje es obligatorio.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); return; }
-    if (!fecha) { Swal.fire({ icon: 'info', title: 'Fecha requerida', text: 'La fecha de inicio es requerida.', background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e8b84b', customClass: { container: 'swal-over-modal' } }); return; }
+    const itemsHTML = items.length
+        ? items.map(i => `
+            <div style="display:flex;align-items:center;gap:.75rem;
+                background:var(--dark-2);border:1px solid var(--border);
+                border-radius:8px;padding:.6rem .85rem;margin-bottom:.4rem;">
+                <i class="bi bi-wrench" style="color:var(--danger);flex-shrink:0;"></i>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:.82rem;font-weight:600;color:var(--text-main);">
+                        ${i.categoria_nombre}
+                    </div>
+                    <div style="font-size:.75rem;color:var(--text-muted);">${i.especifico}</div>
+                </div>
+                ${i.costo ? `
+                <div style="font-size:.78rem;color:#4caf7d;font-weight:600;white-space:nowrap;flex-shrink:0;">
+                    Q ${Number(i.costo).toLocaleString()}
+                </div>` : ''}
+            </div>`).join('')
+        : `<div style="color:var(--text-muted);font-size:.82rem;text-align:center;padding:1rem;">
+               Sin ítems registrados
+           </div>`;
 
-    const body = new FormData();
-    body.append('placa', fichaPlacaActual);
-    body.append('id_tipo_reparacion', tipo);
-    body.append('descripcion', desc);
-    body.append('fecha_inicio', fecha);
-    body.append('fecha_fin', document.getElementById('repFechaFin').value);
-    body.append('km_al_momento', km);
-    body.append('costo', document.getElementById('repCosto').value);
-    body.append('proveedor', document.getElementById('repProveedor').value);
-    body.append('responsable', document.getElementById('repResponsable').value);
-    body.append('estado', document.getElementById('repEstado').value);
-    body.append('observaciones', document.getElementById('repObs').value);
+    Swal.fire({
+        title: `<span style="font-family:Rajdhani,sans-serif;font-size:1.1rem;">
+            <i class="bi bi-wrench-adjustable" style="color:#e05252;"></i>
+            Reparación — ${fmtFecha(r.fecha_inicio)}
+        </span>`,
+        html: `
+        <div style="text-align:left;font-size:.85rem;">
+            <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;">
+                <span style="background:${color}22;color:${color};border:1px solid ${color}44;
+                    padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:700;">
+                    ${r.estado}
+                </span>
+                <span style="color:#7c8398;font-size:.78rem;">
+                    <i class="bi bi-calendar3"></i> ${fmtFecha(r.fecha_inicio)}
+                    ${r.fecha_fin
+                ? ' → ' + fmtFecha(r.fecha_fin)
+                : (parseInt(r.fecha_fin_indefinida) === 1
+                    ? ' → <span style="color:#e8b84b;"><i class="bi bi-infinity"></i> Indefinida</span>'
+                    : '')}
+                </span>
+            </div>
+            ${parseInt(r.es_externa) === 1 && r.destino_externo ? `
+            <div style="background:rgba(224,82,82,.08);border:1px solid rgba(224,82,82,.2);
+                border-radius:8px;padding:.65rem 1rem;margin-bottom:1rem;
+                display:flex;align-items:center;gap:.5rem;">
+                <i class="bi bi-truck" style="color:#e05252;flex-shrink:0;"></i>
+                <div>
+                    <div style="font-size:.72rem;color:#e05252;text-transform:uppercase;
+                        letter-spacing:.4px;margin-bottom:.1rem;">Destino externo</div>
+                    <div style="color:#c8cfe0;font-size:.85rem;">${r.destino_externo}</div>
+                </div>
+            </div>` : ''}
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem;">
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
+                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Proveedor</div>
+                    <div style="color:#c8cfe0;">${r.proveedor || '—'}</div>
+                </div>
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;">
+                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Responsable</div>
+                    <div style="color:#c8cfe0;">${r.responsable || '—'}</div>
+                </div>
+                ${costoTotal > 0 ? `
+                <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;grid-column:1/-1;">
+                    <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Costo total</div>
+                    <div style="color:#4caf7d;font-weight:700;font-size:1rem;font-family:'Rajdhani',sans-serif;">
+                        Q ${Number(costoTotal).toLocaleString()}
+                    </div>
+                </div>` : ''}
+            </div>
+            ${r.observaciones ? `
+            <div style="background:#1e2130;padding:.6rem .8rem;border-radius:8px;margin-bottom:1rem;">
+                <div style="font-size:.68rem;color:#555;text-transform:uppercase;margin-bottom:.2rem;">Observaciones</div>
+                <div style="color:#888;">${r.observaciones}</div>
+            </div>` : ''}
+            <div style="font-size:.78rem;color:var(--danger);font-weight:600;
+                text-transform:uppercase;letter-spacing:.5px;margin-bottom:.5rem;">
+                <i class="bi bi-list-check"></i> Ítems (${items.length})
+            </div>
+            ${itemsHTML}
+        </div>`,
+        background: '#1a1d27', color: '#e8eaf0',
+        confirmButtonColor: '#e05252',
+        confirmButtonText: '<i class="bi bi-x"></i> Cerrar',
+        width: '520px',
+        customClass: { container: 'swal-over-modal' }
+    });
+};
 
-    const esEdicion = reparacionEditandoId !== null;
-    if (esEdicion) body.append('id_reparacion', reparacionEditandoId);
-    if (forzar) body.append('forzar', '1');
-
-    const url = esEdicion
-        ? `${BASE}/API/vehiculos/reparacion/modificar`
-        : `${BASE}/API/vehiculos/reparacion/guardar`;
-
+// ── HISTORIAL REPARACIONES ────────────────────────────────────────────────────
+const verHistorialReparaciones = async () => {
     try {
-        mostrarLoader('Guardando reparación...');
-        const r = await fetch(url, { method: 'POST', body });
+        mostrarLoader('Cargando historial...');
+        const r = await fetch(`${BASE}/API/vehiculos/hoja-vida-reparaciones?placa=${fichaPlacaActual}`);
         const d = await r.json();
+        if (d.codigo !== 1) { Toast.fire({ icon: 'error', title: 'Error al cargar historial' }); return; }
 
-        if (d.codigo === 0 && d.bloqueo_duro) {
-            Swal.fire({ icon: 'error', title: 'Registro bloqueado', text: d.mensaje, background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e05252', customClass: { container: 'swal-over-modal' } });
-            return;
-        }
-        if (d.codigo === 2) {
-            const conf = await Swal.fire({
-                icon: 'warning', title: '¿Registrar de todas formas?',
-                html: `${d.mensaje}<br><br><small style="color:#888;">Último KM: <strong>${d.ultimo_km ? Number(d.ultimo_km).toLocaleString() + ' km' : '—'}</strong></small>`,
-                showCancelButton: true, confirmButtonText: 'Sí, registrar', cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#e8b84b', cancelButtonColor: '#555',
-                background: '#1a1d27', color: '#e8eaf0', customClass: { container: 'swal-over-modal' }
+        if (!d.grupos.length) {
+            Swal.fire({
+                icon: 'info', title: 'Sin historial',
+                text: 'Este vehículo no tiene reparaciones registradas.',
+                background: '#1a1d27', color: '#e8eaf0', confirmButtonColor: '#e05252',
+                customClass: { container: 'swal-over-modal' }
             });
-            if (conf.isConfirmed) await guardarReparacion(true);
             return;
         }
 
-        Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
-        if (d.codigo === 1) {
-            reparacionEditandoId = null;
-            ['repTipo', 'repDescripcion', 'repFechaFin', 'repCosto', 'repProveedor', 'repResponsable', 'repObs']
-                .forEach(id => { document.getElementById(id).value = ''; });
-            document.getElementById('repEstado').value = 'En proceso';
-            resetFormReparacion();
-            await abrirFicha(fichaPlacaActual);
-            switchTab(document.querySelector('.ficha-tab[data-tab="reparaciones"]'), 'reparaciones');
-            buscar();
-        }
+        const estadoColor = { 'En proceso': '#e8b84b', 'Finalizada': '#4caf7d', 'Externa': '#e05252' };
+
+        const gruposHtml = d.grupos.map((g, gi) => {
+            const filasHtml = g.items.map((item, i) => {
+                const bg = i % 2 === 0 ? 'rgba(255,255,255,.02)' : 'transparent';
+                const color = estadoColor[item.estado] || '#7c8398';
+                return `
+                <tr style="background:${bg};border-bottom:1px solid rgba(255,255,255,.04);">
+                    <td style="padding:.5rem .75rem;font-size:.8rem;color:#e8eaf0;white-space:nowrap;">
+                        ${item.fecha_inicio}
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.8rem;color:#7c8398;white-space:nowrap;">
+                        ${item.fecha_fin
+                        ? item.fecha_fin
+                        : (item.fecha_fin_indefinida
+                            ? '<span style="color:#e8b84b;"><i class="bi bi-infinity"></i> Indefinida</span>'
+                            : '—')}
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.78rem;color:#e8eaf0;max-width:200px;">
+                        ${item.especifico || '—'}
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.8rem;color:${color};font-weight:600;white-space:nowrap;">
+                        ${item.estado}
+                        ${item.es_externa
+                        ? '<span style="font-size:.68rem;background:rgba(224,82,82,.2);padding:.1rem .4rem;border-radius:10px;margin-left:.3rem;">EXT</span>'
+                        : ''}
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.8rem;color:#4caf7d;font-weight:600;white-space:nowrap;">
+                        ${item.costo_item ? 'Q ' + Number(item.costo_item).toLocaleString() : '—'}
+                    </td>
+                    <td style="padding:.5rem .75rem;font-size:.75rem;color:#7c8398;">
+                        ${item.responsable || '—'}
+                    </td>
+                </tr>`;
+            }).join('');
+
+            const costoTotalStr = g.costo_total > 0
+                ? `<span style="color:#e05252;font-weight:700;">Q ${Number(g.costo_total).toLocaleString()}</span>`
+                : '';
+
+            return `
+            <div style="margin-bottom:1rem;">
+                <div style="background:#1f2335;border-left:3px solid #e05252;
+                    padding:.6rem 1rem;
+                    display:flex;align-items:center;justify-content:space-between;
+                    cursor:pointer;border-radius:6px 6px 0 0;"
+                    onclick="
+                        const t=document.getElementById('hr_tabla_${gi}');
+                        const ic=document.getElementById('hr_icon_${gi}');
+                        if(t.style.display==='none'){t.style.display='';ic.style.transform='rotate(0deg)';}
+                        else{t.style.display='none';ic.style.transform='rotate(-90deg)';}">
+                    <div style="display:flex;align-items:center;gap:.75rem;">
+                        <span style="font-family:Rajdhani,sans-serif;font-size:.95rem;font-weight:700;color:#e8eaf0;">
+                            ${g.tipo}
+                        </span>
+                        <span style="font-size:.72rem;color:#7c8398;">${g.total} registro(s)</span>
+                        ${costoTotalStr}
+                    </div>
+                    <i id="hr_icon_${gi}" class="bi bi-chevron-down"
+                        style="color:#e05252;font-size:.8rem;transition:transform .2s;"></i>
+                </div>
+                <div id="hr_tabla_${gi}" style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;">
+                        <thead>
+                            <tr style="background:#242837;">
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;">F. Inicio</th>
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;">F. Fin</th>
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;min-width:140px;">Específico</th>
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;">Estado</th>
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;">Costo</th>
+                                <th style="padding:.45rem .75rem;font-size:.7rem;color:#7c8398;text-align:left;text-transform:uppercase;letter-spacing:.4px;">Resp.</th>
+                            </tr>
+                        </thead>
+                        <tbody>${filasHtml}</tbody>
+                    </table>
+                </div>
+            </div>`;
+        }).join('');
+
+        Swal.fire({
+            title: `<span style="font-family:Rajdhani,sans-serif;font-size:1.1rem;">
+                <i class="bi bi-wrench-adjustable" style="color:#e05252;"></i>
+                Historial de Reparaciones — ${fichaPlacaActual}
+            </span>`,
+            html: `<div style="text-align:left;max-height:480px;overflow-y:auto;padding-right:.25rem;">${gruposHtml}</div>`,
+            background: '#1a1d27', color: '#e8eaf0',
+            confirmButtonColor: '#e05252', confirmButtonText: '<i class="bi bi-x"></i> Cerrar',
+            width: '900px', customClass: { container: 'swal-over-modal' }
+        });
+
     } catch (err) {
         Toast.fire({ icon: 'error', title: 'Error de conexión' });
     } finally {
         ocultarLoader();
-    }
-};
-
-const editarReparacion = async (r) => {
-    reparacionEditandoId = r.id_reparacion;
-    const form = document.getElementById('formNuevaReparacion');
-    const btn = document.getElementById('btnToggleFormReparacion');
-    form.style.display = 'block';
-    btn.innerHTML = '<i class="bi bi-x-circle"></i> Cancelar';
-    await cargarTiposReparacion();
-    document.getElementById('repTipo').value = r.id_tipo_reparacion;
-    document.getElementById('repFechaInicio').value = r.fecha_inicio;
-    document.getElementById('repFechaFin').value = r.fecha_fin || '';
-    document.getElementById('repDescripcion').value = r.descripcion;
-    document.getElementById('repKm').value = r.km_al_momento;
-    document.getElementById('repCosto').value = r.costo || '';
-    document.getElementById('repProveedor').value = r.proveedor || '';
-    document.getElementById('repResponsable').value = r.responsable || '';
-    document.getElementById('repEstado').value = r.estado;
-    document.getElementById('repObs').value = r.observaciones || '';
-    const btnGuardarRep = document.querySelector('#formNuevaReparacion button[onclick="guardarReparacion()"]');
-    if (btnGuardarRep) {
-        btnGuardarRep.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Actualizar Reparación';
-        btnGuardarRep.style.background = 'linear-gradient(135deg,#3a7bd5,#2563b0)';
-    }
-    document.querySelectorAll('#tablaReparacionesWrap .svc-row').forEach(fila => {
-        if (fila.innerHTML.includes(`eliminarReparacion(${r.id_reparacion})`)) {
-            fila.style.opacity = '.3';
-            fila.style.pointerEvents = 'none';
-            const siguiente = fila.nextElementSibling;
-            if (siguiente && !siguiente.classList.contains('svc-row')) siguiente.style.opacity = '.3';
-        }
-    });
-    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-};
-
-const eliminarReparacion = async (id) => {
-    const conf = await Swal.fire({
-        icon: 'warning', title: '¿Eliminar reparación?', text: 'Esta acción no se puede deshacer.',
-        showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#e05252', cancelButtonColor: '#3a7bd5',
-        background: '#1a1d27', color: '#e8eaf0', customClass: { container: 'swal-over-modal' }
-    });
-    if (!conf.isConfirmed) return;
-    const body = new FormData();
-    body.append('id_reparacion', id);
-    const r = await fetch(`${BASE}/API/vehiculos/reparacion/eliminar`, { method: 'POST', body });
-    const d = await r.json();
-    Toast.fire({ icon: d.codigo === 1 ? 'success' : 'error', title: d.mensaje });
-    if (d.codigo === 1) {
-        await abrirFicha(fichaPlacaActual);
-        switchTab(document.querySelector('.ficha-tab[data-tab="reparaciones"]'), 'reparaciones');
     }
 };
 
@@ -3995,6 +4414,16 @@ window.toggleFormReparacion = toggleFormReparacion;
 window.guardarReparacion = guardarReparacion;
 window.editarReparacion = editarReparacion;
 window.eliminarReparacion = eliminarReparacion;
+window.verDetalleReparacion = verDetalleReparacion;
+window.agregarItemReparacion = agregarItemReparacion;
+window.onItemCategoriaChange = onItemCategoriaChange;
+window.onCategoriaChange = onCategoriaChange;
+window.toggleFechaIndefinida = toggleFechaIndefinida;
+window.toggleRepExterna = toggleRepExterna;
+window.setRepExterna = setRepExterna;
+window.setFechaFin = setFechaFin;
+window._quitarItemRep = _quitarItemRep;
+window.verHistorialReparaciones = verHistorialReparaciones;
 
 // Seguros
 window.toggleFormSeguro = toggleFormSeguro;

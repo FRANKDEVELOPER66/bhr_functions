@@ -1972,24 +1972,149 @@
                         </button>
                     </div>
                     <div id="formNuevaReparacion" style="display:none;background:var(--dark-3);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
-                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;">
-                            <div><label class="form-label"><i class="bi bi-wrench"></i> Tipo *</label><select id="repTipo" class="form-select"></select></div>
-                            <div><label class="form-label"><i class="bi bi-calendar"></i> Fecha Inicio *</label><input type="date" id="repFechaInicio" class="form-control"></div>
-                            <div><label class="form-label"><i class="bi bi-calendar-check"></i> Fecha Fin</label><input type="date" id="repFechaFin" class="form-control"></div>
-                            <div style="grid-column:1/-1;"><label class="form-label"><i class="bi bi-card-text"></i> Descripción *</label><input type="text" id="repDescripcion" class="form-control" placeholder="Detalle de la reparación..."></div>
-                            <div><label class="form-label"><i class="bi bi-speedometer"></i> KM al momento *</label><input type="number" id="repKm" class="form-control" placeholder="0" min="0"></div>
-                            <div><label class="form-label"><i class="bi bi-currency-dollar"></i> Costo (Q)</label><input type="number" id="repCosto" class="form-control" placeholder="0.00" step="0.01" min="0"></div>
-                            <div><label class="form-label"><i class="bi bi-activity"></i> Estado</label>
-                                <select id="repEstado" class="form-select">
-                                    <option value="En proceso">En proceso</option>
-                                    <option value="Finalizada">Finalizada</option>
-                                </select>
-                            </div>
-                            <div><label class="form-label"><i class="bi bi-shop"></i> Proveedor/Taller</label><input type="text" id="repProveedor" class="form-control" placeholder="Nombre del taller..."></div>
-                            <div><label class="form-label"><i class="bi bi-person"></i> Responsable</label><input type="text" id="repResponsable" class="form-control" placeholder="Nombre..."></div>
-                            <div><label class="form-label"><i class="bi bi-chat-text"></i> Observaciones</label><input type="text" id="repObs" class="form-control" placeholder="Notas adicionales..."></div>
+
+                        <!-- SECCIÓN 1 — Datos generales -->
+                        <div style="font-family:'Rajdhani',sans-serif;font-size:.95rem;font-weight:700;
+        color:var(--danger);letter-spacing:.5px;margin-bottom:1rem;">
+                            <i class="bi bi-clipboard-plus"></i> DATOS GENERALES
                         </div>
-                        <button onclick="guardarReparacion()" style="margin-top:1rem;background:linear-gradient(135deg,var(--danger),#c93030);border:none;color:#fff;padding:.7rem 1.5rem;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;">
+
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-bottom:.75rem;">
+                            <div>
+                                <label class="form-label"><i class="bi bi-calendar"></i> Fecha Inicio *</label>
+                                <input type="date" id="repFechaInicio" class="form-control">
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-shop"></i> Proveedor / Taller</label>
+                                <input type="text" id="repProveedor" class="form-control" placeholder="Nombre del taller...">
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-person"></i> Responsable</label>
+                                <input type="text" id="repResponsable" class="form-control" placeholder="Nombre...">
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-currency-dollar"></i> Costo Total (Q)</label>
+                                <input type="number" id="repCosto" class="form-control" placeholder="0.00" step="0.01" min="0">
+                            </div>
+                            <div style="grid-column:2/-1;">
+                                <label class="form-label"><i class="bi bi-chat-text"></i> Observaciones</label>
+                                <input type="text" id="repObs" class="form-control" placeholder="Notas adicionales...">
+                            </div>
+                        </div>
+
+                        <!-- Toggle reparación externa -->
+                        <div style="margin-bottom:1rem;">
+                            <label class="form-label"><i class="bi bi-truck"></i> ¿Es reparación externa?</label>
+                            <div style="display:flex;gap:.75rem;margin-top:.4rem;">
+                                <button type="button" id="btnRepExternaSi" onclick="setRepExterna(true)"
+                                    style="flex:1;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:10px;
+                background:var(--dark-2);color:var(--text-muted);font-size:.88rem;font-weight:600;
+                cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem;
+                font-family:'Inter',sans-serif;transition:all .2s;">
+                                    <i class="bi bi-truck"></i> Sí, es externa
+                                </button>
+                                <button type="button" id="btnRepExternaNo" onclick="setRepExterna(false)"
+                                    style="flex:1;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:10px;
+                background:var(--dark-2);color:var(--text-muted);font-size:.88rem;font-weight:600;
+                cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem;
+                font-family:'Inter',sans-serif;transition:all .2s;">
+                                    <i class="bi bi-tools"></i> No, es interna
+                                </button>
+                            </div>
+                            <div id="repDestinoWrap" style="display:none;margin-top:.6rem;">
+                                <input type="text" id="repDestino" class="form-control"
+                                    placeholder="Ej: Taller de Material de Guerra — Zona 1, Guatemala..."
+                                    style="border-color:rgba(224,82,82,.4);background:rgba(224,82,82,.05);">
+                                <small style="color:#e05252;font-size:.72rem;margin-top:.25rem;display:block;">
+                                    <i class="bi bi-exclamation-triangle-fill"></i>
+                                    El vehículo quedará en estado <strong>Baja — Servicio de Material de Guerra</strong>.
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- SECCIÓN 2 — Fecha de finalización -->
+                        <div style="margin-bottom:1rem;">
+                            <label class="form-label"><i class="bi bi-calendar-check"></i> ¿Tiene fecha de finalización?</label>
+                            <div style="display:flex;gap:.75rem;margin-top:.4rem;">
+                                <button type="button" id="btnFechaFinSi" onclick="setFechaFin(true)"
+                                    style="flex:1;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:10px;
+                background:var(--dark-2);color:var(--text-muted);font-size:.88rem;font-weight:600;
+                cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem;
+                font-family:'Inter',sans-serif;transition:all .2s;">
+                                    <i class="bi bi-calendar-event"></i> Sí, tiene fecha
+                                </button>
+                                <button type="button" id="btnFechaFinNo" onclick="setFechaFin(false)"
+                                    style="flex:1;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:10px;
+                background:var(--dark-2);color:var(--text-muted);font-size:.88rem;font-weight:600;
+                cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem;
+                font-family:'Inter',sans-serif;transition:all .2s;">
+                                    <i class="bi bi-infinity"></i> No, es indefinida
+                                </button>
+                            </div>
+                            <div id="repFechaFinWrap" style="display:none;margin-top:.6rem;">
+                                <input type="date" id="repFechaFin" class="form-control"
+                                    style="border-color:rgba(76,175,125,.4);background:rgba(76,175,125,.05);">
+                            </div>
+                            <div id="repFechaIndefinidaInfo" style="display:none;margin-top:.6rem;
+            background:rgba(232,184,75,.08);border:1px solid rgba(232,184,75,.25);
+            border-radius:8px;padding:.6rem 1rem;font-size:.8rem;color:var(--accent);">
+                                <i class="bi bi-infinity"></i>
+                                La reparación quedará registrada sin fecha de finalización hasta que se actualice.
+                            </div>
+                        </div>
+
+                        <!-- SECCIÓN 3 — Ítems -->
+                        <div style="font-family:'Rajdhani',sans-serif;font-size:.95rem;font-weight:700;
+        color:var(--danger);letter-spacing:.5px;margin-bottom:.75rem;">
+                            <i class="bi bi-list-check"></i> ÍTEMS DE REPARACIÓN
+                        </div>
+
+                        <!-- Lista de items agregados -->
+                        <div id="repItemsWrap" style="margin-bottom:.75rem;"></div>
+
+                        <!-- Panel agregar ítem -->
+                        <div style="background:var(--dark-2);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem;">
+                            <div style="font-size:.78rem;color:var(--danger);font-weight:600;
+            text-transform:uppercase;letter-spacing:.5px;margin-bottom:.75rem;">
+                                <i class="bi bi-plus-circle"></i> Agregar ítem
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;align-items:start;">
+                                <div>
+                                    <label class="form-label"><i class="bi bi-tag"></i> Categoría *</label>
+                                    <select id="itemRepCategoria" class="form-select" onchange="onItemCategoriaChange()">
+                                        <option value="">Seleccione...</option>
+                                        <option value="__nueva__">+ Nueva categoría...</option>
+                                    </select>
+                                    <div id="itemNuevaCategoriaWrap" style="display:none;margin-top:.4rem;">
+                                        <input type="text" id="itemNuevaCategoria" class="form-control"
+                                            placeholder="Nueva categoría..."
+                                            style="font-size:.82rem;border-color:rgba(232,184,75,.4);background:rgba(232,184,75,.05);">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="form-label"><i class="bi bi-card-text"></i> Específico *</label>
+                                    <input type="text" id="itemRepEspecifico" class="form-control"
+                                        placeholder="Qué se hizo exactamente...">
+                                </div>
+                                <div>
+                                    <label class="form-label"><i class="bi bi-currency-dollar"></i> Costo (Q)</label>
+                                    <input type="number" id="itemRepCosto" class="form-control"
+                                        placeholder="0.00" step="0.01" min="0">
+                                </div>
+                            </div>
+                            <button onclick="agregarItemReparacion()"
+                                style="margin-top:.75rem;background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);
+                                color:var(--danger);padding:.6rem 1.25rem;border-radius:8px;
+                            font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.9rem;cursor:pointer;">
+                                <i class="bi bi-plus me-1"></i> Agregar ítem
+                            </button>
+                        </div>
+
+                        <!-- Botón guardar -->
+                        <button onclick="guardarReparacion()"
+                            style="background:linear-gradient(135deg,var(--danger),#c93030);border:none;color:#fff;
+                            padding:.7rem 1.5rem;border-radius:8px;font-family:'Rajdhani',sans-serif;
+                            font-weight:700;font-size:.95rem;cursor:pointer;">
                             <i class="bi bi-save me-1"></i> Guardar Reparación
                         </button>
                     </div>

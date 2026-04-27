@@ -532,6 +532,9 @@ class FichaController
         header('Content-Type: application/json; charset=UTF-8');
         try {
             $tipos = TiposReparacion::traerTodos();
+            $tipos = TiposReparacion::traerTodos();
+            error_log("tipos count: " . count($tipos));
+            error_log("primer tipo: " . json_encode($tipos[0] ?? 'vacio'));
             echo json_encode(['codigo' => 1, 'datos' => $tipos], JSON_UNESCAPED_UNICODE);
         } catch (Exception $e) {
             http_response_code(500);
@@ -546,70 +549,104 @@ class FichaController
         header('Content-Type: application/json; charset=UTF-8');
 
         $placa = strtoupper(trim(htmlspecialchars($_POST['placa'] ?? '')));
-
         if (!$placa) {
             http_response_code(400);
             echo json_encode(['codigo' => 0, 'mensaje' => 'Placa requerida'], JSON_UNESCAPED_UNICODE);
             return;
         }
 
-        foreach (['id_tipo_reparacion', 'descripcion', 'fecha_inicio', 'km_al_momento'] as $campo) {
-            if (empty($_POST[$campo])) {
-                http_response_code(400);
-                echo json_encode(['codigo' => 0, 'mensaje' => "El campo '{$campo}' es obligatorio"], JSON_UNESCAPED_UNICODE);
-                return;
-            }
+        $fechaInicio       = $_POST['fecha_inicio']        ?? '';
+        $fechaFin          = !empty($_POST['fecha_fin'])    ? $_POST['fecha_fin'] : null;
+        $fechaIndefinida   = (int)($_POST['fecha_fin_indefinida'] ?? 0);
+        $esExterna         = (int)($_POST['es_externa']     ?? 0);
+        $destino           = htmlspecialchars($_POST['destino_externo'] ?? '');
+        $costo             = !empty($_POST['costo'])         ? $_POST['costo']        : null;
+        $proveedor         = htmlspecialchars($_POST['proveedor']       ?? '');
+        $responsable       = htmlspecialchars($_POST['responsable']     ?? '');
+        $observaciones     = htmlspecialchars($_POST['observaciones']   ?? '');
+        $estado            = htmlspecialchars($_POST['estado']          ?? 'En proceso');
+        $itemsJson         = $_POST['items']                ?? '[]';
+        // ── LOGS TEMPORALES ───────────────────────────────────────────────────────────
+        error_log("=== guardarReparacionAPI ===");
+        error_log("es_externa recibido: " . var_export($_POST['es_externa'] ?? 'NO VIENE', true));
+        error_log("fecha_fin_indefinida: " . var_export($_POST['fecha_fin_indefinida'] ?? 'NO VIENE', true));
+        error_log("estado recibido: " . var_export($_POST['estado'] ?? 'NO VIENE', true));
+        error_log("fecha_fin recibido: " . var_export($_POST['fecha_fin'] ?? 'NO VIENE', true));
+        // ─────────────────────────────────────────────────────────────────────────────
+
+        if (!$fechaInicio) {
+            echo json_encode(['codigo' => 0, 'mensaje' => 'Fecha de inicio requerida'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        $items = json_decode($itemsJson, true);
+        if (!$items || !count($items)) {
+            echo json_encode(['codigo' => 0, 'mensaje' => 'Agrega al menos un ítem a la reparación'], JSON_UNESCAPED_UNICODE);
+            return;
         }
 
         try {
-            $idTipo = (int)$_POST['id_tipo_reparacion'];
-            $forzar = !empty($_POST['forzar']) && $_POST['forzar'] === '1';
-
-            if (Reparaciones::existeEnProcesoPorTipo($placa, $idTipo)) {
-                echo json_encode([
-                    'codigo'       => 0,
-                    'mensaje'      => 'Ya existe una reparación del mismo tipo en proceso.',
-                    'bloqueo_duro' => true
-                ], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-
-            if (!$forzar) {
-                $ultimaRep = Reparaciones::traerUltimaPorTipo($placa, $idTipo);
-                if ($ultimaRep) {
-                    $diasDesdeUltima = (int)((strtotime('now') - strtotime($ultimaRep['fecha_inicio'])) / 86400);
-                    if ($diasDesdeUltima < 30) {
-                        echo json_encode([
-                            'codigo'       => 2,
-                            'mensaje'      => "La última reparación de este tipo fue hace {$diasDesdeUltima} día(s). ¿Está seguro?",
-                            'dias'         => $diasDesdeUltima,
-                            'ultimo_km'    => $ultimaRep['km_al_momento'],
-                            'bloqueo_duro' => false
-                        ], JSON_UNESCAPED_UNICODE);
-                        return;
-                    }
-                }
-            }
-
             $reparacion = new Reparaciones([
-                'placa'              => $placa,
-                'id_tipo_reparacion' => $idTipo,
-                'descripcion'        => htmlspecialchars($_POST['descripcion']),
-                'fecha_inicio'       => $_POST['fecha_inicio'],
-                'fecha_fin'          => $_POST['fecha_fin']        ?? null,
-                'km_al_momento'      => (int)$_POST['km_al_momento'],
-                'costo'              => $_POST['costo']            ?? null,
-                'proveedor'          => htmlspecialchars($_POST['proveedor']    ?? ''),
-                'responsable'        => htmlspecialchars($_POST['responsable']  ?? ''),
-                'estado'             => $_POST['estado']           ?? 'En proceso',
-                'observaciones'      => htmlspecialchars($_POST['observaciones'] ?? '')
+                'placa'               => $placa,
+                'fecha_inicio'        => $fechaInicio,
+                'fecha_fin'           => $fechaFin,
+                'fecha_fin_indefinida' => $fechaIndefinida,
+                'es_externa'          => $esExterna,
+                'destino_externo'     => $destino,
+                'costo'               => $costo,
+                'proveedor'           => $proveedor,
+                'responsable'         => $responsable,
+                'observaciones'       => $observaciones,
+                'estado'              => $estado,
             ]);
-            $reparacion->crear();
+            error_log("objeto reparacion es_externa: " . var_export($reparacion->es_externa, true));
+            error_log("objeto reparacion fecha_fin_indefinida: " . var_export($reparacion->fecha_fin_indefinida, true));
+            error_log("objeto reparacion estado: " . var_export($reparacion->estado, true));
+            $reparacion->guardar();
+            // ── LOG TEMPORAL ──────────────────────────────────────────────────────────────
+            $verificar = Reparaciones::fetchFirst(
+                "SELECT es_externa, fecha_fin_indefinida, estado FROM reparaciones WHERE placa = ? ORDER BY id_reparacion DESC LIMIT 1",
+                [$placa]
+            );
+            error_log("BD después de guardar es_externa: " . var_export($verificar['es_externa'], true));
+            error_log("BD después de guardar fecha_fin_indefinida: " . var_export($verificar['fecha_fin_indefinida'], true));
+            error_log("BD después de guardar estado: " . var_export($verificar['estado'], true));
+            // ─────────────────────────────────────────────────────────────────────────────
 
-            $vehiculo = Vehiculos::find($placa);
-            if ($vehiculo) {
-                $vehiculo->estado = $_POST['estado'] === 'En proceso' ? 'Taller' : 'Alta';
-                $vehiculo->actualizar();
+            // Obtener el id insertado
+            $idReparacion = (int)Reparaciones::fetchFirst(
+                "SELECT id_reparacion FROM reparaciones WHERE placa = ? ORDER BY id_reparacion DESC LIMIT 1",
+                [$placa]
+            )['id_reparacion'];
+
+            // Guardar items
+            foreach ($items as $item) {
+                $idCategoria = (int)($item['id_categoria'] ?? 0);
+                $especifico  = htmlspecialchars($item['especifico'] ?? '');
+                $costItem    = !empty($item['costo']) ? $item['costo'] : null;
+                if (!$idCategoria || !$especifico) continue;
+
+                $ri = new \Model\ReparacionItems([
+                    'id_reparacion' => $idReparacion,
+                    'id_categoria'  => $idCategoria,
+                    'especifico'    => $especifico,
+                    'costo'         => $costItem,
+                ]);
+                $ri->guardar();
+            }
+
+            // Actualizar estado vehículo
+            $estadoVehiculo = $esExterna ? 'Baja' : 'Taller';
+            Vehiculos::consultarSQL(
+                "UPDATE vehiculos SET estado = '{$estadoVehiculo}' WHERE placa = '{$placa}'"
+            );
+
+            // Si es externa, actualizar también el motivo en observaciones del vehículo
+            if ($esExterna && $destino) {
+                $destinoEsc = addslashes($destino);
+                Vehiculos::consultarSQL(
+                    "UPDATE vehiculos SET estado = 'Baja' WHERE placa = '{$placa}'"
+                );
             }
 
             echo json_encode(['codigo' => 1, 'mensaje' => 'Reparación registrada exitosamente'], JSON_UNESCAPED_UNICODE);
@@ -674,7 +711,6 @@ class FichaController
         header('Content-Type: application/json; charset=UTF-8');
 
         $id = (int)($_POST['id_reparacion'] ?? 0);
-
         if (!$id) {
             http_response_code(400);
             echo json_encode(['codigo' => 0, 'mensaje' => 'ID inválido'], JSON_UNESCAPED_UNICODE);
@@ -689,30 +725,54 @@ class FichaController
                 return;
             }
 
+            $esExterna       = (int)($_POST['es_externa']          ?? 0);
+            $fechaIndefinida = (int)($_POST['fecha_fin_indefinida'] ?? 0);
+            $itemsJson       = $_POST['items'] ?? '[]';
+            $items           = json_decode($itemsJson, true) ?? [];
+
             $reparacion->sincronizar([
-                'id_tipo_reparacion' => (int)$_POST['id_tipo_reparacion'],
-                'descripcion'        => htmlspecialchars($_POST['descripcion']   ?? ''),
-                'fecha_inicio'       => $_POST['fecha_inicio']                   ?? $reparacion->fecha_inicio,
-                'fecha_fin'          => !empty($_POST['fecha_fin']) ? $_POST['fecha_fin'] : null,
-                'km_al_momento'      => (int)($_POST['km_al_momento']            ?? 0),
-                'costo'              => !empty($_POST['costo']) ? $_POST['costo'] : null,
-                'proveedor'          => htmlspecialchars($_POST['proveedor']      ?? ''),
-                'responsable'        => htmlspecialchars($_POST['responsable']    ?? ''),
-                'estado'             => $_POST['estado']                          ?? $reparacion->estado,
-                'observaciones'      => htmlspecialchars($_POST['observaciones']  ?? ''),
+                'fecha_inicio'         => $_POST['fecha_inicio']     ?? $reparacion->fecha_inicio,
+                'fecha_fin'            => !empty($_POST['fecha_fin']) ? $_POST['fecha_fin'] : null,
+                'fecha_fin_indefinida' => $fechaIndefinida,
+                'es_externa'           => $esExterna,
+                'destino_externo'      => htmlspecialchars($_POST['destino_externo'] ?? ''),
+                'costo'                => !empty($_POST['costo']) ? $_POST['costo'] : null,
+                'proveedor'            => htmlspecialchars($_POST['proveedor']     ?? ''),
+                'responsable'          => htmlspecialchars($_POST['responsable']   ?? ''),
+                'observaciones'        => htmlspecialchars($_POST['observaciones'] ?? ''),
+                'estado'               => htmlspecialchars($_POST['estado']        ?? $reparacion->estado),
             ]);
             $reparacion->actualizar();
 
-            $vehiculo = Vehiculos::find($reparacion->placa);
-            if ($vehiculo) {
-                $enProceso = Reparaciones::contarEnProceso($reparacion->placa);
-                $ordenEnProceso = OrdenesServicio::existeEnProceso($reparacion->placa);
-                if ($enProceso > 0 || $ordenEnProceso) {
-                    $vehiculo->estado = 'Taller';
-                } else {
-                    $vehiculo->estado = 'Alta';
-                }
-                $vehiculo->actualizar();
+            // Reemplazar items — eliminar los anteriores y guardar los nuevos
+            Vehiculos::consultarSQL("DELETE FROM reparacion_items WHERE id_reparacion = {$id}");
+
+            foreach ($items as $item) {
+                $idCategoria = (int)($item['id_categoria'] ?? 0);
+                $especifico  = htmlspecialchars($item['especifico'] ?? '');
+                $costItem    = !empty($item['costo']) ? $item['costo'] : null;
+                if (!$idCategoria || !$especifico) continue;
+
+                $ri = new \Model\ReparacionItems([
+                    'id_reparacion' => $id,
+                    'id_categoria'  => $idCategoria,
+                    'especifico'    => $especifico,
+                    'costo'         => $costItem,
+                ]);
+                $ri->guardar();
+            }
+
+            // Actualizar estado vehículo
+            $placa = $reparacion->placa;
+            $enProceso = Reparaciones::contarEnProceso($placa);
+            $ordenEnProceso = OrdenesServicio::existeEnProceso($placa);
+
+            if ($esExterna) {
+                Vehiculos::consultarSQL("UPDATE vehiculos SET estado = 'Baja' WHERE placa = '{$placa}'");
+            } elseif ($enProceso > 0 || $ordenEnProceso) {
+                Vehiculos::consultarSQL("UPDATE vehiculos SET estado = 'Taller' WHERE placa = '{$placa}'");
+            } else {
+                Vehiculos::consultarSQL("UPDATE vehiculos SET estado = 'Alta' WHERE placa = '{$placa}'");
             }
 
             echo json_encode(['codigo' => 1, 'mensaje' => 'Reparación actualizada exitosamente'], JSON_UNESCAPED_UNICODE);
@@ -879,30 +939,29 @@ class FichaController
             $grupos = Reparaciones::traerHistorialAgrupado($placa);
 
             $resultado = [];
-            foreach ($grupos as $tipo => $registros) {
-                $costoTotal = array_sum(array_column($registros, 'costo'));
+            foreach ($grupos as $categoria => $registros) {
+                $costoTotal = array_sum(array_column($registros, 'costo_item'));
                 $resultado[] = [
-                    'tipo'        => $tipo,
+                    'tipo'        => $categoria,
                     'total'       => count($registros),
                     'costo_total' => $costoTotal,
                     'items'       => array_map(fn($r) => [
-                        'fecha_inicio'  => $r['fecha_inicio'],
-                        'fecha_fin'     => $r['fecha_fin'] ?? null,
-                        'descripcion'   => $r['descripcion'],
-                        'km_al_momento' => (int)$r['km_al_momento'],
-                        'costo'         => $r['costo'] ? (float)$r['costo'] : null,
-                        'estado'        => $r['estado'],
-                        'proveedor'     => $r['proveedor'] ?? '',
-                        'responsable'   => $r['responsable'] ?? '',
-                        'observaciones' => $r['observaciones'] ?? '',
+                        'fecha_inicio'         => $r['fecha_inicio'],
+                        'fecha_fin'            => $r['fecha_fin'] ?? null,
+                        'fecha_fin_indefinida' => (int)($r['fecha_fin_indefinida'] ?? 0),
+                        'especifico'           => $r['especifico']       ?? '',
+                        'costo_item'           => $r['costo_item']       ? (float)$r['costo_item'] : null,
+                        'estado'               => $r['estado']           ?? '',
+                        'es_externa'           => (int)($r['es_externa'] ?? 0),
+                        'destino_externo'      => $r['destino_externo']  ?? '',
+                        'proveedor'            => $r['proveedor']        ?? '',
+                        'responsable'          => $r['responsable']      ?? '',
+                        'observaciones'        => $r['observaciones']    ?? '',
                     ], $registros),
                 ];
             }
 
-            echo json_encode([
-                'codigo' => 1,
-                'grupos' => $resultado
-            ], JSON_UNESCAPED_UNICODE);
+            echo json_encode(['codigo' => 1, 'grupos' => $resultado], JSON_UNESCAPED_UNICODE);
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['codigo' => 0, 'mensaje' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
@@ -956,6 +1015,56 @@ class FichaController
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['codigo' => 0, 'mensaje' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    public static function guardarCategoriaReparacionAPI(Router $router)
+    {
+        isAuthApi();
+        header('Content-Type: application/json; charset=UTF-8');
+
+        $nombre = trim(htmlspecialchars($_POST['nombre'] ?? ''));
+        if (!$nombre) {
+            http_response_code(400);
+            echo json_encode(['codigo' => 0, 'mensaje' => 'Nombre requerido'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        try {
+            // Si ya existe, devolver el id existente
+            $existe = TiposReparacion::fetchFirst(
+                "SELECT id_tipo_reparacion FROM tipos_reparacion WHERE nombre = ?",
+                [$nombre]
+            );
+            if ($existe) {
+                echo json_encode([
+                    'codigo'  => 1,
+                    'mensaje' => 'Categoría ya existente',
+                    'id'      => (int)$existe['id_tipo_reparacion']
+                ], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            $nueva = new TiposReparacion(['nombre' => $nombre, 'activo' => 1]);
+            $nueva->guardar();
+
+            $id = (int)TiposReparacion::fetchFirst(
+                "SELECT id_tipo_reparacion FROM tipos_reparacion WHERE nombre = ? ORDER BY id_tipo_reparacion DESC LIMIT 1",
+                [$nombre]
+            )['id_tipo_reparacion'];
+
+            echo json_encode([
+                'codigo'  => 1,
+                'mensaje' => 'Categoría creada correctamente',
+                'id'      => $id
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'codigo'  => 0,
+                'mensaje' => 'Error al guardar categoría',
+                'detalle' => $e->getMessage()
+            ], JSON_UNESCAPED_UNICODE);
         }
     }
 }

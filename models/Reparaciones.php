@@ -4,125 +4,125 @@ namespace Model;
 
 class Reparaciones extends ActiveRecord
 {
-    protected static $tabla    = 'reparaciones';
-    protected static $idTabla  = 'id_reparacion';
+    protected static $tabla   = 'reparaciones';
+    protected static $idTabla = 'id_reparacion';
     protected static $columnasDB = [
         'placa',
-        'id_tipo_reparacion',
-        'descripcion',
         'fecha_inicio',
         'fecha_fin',
-        'km_al_momento',
         'costo',
         'proveedor',
         'responsable',
         'estado',
-        'observaciones'
+        'observaciones',
+        'es_externa',
+        'destino_externo',
+        'fecha_fin_indefinida'
     ];
 
     public $id_reparacion;
     public $placa;
-    public $id_tipo_reparacion;
-    public $descripcion;
     public $fecha_inicio;
     public $fecha_fin;
-    public $km_al_momento;
     public $costo;
     public $proveedor;
     public $responsable;
     public $estado;
     public $observaciones;
+    public $es_externa;
+    public $destino_externo;
+    public $fecha_fin_indefinida;
 
     public function __construct($args = [])
     {
-        $this->id_reparacion      = $args['id_reparacion']      ?? null;
-        $this->placa              = $args['placa']              ?? '';
-        $this->id_tipo_reparacion = $args['id_tipo_reparacion'] ?? null;
-        $this->descripcion        = $args['descripcion']        ?? '';
-        $this->fecha_inicio       = $args['fecha_inicio']       ?? date('Y-m-d');
-        $this->fecha_fin          = !empty($args['fecha_fin'])  ? $args['fecha_fin'] : null;
-        $this->km_al_momento      = $args['km_al_momento']      ?? 0;
-        $this->costo              = !empty($args['costo'])      ? $args['costo'] : null;
-        $this->proveedor          = $args['proveedor']          ?? '';
-        $this->responsable        = $args['responsable']        ?? '';
-        $this->estado             = $args['estado']             ?? 'En proceso';
-        $this->observaciones      = $args['observaciones']      ?? '';
+        $this->id_reparacion        = $args['id_reparacion']        ?? null;
+        $this->placa                = $args['placa']                ?? '';
+        $this->fecha_inicio         = $args['fecha_inicio']         ?? date('Y-m-d');
+        $this->fecha_fin            = !empty($args['fecha_fin'])     ? $args['fecha_fin'] : null;
+        $this->costo                = !empty($args['costo'])         ? $args['costo']     : null;
+        $this->proveedor            = $args['proveedor']             ?? '';
+        $this->responsable          = $args['responsable']          ?? '';
+        $this->estado               = $args['estado']               ?? 'En proceso';
+        $this->observaciones        = $args['observaciones']        ?? '';
+        $this->es_externa           = $args['es_externa']           ?? 0;
+        $this->destino_externo      = $args['destino_externo']      ?? null;
+        $this->fecha_fin_indefinida = $args['fecha_fin_indefinida'] ?? 0;
     }
 
+    // ── Traer todas las reparaciones de un vehículo con sus items ─────────
     public static function traerPorPlaca(string $placa): array
     {
         $sql = "SELECT 
-                    r.*,
-                    tr.nombre AS tipo_nombre
+                    r.*
                 FROM reparaciones r
-                JOIN tipos_reparacion tr ON r.id_tipo_reparacion = tr.id_tipo_reparacion
                 WHERE r.placa = ?
                 ORDER BY r.fecha_inicio DESC, r.id_reparacion DESC";
 
-        return self::fetchArray($sql, [$placa]);
+        $reparaciones = self::fetchArray($sql, [$placa]);
+
+        // Traer items de cada reparación
+        foreach ($reparaciones as &$rep) {
+            $rep['items'] = self::traerItems((int)$rep['id_reparacion']);
+        }
+        unset($rep);
+
+        return $reparaciones;
     }
 
+    // ── Traer items de una reparación ─────────────────────────────────────
+    public static function traerItems(int $idReparacion): array
+    {
+        $sql = "SELECT 
+                    ri.*,
+                    tr.nombre AS categoria_nombre
+                FROM reparacion_items ri
+                JOIN tipos_reparacion tr ON ri.id_categoria = tr.id_tipo_reparacion
+                WHERE ri.id_reparacion = ?
+                ORDER BY ri.id_item ASC";
+
+        return self::fetchArray($sql, [$idReparacion]) ?? [];
+    }
+
+    // ── Contar reparaciones en proceso ────────────────────────────────────
     public static function contarEnProceso(string $placa): int
     {
         $resultado = self::fetchArray(
             "SELECT COUNT(*) AS total FROM reparaciones 
-         WHERE placa = ? AND estado = 'En proceso'",
+             WHERE placa = ? AND estado IN ('En proceso', 'Externa')",
             [$placa]
         );
         return (int)($resultado[0]['total'] ?? 0);
     }
-    // Verificar si ya existe una reparación en proceso del mismo tipo
-    public static function existeEnProcesoPorTipo(string $placa, int $idTipoReparacion): bool
-    {
-        $sql = "SELECT COUNT(*) AS total
-            FROM reparaciones
-            WHERE placa = ?
-              AND id_tipo_reparacion = ?
-              AND estado = 'En proceso'";
 
-        $resultado = self::fetchArray($sql, [$placa, $idTipoReparacion]);
-        return (int)($resultado[0]['total'] ?? 0) > 0;
-    }
-
-    // Traer la última reparación finalizada del mismo tipo
-    public static function traerUltimaPorTipo(string $placa, int $idTipoReparacion): ?array
-    {
-        $sql = "SELECT fecha_inicio, km_al_momento
-            FROM reparaciones
-            WHERE placa = ?
-              AND id_tipo_reparacion = ?
-              AND estado = 'Finalizada'
-            ORDER BY fecha_inicio DESC
-            LIMIT 1";
-
-        $resultado = self::fetchArray($sql, [$placa, $idTipoReparacion]);
-        return $resultado[0] ?? null;
-    }
+    // ── Historial agrupado por categoría ──────────────────────────────────
     public static function traerHistorialAgrupado(string $placa): array
     {
         $sql = "SELECT 
-                tr.nombre            AS tipo_nombre,
-                r.fecha_inicio,
-                r.fecha_fin,
-                r.descripcion,
-                r.km_al_momento,
-                r.costo,
-                r.estado,
-                r.proveedor,
-                r.responsable,
-                r.observaciones
-            FROM reparaciones r
-            JOIN tipos_reparacion tr ON r.id_tipo_reparacion = tr.id_tipo_reparacion
-            WHERE r.placa = ?
-            ORDER BY tr.nombre ASC, r.fecha_inicio ASC";
+                    tr.nombre        AS categoria_nombre,
+                    ri.especifico,
+                    ri.costo         AS costo_item,
+                    r.fecha_inicio,
+                    r.fecha_fin,
+                    r.estado,
+                    r.proveedor,
+                    r.responsable,
+                    r.observaciones,
+                    r.es_externa,
+                    r.destino_externo,
+                    r.fecha_fin_indefinida
+                FROM reparaciones r
+                JOIN reparacion_items ri ON ri.id_reparacion   = r.id_reparacion
+                JOIN tipos_reparacion tr ON ri.id_categoria    = tr.id_tipo_reparacion
+                WHERE r.placa = ?
+                ORDER BY tr.nombre ASC, r.fecha_inicio ASC";
 
         $rows = self::fetchArray($sql, [$placa]) ?? [];
 
         $grupos = [];
         foreach ($rows as $r) {
-            $tipo = $r['tipo_nombre'];
-            if (!isset($grupos[$tipo])) $grupos[$tipo] = [];
-            $grupos[$tipo][] = $r;
+            $cat = $r['categoria_nombre'];
+            if (!isset($grupos[$cat])) $grupos[$cat] = [];
+            $grupos[$cat][] = $r;
         }
 
         return $grupos;
