@@ -418,7 +418,7 @@ const ocultarFormulario = () => {
     setTimeout(() => {
         contenedorFormulario.style.display = 'none';
         contenedorFormulario.classList.remove('slide-up');
-        contenedorTabla.style.display = '';
+        contenedorTabla.style.display = tipoSeleccionado ? '' : 'none';
     }, 300);
     btnFlotante.classList.remove('activo');
     btnFlotante.innerHTML = '<i class="bi bi-plus"></i>';
