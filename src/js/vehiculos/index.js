@@ -1103,50 +1103,9 @@ const abrirFicha = async (placa) => {
             ordenKmEl.title = '';
             ordenKmEl.dataset.kmMinimo = v.km_actuales;
 
-            ordenKmEl.onblur = () => {
-                const kmIngresado = parseInt(ordenKmEl.value || '0');
-                const kmMinimo = parseInt(ordenKmEl.dataset.kmMinimo || '0');
-                const diferencia = kmIngresado - kmMinimo;
-
-                // ── Validación 1: no puede ser menor al registrado ────────────────
-                if (!kmIngresado || kmIngresado < kmMinimo) {
-                    Swal.fire({
-                        icon: 'warning', title: 'KM inválido',
-                        html: `El kilometraje ingresado (<strong>${kmIngresado.toLocaleString()} km</strong>) 
-                   no puede ser menor al registrado 
-                   (<strong>${kmMinimo.toLocaleString()} km</strong>).`,
-                        confirmButtonText: 'Corregir', confirmButtonColor: '#e8b84b',
-                        background: '#1a1d27', color: '#e8eaf0',
-                        customClass: { container: 'swal-over-modal' }
-                    }).then(() => { ordenKmEl.value = kmMinimo; ordenKmEl.focus(); });
-                    return;
-                }
-
-                // ── Validación 2: diferencia mínima solo si ya tiene km registrados
-                if (kmMinimo > 0) {
-                    const esMoto = fichaTipoVehiculo.toLowerCase().includes('motocicleta');
-                    const intervaloMinimo = esMoto ? 500 : 1000;
-
-                    if (diferencia >= 0 && diferencia < intervaloMinimo) {
-                        Swal.fire({
-                            icon: 'warning', title: 'Kilometraje inválido',
-                            html: `La diferencia entre el KM ingresado 
-                       (<strong>${kmIngresado.toLocaleString()} km</strong>) y el registrado 
-                       (<strong>${kmMinimo.toLocaleString()} km</strong>) es de solo 
-                       <strong>${diferencia.toLocaleString()} km</strong>.<br><br>
-                       <span style="font-size:.82rem;color:#7c8398;">
-                           Para un <strong style="color:#e8b84b;">${fichaTipoVehiculo || 'vehículo'}</strong> 
-                           se esperaría un mínimo de 
-                           <strong style="color:#e8b84b;">${intervaloMinimo.toLocaleString()} km</strong> 
-                           entre servicios.
-                       </span>`,
-                            confirmButtonText: 'Corregir', confirmButtonColor: '#e8b84b',
-                            background: '#1a1d27', color: '#e8eaf0',
-                            customClass: { container: 'swal-over-modal' }
-                        }).then(() => { ordenKmEl.value = kmMinimo; ordenKmEl.focus(); });
-                    }
-                }
-            };
+            // La validación del KM se hace al presionar "Abrir Orden" (crearOrden),
+            // no al salir del campo, para no bloquear la navegación en la ficha.
+            ordenKmEl.onblur = null;
         }
 
         // ── KM reparacion ─────────────────────────────────────────────
@@ -1343,14 +1302,30 @@ const crearOrden = async () => {
         return;
     }
 
-    // ── Validar diferencia mínima según tipo de vehículo ─────────────────
+    // ── Validar KM contra el registrado en el vehículo ───────────────────
+    const ordenKmInput = document.getElementById('ordenKm');
     const kmIngresadoVal = parseInt(km);
-    const kmMinimoVal = parseInt(document.getElementById('ordenKm')?.dataset.kmMinimo || '0');
+    const kmMinimoVal = parseInt(ordenKmInput?.dataset.kmMinimo || '0');
     const diferenciaVal = kmIngresadoVal - kmMinimoVal;
     const esMotoVal = fichaTipoVehiculo.toLowerCase().includes('motocicleta');
     const intervaloMinVal = esMotoVal ? 500 : 1000;
 
-    if (kmMinimoVal > 0 && diferenciaVal >= 0 && diferenciaVal < intervaloMinVal) {
+    // 1) No puede ser menor al registrado
+    if (kmIngresadoVal < kmMinimoVal) {
+        Swal.fire({
+            icon: 'warning', title: 'KM inválido',
+            html: `El kilometraje ingresado (<strong>${kmIngresadoVal.toLocaleString()} km</strong>) 
+                   no puede ser menor al registrado 
+                   (<strong>${kmMinimoVal.toLocaleString()} km</strong>).`,
+            confirmButtonText: 'Corregir', confirmButtonColor: '#e8b84b',
+            background: '#1a1d27', color: '#e8eaf0',
+            customClass: { container: 'swal-over-modal' }
+        }).then(() => ordenKmInput?.focus());
+        return;
+    }
+
+    // 2) Diferencia mínima entre servicios (solo si ya tiene KM registrados)
+    if (kmMinimoVal > 0 && diferenciaVal < intervaloMinVal) {
         Swal.fire({
             icon: 'warning', title: 'KM inválido',
             html: `El kilometraje ingresado (<strong>${kmIngresadoVal.toLocaleString()} km</strong>) 
@@ -1365,7 +1340,7 @@ const crearOrden = async () => {
             confirmButtonText: 'Corregir', confirmButtonColor: '#e8b84b',
             background: '#1a1d27', color: '#e8eaf0',
             customClass: { container: 'swal-over-modal' }
-        });
+        }).then(() => ordenKmInput?.focus());
         return;
     }
 
